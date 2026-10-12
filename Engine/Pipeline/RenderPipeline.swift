@@ -6,10 +6,15 @@ import LumoraCore
 /// Turns a source image + `EditDocument` into the edited image (a lazy Core Image graph).
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
-/// Stage order: optics → local contrast → white balance → dehaze → tone → curves → color
+/// Stage order: optics → local contrast → white balance → dehaze → tone → curves → color → look
 /// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
 public struct RenderPipeline {
-    public init() {}
+    /// Looks up imported LUTs by id.
+    let lutProvider: (String) -> CubeLUT?
+
+    public init(lutProvider: @escaping (String) -> CubeLUT? = { LUTStore.shared.lut(id: $0) }) {
+        self.lutProvider = lutProvider
+    }
 
     /// - Parameters:
     ///   - input: the source image (full resolution or a downscaled proxy), origin at (0, 0).
@@ -28,10 +33,11 @@ public struct RenderPipeline {
         image = applyTone(document.light, to: image, analysis: analysis)
         image = applyCurves(document.curve, to: image)
         image = applyColor(document, to: image)
+        image = applyLook(document.look, to: image, analysis: analysis)
         image = applyNoiseReduction(document.detail, to: image, scale: scale)
         image = applySharpening(document.detail, to: image, scale: scale)
         image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
-        image = applyFinish(document.effects, to: image)
+        image = applyFinish(effectiveEffects(document), to: image)
         return image
     }
 
@@ -187,8 +193,10 @@ public struct RenderPipeline {
         if detail.colorNoiseReduction > 0 {
             let strength = detail.colorNoiseReduction / 100
             let lab = Kernels.toOklab.apply(image)
-            let blurred = GuidedFilter.gaussian(lab, radius: max(1, (2 + 6 * strength) * scale))
-            let blurredLuma = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(image), radius: max(1, 2 * scale))
+            let radius = max(1, (2 + 6 * strength) * scale)
+            let blurred = GuidedFilter.gaussian(lab, radius: radius)
+            // Edges are detected at the same scale as the chroma blur, so color can't bleed across them.
+            let blurredLuma = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(image), radius: radius)
             image = Kernels.chromaMerge.apply(image, blurred, blurredLuma, Float(min(1, strength * 1.2)))
         }
         return image

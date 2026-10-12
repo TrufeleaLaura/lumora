@@ -143,6 +143,8 @@ public enum AdjustmentCatalog {
         SliderSpec(id: "perspectiveHorizontal", title: "Horizontal", range: -100...100, keyPath: \.geometry.horizontal),
     ])
 
+    public static let lookStrength = SliderSpec(id: "lookAmount", title: "Strength", range: 0...100, defaultValue: 100, style: .integer, keyPath: \.look.amount)
+
     /// Slider-only panels.
     public static let groups: [ToolGroup] = [light, color, effects, detail, optics]
 
@@ -150,7 +152,7 @@ public enum AdjustmentCatalog {
     public static var allSliders: [SliderSpec] {
         (groups + [curveParametric, grading, geometry]).flatMap(\.sliders) + mixerSliders(.hue) + mixerSliders(.saturation)
             + mixerSliders(.luminance) + blackWhiteSliders + gradingWheelSliders(.shadows) + gradingWheelSliders(.midtones)
-            + gradingWheelSliders(.highlights) + gradingWheelSliders(.global)
+            + gradingWheelSliders(.highlights) + gradingWheelSliders(.global) + [lookStrength]
     }
 
     // MARK: - Mixer

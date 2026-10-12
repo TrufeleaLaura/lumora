@@ -84,6 +84,35 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    /// Pastes copied edits onto several projects (each keeps its own crop/rotation) and
+    /// refreshes their thumbnails.
+    func pasteEdits(_ document: EditDocument, to ids: [UUID]) async {
+        isBusy = true
+        defer { isBusy = false }
+        let store = self.store
+        await Task.detached(priority: .userInitiated) {
+            for id in ids {
+                guard let data = try? store.originalData(for: id), let source = ImageSource(data: data) else { continue }
+                let existing = (try? store.document(for: id)) ?? EditDocument()
+                let updated = document.adjustmentsOnly(keeping: existing.geometry)
+                try? store.save(document: updated, for: id)
+                let small = source.makeProxy(maxDimension: 720)
+                let rendered = RenderPipeline().apply(updated, to: small, scale: small.extent.width / max(source.pixelSize.width, 1))
+                if let thumbnail = Exporter.thumbnailJPEG(rendered) {
+                    try? store.saveThumbnail(thumbnail, for: id)
+                }
+            }
+        }.value
+        reload()
+    }
+
+    func delete(_ ids: [UUID]) {
+        for id in ids {
+            try? store.delete(id)
+        }
+        reload()
+    }
+
     func duplicate(_ project: ProjectMetadata) {
         do {
             try store.duplicate(project.id)

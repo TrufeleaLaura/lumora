@@ -160,6 +160,11 @@ struct EditorView: View {
     private var toolPanel: some View {
         VStack(spacing: 0) {
             switch session.activeTool {
+            case .looks:
+                LooksPanel(session: session, thumbnails: session.lookThumbnails)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .adjust:
                 sectionChips
                     .padding(.top, 10)

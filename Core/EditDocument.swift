@@ -233,8 +233,16 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var detail = DetailSettings()
     public var optics = OpticsSettings()
     public var geometry = GeometrySettings()
+    public var look = LookSettings()
 
     public init() {}
+
+    /// The document's adjustments without photo-specific geometry (for presets and paste).
+    public func adjustmentsOnly(keeping geometry: GeometrySettings) -> EditDocument {
+        var copy = self
+        copy.geometry = geometry
+        return copy
+    }
 
     /// True when the document makes no change to the image.
     public var isIdentity: Bool {

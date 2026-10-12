@@ -34,6 +34,14 @@ public enum ImageStats {
         return (average.x, variance.squareRoot())
     }
 
+    /// Mean absolute high-frequency detail of perceptual luminance (noise + fine texture).
+    public static func noiseLevel(of image: CIImage, context: CIContext = RenderContext.analysis) -> Float {
+        let luma = Kernels.perceptualLuma.apply(image)
+        let blurred = GuidedFilter.gaussian(luma, radius: 1.5)
+        let difference = luma.applyingFilter("CIDifferenceBlendMode", parameters: [kCIInputBackgroundImageKey: blurred])
+        return averageColor(of: difference, context: context).x
+    }
+
     /// Average linear luminance (Rec. 709 weights).
     public static func averageLuminance(of image: CIImage, context: CIContext = RenderContext.shared) -> Float {
         let c = averageColor(of: image, context: context)

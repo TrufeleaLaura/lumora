@@ -48,18 +48,26 @@ extension RenderPipeline {
                 topLeft.y += hz * h
                 bottomLeft.y -= hz * h
             }
-            let filter = CIFilter.perspectiveCorrection()
-            filter.inputImage = image.clampedToExtent()
-            filter.topLeft = topLeft
-            filter.topRight = topRight
-            filter.bottomLeft = bottomLeft
-            filter.bottomRight = bottomRight
-            if let output = filter.outputImage, output.extent.width > 1, output.extent.height > 1, !output.extent.isInfinite {
-                let normalized = ImageSource.normalized(output)
-                image = normalized
-                    .transformed(by: CGAffineTransform(scaleX: w / normalized.extent.width, y: h / normalized.extent.height))
-                    .cropped(to: CGRect(x: 0, y: 0, width: w, height: h))
-            }
+            // Map the output frame onto the source trapezoid (always inside the photo → no empty corners).
+            let m = GeometryMath.homography(
+                (Double(bottomLeft.x), Double(bottomLeft.y)),
+                (Double(bottomRight.x), Double(bottomRight.y)),
+                (Double(topRight.x), Double(topRight.y)),
+                (Double(topLeft.x), Double(topLeft.y))
+            )
+            let source = image.clampedToExtent()
+            let sourceExtent = extent
+            image = Kernels.homography.apply(
+                extent: CGRect(x: 0, y: 0, width: w, height: h),
+                roiCallback: { _, _ in sourceExtent },
+                arguments: [
+                    source,
+                    CIVector(x: CGFloat(m.x.0), y: CGFloat(m.x.1), z: CGFloat(m.x.2)),
+                    CIVector(x: CGFloat(m.y.0), y: CGFloat(m.y.1), z: CGFloat(m.y.2)),
+                    CIVector(x: CGFloat(m.w.0), y: CGFloat(m.w.1), z: CGFloat(m.w.2)),
+                    CIVector(x: w, y: h),
+                ]
+            ) ?? image
         }
 
         // Straighten: rotate around the center and scale up just enough to hide the corners.

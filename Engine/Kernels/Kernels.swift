@@ -69,6 +69,7 @@ enum Kernels {
     static let lumaDenoise = colorKernel("lumora_lumaDenoise")
     static let lensVignette = generalKernel("lumora_lensVignette")
     static let lensDistortion = generalKernel("lumora_lensDistortion")
+    static let homography = generalKernel("lumora_homography")
 }
 
 extension CIColorKernel {

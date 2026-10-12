@@ -15,6 +15,15 @@ _Created: 2026-10-12 · Companion to [RESEARCH.md](RESEARCH.md)_
 | AI | 100 % on-device (no servers, no running costs). Large models download on first use, not bundled |
 | Third-party code | Minimal: ZIPFoundation (unzip downloaded models). Everything else is Apple frameworks + our code |
 
+## Progress
+| Phase | Status |
+|---|---|
+| 0 · Pipeline setup | ✅ Done — repo, XcodeGen, CI (tests + render previews + unsigned IPA) |
+| 1 · Editor foundation | ✅ Done — projects, RAW, zoom/pan canvas, compare/split, history, export options |
+| 2 · Pro adjustments | ✅ Engine + panels (light, color, mixer, grading, curves, effects, detail, optics), crop/rotate/perspective |
+| 3 · Looks & presets | 🔨 In progress — 56 built-in looks, strength, presets, LUT import, batch paste |
+| 4–13 | ⏳ Planned |
+
 ## 1. Architecture
 
 ```

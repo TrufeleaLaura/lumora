@@ -92,12 +92,15 @@ public struct Look: Identifiable, Equatable, Sendable {
     public let name: String
     public let pack: LookPack
     public let recipe: LookRecipe
+    /// For looks made from an imported .cube LUT.
+    public let lutID: String?
 
-    public init(id: String, name: String, pack: LookPack, recipe: LookRecipe) {
+    public init(id: String, name: String, pack: LookPack, recipe: LookRecipe, lutID: String? = nil) {
         self.id = id
         self.name = name
         self.pack = pack
         self.recipe = recipe
+        self.lutID = lutID
     }
 
     init(_ pack: LookPack, _ name: String, _ build: (inout LookRecipe) -> Void) {
@@ -112,15 +115,31 @@ public struct Look: Identifiable, Equatable, Sendable {
     }
 }
 
-/// The selected look and its strength, stored in the edit document.
+/// The selected look and its strength, stored in the edit document. The recipe is copied in,
+/// so a saved edit keeps its appearance even if the built-in library changes later.
 public struct LookSettings: Codable, Equatable, Sendable {
     public var lookID: String?
+    public var name: String?
+    public var recipe: LookRecipe?
+    /// Imported LUT applied by this look (see LUTStore), if any.
+    public var lutID: String?
     /// 0...100
     public var amount: Double = 100
 
-    public init(lookID: String? = nil, amount: Double = 100) {
+    public init(lookID: String? = nil, name: String? = nil, recipe: LookRecipe? = nil, lutID: String? = nil, amount: Double = 100) {
         self.lookID = lookID
+        self.name = name
+        self.recipe = recipe
+        self.lutID = lutID
         self.amount = amount
+    }
+
+    public init(look: Look, amount: Double = 100) {
+        self.init(lookID: look.id, name: look.name, recipe: look.recipe, lutID: look.lutID, amount: amount)
+    }
+
+    public var isActive: Bool {
+        lookID != nil && amount > 0 && (recipe != nil || lutID != nil)
     }
 }
 

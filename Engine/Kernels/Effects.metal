@@ -37,7 +37,8 @@ float4 lumora_finish(sampler src, sampler noise, float4 vignette, float4 vignett
         float f = smoothstep(midpoint - feather * 0.5f, midpoint + feather * 0.5f, dist);
         if (vignette.x < 0.0f) {
             float protect = vignetteExtra.x * smoothstep(0.55f, 0.95f, lumoraFxLuma(p));
-            p *= 1.0f + vignette.x * f * (1.0f - protect);
+            // Up to about -2 stops in the corners at -100 (applied in perceptual space).
+            p *= exp2(vignette.x * f * (1.0f - protect) * 0.9f);
         } else {
             p = mix(p, float3(1.0f), vignette.x * f * 0.85f);
         }
@@ -76,6 +77,15 @@ float4 lumora_lensDistortion(sampler src, float4 frame, destination dest) {
     float fill = k > 0.0f ? 1.0f / (1.0f + k) : 1.0f;
     float2 source = frame.xy + d * (1.0f + k * r2) * fill * frame.z;
     return src.sample(src.transform(source));
+}
+
+// Projective warp: output pixel (normalized by `size`) -> source position via a homography
+// whose rows are (a, b, c), (d, e, f), (g, h, 1). Used for perspective correction.
+float4 lumora_homography(sampler src, float3 rowX, float3 rowY, float3 rowW, float2 size, destination dest) {
+    float2 uv = dest.coord() / size;
+    float w = rowW.x * uv.x + rowW.y * uv.y + rowW.z;
+    float2 q = float2(rowX.x * uv.x + rowX.y * uv.y + rowX.z, rowY.x * uv.x + rowY.y * uv.y + rowY.z) / w;
+    return src.sample(src.transform(q));
 }
 
 // Unsharp-mask sharpening on perceptual luminance.

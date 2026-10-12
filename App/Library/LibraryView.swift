@@ -8,6 +8,9 @@ struct LibraryView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var session: EditorSession?
     @State private var projectToDelete: ProjectMetadata?
+    @State private var isSelecting = false
+    @State private var selection: Set<UUID> = []
+    @State private var isConfirmingBatchDelete = false
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 4)]
 
@@ -18,13 +21,40 @@ struct LibraryView: View {
                 newEditButton
 
                 if !library.projects.isEmpty {
-                    Text("Recent")
-                        .font(.title3.weight(.semibold))
-                        .padding(.top, 4)
+                    HStack {
+                        Text("Recent")
+                            .font(.title3.weight(.semibold))
+                        Spacer()
+                        Button(isSelecting ? "Done" : "Select") {
+                            isSelecting.toggle()
+                            selection.removeAll()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                    }
+                    .padding(.top, 4)
                     LazyVGrid(columns: columns, spacing: 4) {
                         ForEach(library.projects) { project in
                             ProjectTile(image: library.thumbnail(for: project))
-                                .onTapGesture { open(project) }
+                                .overlay(alignment: .topTrailing) {
+                                    if isSelecting {
+                                        Image(systemName: selection.contains(project.id) ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 22))
+                                            .foregroundStyle(selection.contains(project.id) ? Theme.accent : Color.white)
+                                            .shadow(radius: 2)
+                                            .padding(6)
+                                    }
+                                }
+                                .onTapGesture {
+                                    if isSelecting {
+                                        if selection.contains(project.id) {
+                                            selection.remove(project.id)
+                                        } else {
+                                            selection.insert(project.id)
+                                        }
+                                    } else {
+                                        open(project)
+                                    }
+                                }
                                 .contextMenu {
                                     Button {
                                         library.duplicate(project)
@@ -59,6 +89,24 @@ struct LibraryView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.background.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom) {
+            if isSelecting {
+                selectionBar
+            }
+        }
+        .confirmationDialog(
+            "Delete \(selection.count) edits?",
+            isPresented: $isConfirmingBatchDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                library.delete(Array(selection))
+                selection.removeAll()
+                isSelecting = false
+            }
+        } message: {
+            Text("Your original photos in the Photos app are not affected.")
+        }
         .overlay {
             if library.isBusy {
                 ZStack {
@@ -93,6 +141,36 @@ struct LibraryView: View {
         } message: {
             Text("The edit is removed from Lumora. Your original photo in the Photos app is not affected.")
         }
+    }
+
+    private var selectionBar: some View {
+        HStack(spacing: 18) {
+            Text(selection.isEmpty ? "Select photos" : "\(selection.count) selected")
+                .font(.subheadline.weight(.medium))
+            Spacer()
+            Button {
+                guard let copied = EditClipboard.document else { return }
+                let ids = Array(selection)
+                Task {
+                    await library.pasteEdits(copied, to: ids)
+                    selection.removeAll()
+                    isSelecting = false
+                }
+            } label: {
+                Label("Paste edits", systemImage: "doc.on.clipboard")
+            }
+            .disabled(selection.isEmpty || EditClipboard.document == nil)
+            Button(role: .destructive) {
+                isConfirmingBatchDelete = true
+            } label: {
+                Image(systemName: "trash")
+            }
+            .disabled(selection.isEmpty)
+            .accessibilityLabel("Delete selected")
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(.ultraThinMaterial)
     }
 
     private var header: some View {

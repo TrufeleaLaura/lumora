@@ -176,7 +176,7 @@ float4 lumora_dehaze(sample_t s, sample_t coeff, float4 airlight, float amount) 
         float3 clear = max((c - a) / max(t, 0.12f) + a, float3(0.0f));
         c = mix(c, clear, amount);
     } else {
-        float h = -amount * 0.65f * (1.0f - 0.5f * t);
+        float h = -amount * 0.6f * (1.0f - 0.85f * t);
         c = mix(c, a, h);
     }
     return float4(c, s.a);

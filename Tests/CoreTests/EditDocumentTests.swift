@@ -247,6 +247,20 @@ final class GeometryMathTests: XCTestCase {
         }
     }
 
+    func testHomographyMapsCorners() {
+        let quad = [(10.0, 0.0), (90.0, 5.0), (80.0, 100.0), (20.0, 95.0)]
+        let m = GeometryMath.homography(quad[0], quad[1], quad[2], quad[3])
+        for (corner, target) in zip([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)], quad) {
+            let mapped = GeometryMath.apply(m, u: corner.0, v: corner.1)
+            XCTAssertEqual(mapped.0, target.0, accuracy: 1e-9)
+            XCTAssertEqual(mapped.1, target.1, accuracy: 1e-9)
+        }
+        // A rectangle gives an affine map (no projective terms).
+        let affine = GeometryMath.homography((0, 0), (4, 0), (4, 2), (0, 2))
+        XCTAssertEqual(affine.w.0, 0, accuracy: 1e-12)
+        XCTAssertEqual(GeometryMath.apply(affine, u: 0.5, v: 0.5).0, 2, accuracy: 1e-12)
+    }
+
     func testCropRectClamping() {
         let clamped = CropRect(x: 0.9, y: -0.2, width: 0.5, height: 0.01).clamped()
         XCTAssertEqual(clamped.x + clamped.width, 1, accuracy: 1e-9)

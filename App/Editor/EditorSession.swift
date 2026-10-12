@@ -5,12 +5,13 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case adjust, crop
+    case looks, adjust, crop
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .looks: return "Looks"
         case .adjust: return "Adjust"
         case .crop: return "Crop"
         }
@@ -18,6 +19,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .looks: return "camera.filters"
         case .adjust: return "slider.horizontal.3"
         case .crop: return "crop.rotate"
         }
@@ -267,7 +269,37 @@ final class EditorSession: ObservableObject, Identifiable {
 
     func pasteEdits() {
         guard let copied = EditClipboard.document else { return }
-        perform("Paste edits") { $0 = copied }
+        perform("Paste edits") { $0 = copied.adjustmentsOnly(keeping: $0.geometry) }
+    }
+
+    // MARK: - Looks & presets
+
+    /// Small renders of looks/presets on this photo.
+    lazy var lookThumbnails = LookThumbnails(proxy: proxy, fullSize: source.pixelSize)
+
+    func selectLook(_ look: Look?) {
+        guard let look else {
+            perform("No look") { $0.look = LookSettings() }
+            return
+        }
+        perform("Look \(look.name)") { document in
+            let amount = document.look.lookID == look.id ? document.look.amount : 100
+            document.look = LookSettings(look: look, amount: amount)
+        }
+    }
+
+    func applyPreset(_ preset: UserPreset) {
+        perform("Preset \(preset.name)") { $0 = preset.document.adjustmentsOnly(keeping: $0.geometry) }
+    }
+
+    func saveCurrentAsPreset(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try PresetStore.shared.save(name: trimmed.isEmpty ? "My preset" : trimmed, document: document)
+            showToast("Preset saved")
+        } catch {
+            showToast("Couldn't save preset: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Persistence

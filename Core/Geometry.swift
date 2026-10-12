@@ -141,6 +141,37 @@ public enum GeometryMath {
         return CropRect(x: centerX - width / 2, y: centerY - height / 2, width: width, height: height).clamped(minimumSize: 0.01)
     }
 
+    /// Projective map from the unit square to a quad (Heckbert's closed form).
+    /// Corners map as (0,0)→p0, (1,0)→p1, (1,1)→p2, (0,1)→p3. Returns rows (a,b,c), (d,e,f), (g,h,1):
+    /// x = (a·u + b·v + c) / (g·u + h·v + 1), y = (d·u + e·v + f) / (g·u + h·v + 1).
+    public static func homography(
+        _ p0: (Double, Double), _ p1: (Double, Double), _ p2: (Double, Double), _ p3: (Double, Double)
+    ) -> (x: (Double, Double, Double), y: (Double, Double, Double), w: (Double, Double, Double)) {
+        let dx1 = p1.0 - p2.0, dx2 = p3.0 - p2.0, dx3 = p0.0 - p1.0 + p2.0 - p3.0
+        let dy1 = p1.1 - p2.1, dy2 = p3.1 - p2.1, dy3 = p0.1 - p1.1 + p2.1 - p3.1
+        var g = 0.0, h = 0.0
+        if abs(dx3) > 1e-12 || abs(dy3) > 1e-12 {
+            let det = dx1 * dy2 - dx2 * dy1
+            if abs(det) > 1e-12 {
+                g = (dx3 * dy2 - dx2 * dy3) / det
+                h = (dx1 * dy3 - dx3 * dy1) / det
+            }
+        }
+        let a = p1.0 - p0.0 + g * p1.0
+        let b = p3.0 - p0.0 + h * p3.0
+        let c = p0.0
+        let d = p1.1 - p0.1 + g * p1.1
+        let e = p3.1 - p0.1 + h * p3.1
+        let f = p0.1
+        return ((a, b, c), (d, e, f), (g, h, 1))
+    }
+
+    /// Applies a homography from `homography(_:_:_:_:)` to (u, v).
+    public static func apply(_ m: (x: (Double, Double, Double), y: (Double, Double, Double), w: (Double, Double, Double)), u: Double, v: Double) -> (Double, Double) {
+        let w = m.w.0 * u + m.w.1 * v + m.w.2
+        return ((m.x.0 * u + m.x.1 * v + m.x.2) / w, (m.y.0 * u + m.y.1 * v + m.y.2) / w)
+    }
+
     /// Output pixel size of an image after quarter turns.
     public static func rotatedSize(width: Double, height: Double, quarterTurns: Int) -> (Double, Double) {
         quarterTurns % 2 == 0 ? (width, height) : (height, width)

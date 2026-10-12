@@ -88,8 +88,9 @@ final class AdjustmentTests: XCTestCase {
     // MARK: - Detail
 
     func testNoiseReductionSmoothsNoise() {
-        let base = deviation(Self.scene, TestScene.skyRect)
-        XCTAssertLessThan(deviation(render { $0.detail.noiseReduction = 80 }, TestScene.skyRect), base * 0.8)
+        let base = ImageStats.noiseLevel(of: Self.scene.cropped(to: TestScene.skyRect))
+        let reduced = ImageStats.noiseLevel(of: render { $0.detail.noiseReduction = 80 }.cropped(to: TestScene.skyRect))
+        XCTAssertLessThan(reduced, base * 0.7)
     }
 
     func testSharpeningIncreasesDetail() {
