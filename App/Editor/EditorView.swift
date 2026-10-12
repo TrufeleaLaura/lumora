@@ -6,13 +6,9 @@ struct EditorView: View {
     @ObservedObject var session: EditorSession
     var onClose: () -> Void
 
-    @State private var selectedGroupID = AdjustmentCatalog.groups[0].id
+    @State private var section: AdjustSection = .light
     @State private var isShowingExport = false
     @State private var isShowingHistory = false
-
-    private var selectedGroup: ToolGroup {
-        AdjustmentCatalog.groups.first { $0.id == selectedGroupID } ?? AdjustmentCatalog.groups[0]
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -160,59 +156,114 @@ struct EditorView: View {
 
     private var toolPanel: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 18) {
-                    ForEach(selectedGroup.sliders) { spec in
-                        AdjustmentSlider(
-                            spec: spec,
-                            value: binding(for: spec),
-                            onEditingChanged: { editing in
-                                if editing {
-                                    session.beginChange()
-                                } else {
-                                    let value = session.document[keyPath: spec.keyPath]
-                                    session.endChange(label: "\(spec.title) \(spec.formatted(value))")
-                                }
-                            },
-                            onReset: { session.reset(spec) }
-                        )
+            Group {
+                if section.scrolls {
+                    ScrollView {
+                        panelContent
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 14)
                     }
+                } else {
+                    panelContent
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 14)
+                        .frame(maxHeight: .infinity, alignment: .top)
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 16)
             }
-            .frame(height: 250)
+            .frame(height: 264)
 
             Divider().overlay(Color.white.opacity(0.06))
 
-            HStack {
-                ForEach(AdjustmentCatalog.groups) { group in
-                    Button {
-                        selectedGroupID = group.id
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: group.symbol)
-                                .font(.system(size: 19))
-                            Text(group.title)
-                                .font(.caption2.weight(.medium))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(AdjustSection.allCases) { item in
+                        Button {
+                            section = item
+                        } label: {
+                            Label(item.title, systemImage: item.symbol)
+                                .font(.footnote.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .foregroundStyle(section == item ? Color.black : Color.primary)
+                                .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
                         }
-                        .foregroundStyle(selectedGroupID == group.id ? Theme.accent : Color.secondary)
-                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 14)
             }
-            .padding(.top, 10)
-            .padding(.bottom, 6)
+            .padding(.vertical, 10)
         }
         .background(Theme.panel.ignoresSafeArea(edges: .bottom))
     }
 
-    private func binding(for spec: SliderSpec) -> Binding<Double> {
-        Binding(
-            get: { session.document[keyPath: spec.keyPath] },
-            set: { session.document[keyPath: spec.keyPath] = $0 }
-        )
+    @ViewBuilder
+    private var panelContent: some View {
+        switch section {
+        case .light:
+            SliderList(session: session, specs: AdjustmentCatalog.light.sliders)
+        case .color:
+            VStack(spacing: 14) {
+                Toggle("Black & white", isOn: Binding(
+                    get: { session.document.blackWhite.isEnabled },
+                    set: { enabled in
+                        session.perform(enabled ? "Black & white" : "Color") { $0.blackWhite.isEnabled = enabled }
+                    }
+                ))
+                .tint(Theme.accent)
+                SliderList(session: session, specs: AdjustmentCatalog.color.sliders)
+            }
+        case .mixer:
+            MixerPanel(session: session)
+        case .grading:
+            GradingPanel(session: session)
+        case .curve:
+            CurvePanel(session: session)
+        case .effects:
+            SliderList(session: session, specs: AdjustmentCatalog.effects.sliders)
+        case .detail:
+            SliderList(session: session, specs: AdjustmentCatalog.detail.sliders)
+        case .optics:
+            SliderList(session: session, specs: AdjustmentCatalog.optics.sliders)
+        }
+    }
+}
+
+/// Sections of the Adjust tool.
+enum AdjustSection: String, CaseIterable, Identifiable {
+    case light, color, mixer, grading, curve, effects, detail, optics
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: return "Light"
+        case .color: return "Color"
+        case .mixer: return "Mixer"
+        case .grading: return "Grading"
+        case .curve: return "Curve"
+        case .effects: return "Effects"
+        case .detail: return "Detail"
+        case .optics: return "Optics"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .light: return "sun.max"
+        case .color: return "thermometer.medium"
+        case .mixer: return "paintpalette"
+        case .grading: return "circle.lefthalf.filled"
+        case .curve: return "point.topleft.down.to.point.bottomright.curvepath"
+        case .effects: return "sparkles"
+        case .detail: return "triangle"
+        case .optics: return "camera.aperture"
+        }
+    }
+
+    /// Panels with 2-D drag controls don't scroll (so drags aren't stolen by scrolling).
+    var scrolls: Bool {
+        self != .curve && self != .grading
     }
 }
 

@@ -16,7 +16,11 @@ final class RenderPipelineTests: XCTestCase {
 
     func testMetalKernelLibraryLoads() {
         XCTAssertFalse(Kernels.library.isEmpty)
-        _ = Kernels.basicTone
+        _ = Kernels.tone
+        _ = Kernels.color
+        _ = Kernels.curves
+        _ = Kernels.finish
+        _ = Kernels.lensDistortion
     }
 
     func testIdentityDocumentLeavesImageUntouched() {

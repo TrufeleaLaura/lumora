@@ -23,6 +23,57 @@ enum Kernels {
         }
     }
 
-    /// Exposure, contrast, whites, blacks and saturation in a single pass.
-    static let basicTone = colorKernel("lumora_basicTone")
+    static func generalKernel(_ name: String) -> CIKernel {
+        do {
+            return try CIKernel(functionName: name, fromMetalLibraryData: library)
+        } catch {
+            preconditionFailure("LumoraEngine: cannot load kernel \(name): \(error)")
+        }
+    }
+
+    static func warpKernel(_ name: String) -> CIWarpKernel {
+        do {
+            return try CIWarpKernel(functionName: name, fromMetalLibraryData: library)
+        } catch {
+            preconditionFailure("LumoraEngine: cannot load warp kernel \(name): \(error)")
+        }
+    }
+
+    // Tone
+    static let tone = colorKernel("lumora_tone")
+    static let localContrast = colorKernel("lumora_localContrast")
+    static let dehaze = colorKernel("lumora_dehaze")
+    static let darkChannel = colorKernel("lumora_darkChannel")
+    static let transmission = colorKernel("lumora_transmission")
+
+    // Guided filter helpers
+    static let logLuma = colorKernel("lumora_logLuma")
+    static let logLumaPair = colorKernel("lumora_logLumaPair")
+    static let perceptualLuma = colorKernel("lumora_perceptualLuma")
+    static let perceptualLumaPair = colorKernel("lumora_perceptualLumaPair")
+    static let guidedSelfCoefficients = colorKernel("lumora_guidedSelfCoefficients")
+    static let guidedPack = colorKernel("lumora_guidedPack")
+    static let guidedPackSquare = colorKernel("lumora_guidedPackSquare")
+    static let guidedCoefficients = colorKernel("lumora_guidedCoefficients")
+
+    // Color
+    static let color = colorKernel("lumora_color")
+    static let toOklab = colorKernel("lumora_toOklab")
+    static let chromaMerge = colorKernel("lumora_chromaMerge")
+    static let defringe = colorKernel("lumora_defringe")
+    static let curves = generalKernel("lumora_curves")
+
+    // Detail & effects
+    static let finish = colorKernel("lumora_finish")
+    static let sharpen = colorKernel("lumora_sharpen")
+    static let lumaDenoise = colorKernel("lumora_lumaDenoise")
+    static let lensVignette = colorKernel("lumora_lensVignette")
+    static let lensDistortion = warpKernel("lumora_lensDistortion")
+}
+
+extension CIColorKernel {
+    /// Applies the kernel over the first image's extent.
+    func apply(_ image: CIImage, _ arguments: Any...) -> CIImage {
+        apply(extent: image.extent, arguments: [image as Any] + arguments) ?? image
+    }
 }

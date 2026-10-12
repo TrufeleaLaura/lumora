@@ -49,7 +49,7 @@ final class EditDocumentTests: XCTestCase {
     }
 
     func testCatalogIDsAreUniqueAndDefaultsInRange() {
-        let sliders = AdjustmentCatalog.groups.flatMap(\.sliders)
+        let sliders = AdjustmentCatalog.allSliders
         XCTAssertEqual(Set(sliders.map(\.id)).count, sliders.count)
         for slider in sliders {
             XCTAssertTrue(slider.range.contains(slider.defaultValue), slider.id)
@@ -155,5 +155,67 @@ final class ProjectStoreTests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.1)
         try store.save(document: EditDocument(), for: first.id)
         XCTAssertEqual(store.list().map(\.id), [first.id, second.id])
+    }
+}
+
+final class ToneCurveMathTests: XCTestCase {
+    func testLinearCurveIsIdentity() {
+        for x in stride(from: 0.0, through: 1.0, by: 0.1) {
+            XCTAssertEqual(ToneCurveMath.evaluate(ToneCurveSettings.linear, at: x), x, accuracy: 1e-9)
+        }
+        XCTAssertTrue(ToneCurveMath.isIdentity(ToneCurveSettings()))
+    }
+
+    func testCurvePassesThroughPointsAndIsMonotone() {
+        let points = [CurvePoint(x: 0, y: 0), CurvePoint(x: 0.3, y: 0.15), CurvePoint(x: 0.7, y: 0.9), CurvePoint(x: 1, y: 1)]
+        for point in points {
+            XCTAssertEqual(ToneCurveMath.evaluate(points, at: point.x), point.y, accuracy: 1e-9)
+        }
+        var previous = -1.0
+        for x in stride(from: 0.0, through: 1.0, by: 0.005) {
+            let y = ToneCurveMath.evaluate(points, at: x)
+            XCTAssertGreaterThanOrEqual(y, previous - 1e-12)
+            XCTAssertTrue((0...1).contains(y))
+            previous = y
+        }
+    }
+
+    func testUnsortedAndDuplicatePointsAreSanitized() {
+        let points = [CurvePoint(x: 1, y: 1), CurvePoint(x: 0.5, y: 0.6), CurvePoint(x: 0, y: 0), CurvePoint(x: 0.5, y: 0.7)]
+        XCTAssertEqual(ToneCurveMath.sanitized(points).count, 3)
+        XCTAssertEqual(ToneCurveMath.evaluate(points, at: 0.5), 0.7, accuracy: 1e-9)
+    }
+
+    func testParametricKeepsEndpointsAndMovesRegions() {
+        var settings = ToneCurveSettings()
+        settings.shadows = 100
+        settings.highlights = -100
+        XCTAssertEqual(ToneCurveMath.parametric(settings, at: 0), 0, accuracy: 1e-9)
+        XCTAssertEqual(ToneCurveMath.parametric(settings, at: 1), 1, accuracy: 1e-9)
+        XCTAssertGreaterThan(ToneCurveMath.parametric(settings, at: 0.15), 0.15)
+        XCTAssertLessThan(ToneCurveMath.parametric(settings, at: 0.85), 0.85)
+        XCTAssertFalse(ToneCurveMath.isIdentity(settings))
+    }
+
+    func testLookupTableAppliesChannelCurves() {
+        var settings = ToneCurveSettings()
+        settings.red = [CurvePoint(x: 0, y: 0.2), CurvePoint(x: 1, y: 1)]
+        let table = ToneCurveMath.lookupTable(settings, count: 256)
+        XCTAssertEqual(table.count, 256)
+        XCTAssertEqual(table[0].0, 0.2, accuracy: 1e-9)
+        XCTAssertEqual(table[0].1, 0, accuracy: 1e-9)
+        XCTAssertEqual(table[255].2, 1, accuracy: 1e-9)
+    }
+
+    func testHSLConversion() {
+        let red = ColorMath.hslToRGB(hue: 0, saturation: 1, lightness: 0.5)
+        XCTAssertEqual(red.0, 1, accuracy: 1e-9)
+        XCTAssertEqual(red.1, 0, accuracy: 1e-9)
+        let cyan = ColorMath.hslToRGB(hue: 180, saturation: 1, lightness: 0.5)
+        XCTAssertEqual(cyan.0, 0, accuracy: 1e-9)
+        XCTAssertEqual(cyan.2, 1, accuracy: 1e-9)
+        let direction = ColorMath.oklabDirection(forWheelHue: 0)
+        XCTAssertEqual(direction.0 * direction.0 + direction.1 * direction.1, 1, accuracy: 1e-6)
+        XCTAssertGreaterThan(direction.0, 0) // red points to +a
     }
 }

@@ -38,8 +38,9 @@ final class ColorManagementTests: XCTestCase {
         let photo = try XCTUnwrap(TestImages.fileDecodedChart())
         let patch = photo.cropped(to: patchRects[0])
         let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: patch, kCIInputExtentKey: CIVector(cgRect: patch.extent)])!
+        let average = filter.outputImage!
         var pixel = [UInt8](repeating: 0, count: 4)
-        RenderContext.shared.render(filter.outputImage!, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: patch.extent.minX, y: patch.extent.minY, width: 1, height: 1), format: .RGBA8, colorSpace: RenderContext.sRGB)
+        RenderContext.shared.render(average, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: average.extent.minX, y: average.extent.minY, width: 1, height: 1), format: .RGBA8, colorSpace: RenderContext.sRGB)
         XCTAssertEqual(Double(pixel[0]) / 255, 0.80, accuracy: 0.02)
         XCTAssertEqual(Double(pixel[1]) / 255, 0.15, accuracy: 0.02)
     }

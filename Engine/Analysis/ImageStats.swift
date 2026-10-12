@@ -26,6 +26,14 @@ public enum ImageStats {
         return SIMD4(pixel[0], pixel[1], pixel[2], pixel[3])
     }
 
+    /// Mean and standard deviation of perceptual luminance (0...1) — a measure of local contrast/noise.
+    public static func perceptualLuminanceStats(of image: CIImage, context: CIContext = RenderContext.analysis) -> (mean: Float, deviation: Float) {
+        let pair = Kernels.perceptualLumaPair.apply(image)
+        let average = averageColor(of: pair, context: context)
+        let variance = max(average.y - average.x * average.x, 0)
+        return (average.x, variance.squareRoot())
+    }
+
     /// Average linear luminance (Rec. 709 weights).
     public static func averageLuminance(of image: CIImage, context: CIContext = RenderContext.shared) -> Float {
         let c = averageColor(of: image, context: context)

@@ -34,6 +34,8 @@ final class EditorSession: ObservableObject, Identifiable {
     private let store: ProjectStore
     private let pipeline = RenderPipeline()
     private let proxyScale: CGFloat
+    /// Per-photo analysis shared by preview, zoom refinement and export.
+    let analysis: ImageAnalysis
     private var pendingBefore: EditDocument?
     private var autosaveTask: Task<Void, Never>?
 
@@ -44,6 +46,11 @@ final class EditorSession: ObservableObject, Identifiable {
         self.document = document
         self.store = store
         self.proxyScale = proxy.extent.width / max(source.pixelSize.width, 1)
+        let analysis = ImageAnalysis(image: proxy)
+        self.analysis = analysis
+        Task.detached(priority: .utility) {
+            analysis.prewarm()
+        }
 
         renderer.originalImage = proxy
         renderer.fullResolutionSize = source.pixelSize
@@ -68,13 +75,22 @@ final class EditorSession: ObservableObject, Identifiable {
     private func updateRenderer() {
         let document = self.document
         let original = source.original
-        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale)
+        let analysis = self.analysis
+        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis)
         renderer.fullResolutionImage = {
-            RenderPipeline().apply(document, to: original, scale: 1)
+            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis)
         }
     }
 
     // MARK: - Editing & history
+
+    /// Two-way binding to any part of the document (use with begin/endChange for undo).
+    func binding<Value>(_ keyPath: WritableKeyPath<EditDocument, Value>) -> Binding<Value> {
+        Binding(
+            get: { self.document[keyPath: keyPath] },
+            set: { self.document[keyPath: keyPath] = $0 }
+        )
+    }
 
     var canUndo: Bool { history.canUndo }
     var canRedo: Bool { history.canRedo }
@@ -164,7 +180,7 @@ final class EditorSession: ObservableObject, Identifiable {
     func finish() {
         autosaveTask?.cancel()
         saveDocument()
-        let rendered = pipeline.apply(document, to: proxy, scale: proxyScale)
+        let rendered = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis)
         if let thumbnail = Exporter.thumbnailJPEG(rendered) {
             try? store.saveThumbnail(thumbnail, for: id)
         }
@@ -177,8 +193,9 @@ final class EditorSession: ObservableObject, Identifiable {
         let document = self.document
         let original = source.original
         let properties = source.properties
+        let analysis = self.analysis
         return try await Task.detached(priority: .userInitiated) { () throws -> Data in
-            let rendered = RenderPipeline().apply(document, to: original, scale: 1)
+            let rendered = RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis)
             do {
                 return try Exporter.export(rendered, options: options, sourceProperties: properties)
             } catch {
