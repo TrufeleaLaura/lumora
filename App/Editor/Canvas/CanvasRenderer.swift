@@ -17,7 +17,15 @@ enum CompareMode: Equatable {
 /// Coordinates: "image space" is the preview proxy's pixel grid (Core Image, y up);
 /// "view space" is the drawable's pixel grid (also y up, origin bottom-left).
 @MainActor
-final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelegate {
+final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestureRecognizerDelegate {
+    /// Where the photo is drawn, in view points (UIKit coordinates). Overlays (crop handles,
+    /// face/body markers) use it to line up with the image.
+    @Published private(set) var imageFrame: CGRect = .zero
+    /// When false, pinch/pan/double-tap are ignored (e.g. while cropping).
+    var allowsZoom = true {
+        didSet { if !allowsZoom { resetZoom() } }
+    }
+
     // MARK: Inputs
 
     /// Edited preview proxy.
@@ -180,6 +188,7 @@ final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelega
     }
 
     @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard allowsZoom else { return }
         switch recognizer.state {
         case .began, .changed:
             let anchor = viewPoint(recognizer.location(in: recognizer.view))
@@ -193,7 +202,7 @@ final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelega
     }
 
     @objc private func handlePan(_ recognizer: UIPanGestureRecognizer) {
-        guard zoom > 1.001 else { return }
+        guard allowsZoom, zoom > 1.001 else { return }
         switch recognizer.state {
         case .began, .changed:
             let translation = recognizer.translation(in: recognizer.view)
@@ -211,6 +220,7 @@ final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelega
     }
 
     @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+        guard allowsZoom else { return }
         if zoom > 1.01 {
             resetZoom()
         } else {
@@ -234,13 +244,36 @@ final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelega
 
     private func contentChanged() {
         generation += 1
+        clampPan()
+        publishViewport()
         requestDraw()
         scheduleRefine(delay: 0.25)
     }
 
     private func viewTransformChanged() {
         generation += 1
+        publishViewport()
         requestDraw()
+    }
+
+    private func publishViewport() {
+        let ppp = pixelsPerPoint
+        guard ppp > 0, drawableSize.height > 0 else { return }
+        let rect = imageExtent.applying(displayTransform)
+        let frame = CGRect(
+            x: rect.minX / ppp,
+            y: (drawableSize.height - rect.maxY) / ppp,
+            width: rect.width / ppp,
+            height: rect.height / ppp
+        )
+        if frame != imageFrame {
+            imageFrame = frame
+        }
+    }
+
+    /// Converts a point in view points (UIKit) to preview-image pixel coordinates (Core Image, y up).
+    func imagePoint(fromViewPoint point: CGPoint) -> CGPoint {
+        viewPoint(point).applying(displayTransform.inverted())
     }
 
     private func settle() {
@@ -291,6 +324,7 @@ final class CanvasRenderer: NSObject, MTKViewDelegate, UIGestureRecognizerDelega
         MainActor.assumeIsolated {
             self.clampPan()
             self.generation += 1
+            self.publishViewport()
             view.setNeedsDisplay()
         }
     }

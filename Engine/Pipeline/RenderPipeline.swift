@@ -7,7 +7,7 @@ import LumoraCore
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
 /// Stage order: optics → local contrast → white balance → dehaze → tone → curves → color
-/// → noise reduction → sharpening → finishing (vignette, fade, grain).
+/// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
 public struct RenderPipeline {
     public init() {}
 
@@ -16,7 +16,8 @@ public struct RenderPipeline {
     ///   - scale: `input` width divided by the full-resolution width. Pixel-based radii
     ///     (sharpening, noise reduction) use it so the preview matches the export.
     ///   - analysis: cached per-photo analysis; computed on demand when nil.
-    public func apply(_ document: EditDocument, to input: CIImage, scale: CGFloat = 1, analysis: ImageAnalysis? = nil) -> CIImage {
+    ///   - includeCrop: false while the crop tool is open (shows the whole rotated photo).
+    public func apply(_ document: EditDocument, to input: CIImage, scale: CGFloat = 1, analysis: ImageAnalysis? = nil, includeCrop: Bool = true) -> CIImage {
         guard !document.isIdentity else { return input }
         let analysis = analysis ?? ImageAnalysis(image: input)
         var image = input
@@ -29,6 +30,7 @@ public struct RenderPipeline {
         image = applyColor(document, to: image)
         image = applyNoiseReduction(document.detail, to: image, scale: scale)
         image = applySharpening(document.detail, to: image, scale: scale)
+        image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
         image = applyFinish(document.effects, to: image)
         return image
     }
@@ -43,7 +45,7 @@ public struct RenderPipeline {
 
         if optics.vignetteCorrection != 0 {
             let frame = CIVector(x: center.x, y: center.y, z: halfDiagonal, w: CGFloat(optics.vignetteCorrection / 100))
-            image = Kernels.lensVignette.apply(image, frame)
+            image = Kernels.lensVignette.applyAligned(image, frame)
         }
         if optics.distortion != 0 {
             let k = CGFloat(optics.distortion / 100 * 0.15)
@@ -52,9 +54,8 @@ public struct RenderPipeline {
             image = Kernels.lensDistortion.apply(
                 extent: extent,
                 roiCallback: { _, rect in rect.insetBy(dx: -margin, dy: -margin) },
-                image: image.clampedToExtent(),
-                arguments: [frame]
-            )?.cropped(to: extent) ?? image
+                arguments: [image.clampedToExtent(), frame]
+            ) ?? image
         }
         if optics.defringe > 0 {
             let luma = Kernels.perceptualLuma.apply(image)
@@ -178,8 +179,8 @@ public struct RenderPipeline {
         if detail.noiseReduction > 0 {
             let strength = detail.noiseReduction / 100
             let pair = Kernels.perceptualLumaPair.apply(image)
-            let radius = max(1, 2.5 * scale)
-            let eps = Float(pow(0.004 + strength * 0.035, 2))
+            let radius = max(1, 3 * scale)
+            let eps = Float(pow(0.006 + strength * 0.05, 2))
             let coefficients = GuidedFilter.selfCoefficients(pair: pair, radius: radius, eps: eps)
             image = Kernels.lumaDenoise.apply(image, coefficients, Float(strength), Float(detail.noiseDetail / 100))
         }
@@ -187,7 +188,8 @@ public struct RenderPipeline {
             let strength = detail.colorNoiseReduction / 100
             let lab = Kernels.toOklab.apply(image)
             let blurred = GuidedFilter.gaussian(lab, radius: max(1, (2 + 6 * strength) * scale))
-            image = Kernels.chromaMerge.apply(image, blurred, Float(min(1, strength * 1.2)))
+            let blurredLuma = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(image), radius: max(1, 2 * scale))
+            image = Kernels.chromaMerge.apply(image, blurred, blurredLuma, Float(min(1, strength * 1.2)))
         }
         return image
     }
@@ -240,6 +242,6 @@ public struct RenderPipeline {
         let vignetteExtra = CIVector(x: CGFloat(effects.vignetteHighlights / 100), y: 0, z: 0, w: 0)
         let frame = CIVector(x: extent.minX, y: extent.minY, z: extent.width, w: extent.height)
         let grain = CIVector(x: CGFloat(effects.grain / 100 * grainGain), y: 0, z: 0, w: 0)
-        return Kernels.finish.apply(image, noise, vignette, vignetteExtra, frame, grain, Float(effects.fade / 100))
+        return Kernels.finish.applyAligned(image, noise, vignette, vignetteExtra, frame, grain, Float(effects.fade / 100))
     }
 }

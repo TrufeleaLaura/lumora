@@ -137,12 +137,18 @@ public enum AdjustmentCatalog {
         SliderSpec(id: "gradingBalance", title: "Balance", range: -100...100, keyPath: \.grading.balance),
     ])
 
+    public static let geometry = ToolGroup(id: "geometry", title: "Geometry", symbol: "crop.rotate", sliders: [
+        SliderSpec(id: "straighten", title: "Straighten", range: -45...45, style: .degrees, keyPath: \.geometry.straighten),
+        SliderSpec(id: "perspectiveVertical", title: "Vertical", range: -100...100, keyPath: \.geometry.vertical),
+        SliderSpec(id: "perspectiveHorizontal", title: "Horizontal", range: -100...100, keyPath: \.geometry.horizontal),
+    ])
+
     /// Slider-only panels.
     public static let groups: [ToolGroup] = [light, color, effects, detail, optics]
 
     /// Every slider in the app (for validation).
     public static var allSliders: [SliderSpec] {
-        (groups + [curveParametric, grading]).flatMap(\.sliders) + mixerSliders(.hue) + mixerSliders(.saturation)
+        (groups + [curveParametric, grading, geometry]).flatMap(\.sliders) + mixerSliders(.hue) + mixerSliders(.saturation)
             + mixerSliders(.luminance) + blackWhiteSliders + gradingWheelSliders(.shadows) + gradingWheelSliders(.midtones)
             + gradingWheelSliders(.highlights) + gradingWheelSliders(.global)
     }

@@ -72,12 +72,12 @@ public final class ImageAnalysis: @unchecked Sendable {
     }
 
     private static func computeHaze(_ image: CIImage, context: CIContext) -> HazeAnalysis {
-        let small = ImageSource.scaled(image, maxDimension: 384)
+        let small = ImageSource.scaled(image, maxDimension: 512)
         let extent = small.extent
         let longSide = max(extent.width, extent.height)
         let dark = Kernels.darkChannel.apply(small)
         let darkMin = dark.clampedToExtent()
-            .applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: max(2, longSide * 0.015)])
+            .applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: max(2, longSide * 0.01)])
             .cropped(to: extent)
 
         // Atmospheric light: average color of the haziest 0.2 % (largest dark-channel values).
@@ -99,7 +99,8 @@ public final class ImageAnalysis: @unchecked Sendable {
 
         let transmission = Kernels.transmission.apply(darkMin, airlightMax)
         let guide = Kernels.perceptualLuma.apply(small)
-        let coefficients = GuidedFilter.coefficients(guide: guide, target: transmission, radius: max(2, longSide * 0.04), eps: 0.001)
+        // Small radius + small eps: transmission follows luminance edges closely (no halos).
+        let coefficients = GuidedFilter.coefficients(guide: guide, target: transmission, radius: max(2, longSide * 0.015), eps: 0.0002)
         return HazeAnalysis(coefficients: RenderContext.materialize(coefficients, context: context), airlight: airlight)
     }
 }

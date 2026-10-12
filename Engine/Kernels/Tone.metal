@@ -122,8 +122,11 @@ float4 lumora_tone(sample_t s, sample_t base, float exposure, float contrast, fl
     float detail = logY - baseLog;
     float baseP = lumoraToPerceptual(exp2(min(baseLog, 0.5f)));
     float wShadows = 1.0f - smoothstep(0.05f, 0.62f, baseP);
-    float wHighlights = smoothstep(0.38f, 0.95f, baseP);
-    float shift = shadows * 1.8f * wShadows + highlights * (highlights < 0.0f ? 1.5f : 0.8f) * wHighlights;
+    float wHighlights = smoothstep(0.38f, 0.92f, baseP);
+    // Keep the brightest specular points (sun, reflections) from turning grey.
+    float pixelP = lumoraToPerceptual(y);
+    wHighlights *= highlights < 0.0f ? (1.0f - 0.55f * smoothstep(0.9f, 1.0f, pixelP)) : 1.0f;
+    float shift = shadows * 2.1f * wShadows + highlights * (highlights < 0.0f ? 1.25f : 0.8f) * wHighlights;
 
     float y2 = exp2(baseLog + detail + shift + exposure);
     if (y < 1.0e-4f) { y2 = y * exp2(shift + exposure); }

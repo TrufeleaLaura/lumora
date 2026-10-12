@@ -6,6 +6,10 @@ static inline float lumoraFxLuma(float3 c) { return dot(c, float3(0.2126f, 0.715
 static inline float lumoraFxToPerceptual(float x) { return pow(max(x, 0.0f), 1.0f / 2.2f); }
 static inline float lumoraFxToLinear(float x) { return pow(max(x, 0.0f), 2.2f); }
 
+// Kernels that depend on the pixel position are general kernels that sample their inputs
+// explicitly. (Core Image may move later affine transforms in front of color/warp kernels,
+// which would put position-dependent math in the wrong coordinate space.)
+
 extern "C" { namespace coreimage {
 
 // Vignette, fade and film grain, applied after cropping.
@@ -13,14 +17,16 @@ extern "C" { namespace coreimage {
 // vignetteExtra: (highlight protection 0...1, 0, 0, 0)
 // frame: (minX, minY, width, height) of the visible image
 // grain: (amount 0...1, 0, 0, 0); noise: monochrome noise in .r centered on 0.5
-float4 lumora_finish(sample_t s, sample_t noise, float4 vignette, float4 vignetteExtra, float4 frame, float4 grain, float fade, destination dest) {
+float4 lumora_finish(sampler src, sampler noise, float4 vignette, float4 vignetteExtra, float4 frame, float4 grain, float fade, destination dest) {
+    float2 position = dest.coord();
+    float4 s = src.sample(src.transform(position));
     float3 c = max(s.rgb, float3(0.0f));
     float3 p = float3(lumoraFxToPerceptual(c.r), lumoraFxToPerceptual(c.g), lumoraFxToPerceptual(c.b));
 
     if (fabs(vignette.x) > 1.0e-4f) {
         float2 halfSize = frame.zw * 0.5f;
         float2 center = frame.xy + halfSize;
-        float2 offset = dest.coord() - center;
+        float2 offset = position - center;
         float2 d = offset / halfSize;
         float ellipse = length(d);
         float circle = length(offset) / min(halfSize.x, halfSize.y) * 0.85f;
@@ -42,7 +48,7 @@ float4 lumora_finish(sample_t s, sample_t noise, float4 vignette, float4 vignett
     }
 
     if (grain.x > 0.0f) {
-        float n = noise.r - 0.5f;
+        float n = noise.sample(noise.transform(position)).r - 0.5f;
         float l = clamp(lumoraFxLuma(p), 0.0f, 1.0f);
         float weight = 0.35f + 2.6f * l * (1.0f - l);
         p += grain.x * 0.24f * n * weight;
@@ -50,6 +56,26 @@ float4 lumora_finish(sample_t s, sample_t noise, float4 vignette, float4 vignett
 
     c = float3(lumoraFxToLinear(p.r), lumoraFxToLinear(p.g), lumoraFxToLinear(p.b));
     return float4(c, s.a);
+}
+
+// Lens vignetting correction. frame: (centerX, centerY, half diagonal, amount -1...1).
+float4 lumora_lensVignette(sampler src, float4 frame, destination dest) {
+    float2 position = dest.coord();
+    float4 s = src.sample(src.transform(position));
+    float2 d = (position - frame.xy) / frame.z;
+    float r2 = dot(d, d);
+    float gain = max(1.0f + frame.w * r2 * 0.9f, 0.0f);
+    return float4(s.rgb * gain, s.a);
+}
+
+// Radial lens distortion. frame: (centerX, centerY, half diagonal, k).
+float4 lumora_lensDistortion(sampler src, float4 frame, destination dest) {
+    float2 d = (dest.coord() - frame.xy) / frame.z;
+    float r2 = dot(d, d);
+    float k = frame.w;
+    float fill = k > 0.0f ? 1.0f / (1.0f + k) : 1.0f;
+    float2 source = frame.xy + d * (1.0f + k * r2) * fill * frame.z;
+    return src.sample(src.transform(source));
 }
 
 // Unsharp-mask sharpening on perceptual luminance.
@@ -77,27 +103,11 @@ float4 lumora_lumaDenoise(sample_t s, sample_t coeff, float strength, float deta
     float y = lumoraFxLuma(c);
     float p = lumoraFxToPerceptual(y);
     float smoothed = coeff.r * p + coeff.g;
-    float p2 = mix(p, smoothed, strength * (1.0f - 0.6f * detail));
+    float blend = clamp(strength * 1.25f, 0.0f, 1.0f) * (1.0f - 0.5f * detail);
+    float p2 = mix(p, smoothed, blend);
     float y2 = lumoraFxToLinear(p2);
     c = y > 1.0e-6f ? c * (y2 / y) : float3(y2);
     return float4(c, s.a);
-}
-
-// Lens vignetting correction. frame: (centerX, centerY, half diagonal, amount -1...1).
-float4 lumora_lensVignette(sample_t s, float4 frame, destination dest) {
-    float2 d = (dest.coord() - frame.xy) / frame.z;
-    float r2 = dot(d, d);
-    float gain = max(1.0f + frame.w * r2 * 0.9f, 0.0f);
-    return float4(s.rgb * gain, s.a);
-}
-
-// Radial lens distortion. frame: (centerX, centerY, half diagonal, k). Returns the source position.
-float2 lumora_lensDistortion(float4 frame, destination dest) {
-    float2 d = (dest.coord() - frame.xy) / frame.z;
-    float r2 = dot(d, d);
-    float k = frame.w;
-    float fill = k > 0.0f ? 1.0f / (1.0f + k) : 1.0f;
-    return frame.xy + d * (1.0f + k * r2) * fill * frame.z;
 }
 
 }}

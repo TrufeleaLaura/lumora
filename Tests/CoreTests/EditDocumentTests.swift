@@ -219,3 +219,39 @@ final class ToneCurveMathTests: XCTestCase {
         XCTAssertGreaterThan(direction.0, 0) // red points to +a
     }
 }
+
+final class GeometryMathTests: XCTestCase {
+    func testCoverScale() {
+        XCTAssertEqual(GeometryMath.coverScale(width: 100, height: 100, degrees: 0), 1, accuracy: 1e-9)
+        XCTAssertEqual(GeometryMath.coverScale(width: 100, height: 100, degrees: 45), 2.0.squareRoot(), accuracy: 1e-9)
+        XCTAssertGreaterThan(GeometryMath.coverScale(width: 300, height: 200, degrees: -10), 1)
+    }
+
+    func testAspectCropFitsAndHasRightRatio() {
+        let crop = GeometryMath.crop(aspect: 1, imageWidth: 300, imageHeight: 200)
+        XCTAssertEqual(crop.width * 300, crop.height * 200, accuracy: 1e-6)
+        XCTAssertEqual(crop.height, 1, accuracy: 1e-9)
+        XCTAssertEqual(crop.x, (1 - crop.width) / 2, accuracy: 1e-9)
+
+        let wide = GeometryMath.crop(aspect: 16.0 / 9.0, imageWidth: 300, imageHeight: 200)
+        XCTAssertEqual(wide.width, 1, accuracy: 1e-9)
+        XCTAssertEqual(wide.width * 300 / (wide.height * 200), 16.0 / 9.0, accuracy: 1e-6)
+    }
+
+    func testRotatedAspectPresets() {
+        XCTAssertEqual(AspectRatioPreset.portrait4x5.rotated, .landscape5x4)
+        XCTAssertEqual(AspectRatioPreset.landscape16x9.rotated, .portrait9x16)
+        XCTAssertEqual(AspectRatioPreset.square.rotated, .square)
+        for preset in AspectRatioPreset.allCases {
+            XCTAssertEqual(preset.rotated.rotated, preset)
+        }
+    }
+
+    func testCropRectClamping() {
+        let clamped = CropRect(x: 0.9, y: -0.2, width: 0.5, height: 0.01).clamped()
+        XCTAssertEqual(clamped.x + clamped.width, 1, accuracy: 1e-9)
+        XCTAssertEqual(clamped.y, 0, accuracy: 1e-9)
+        XCTAssertEqual(clamped.height, 0.05, accuracy: 1e-9)
+        XCTAssertTrue(GeometrySettings().isIdentity)
+    }
+}

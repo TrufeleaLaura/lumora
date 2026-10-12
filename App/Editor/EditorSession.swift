@@ -3,6 +3,27 @@ import LumoraCore
 import LumoraEngine
 import SwiftUI
 
+/// Top-level editor tools (bottom bar).
+enum EditorTool: String, CaseIterable, Identifiable {
+    case adjust, crop
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .adjust: return "Adjust"
+        case .crop: return "Crop"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .adjust: return "slider.horizontal.3"
+        case .crop: return "crop.rotate"
+        }
+    }
+}
+
 /// Edits copied with "Copy edits", shared between projects while the app runs.
 @MainActor
 enum EditClipboard {
@@ -26,6 +47,13 @@ final class EditorSession: ObservableObject, Identifiable {
     }
     @Published var splitPosition: CGFloat = 0.5 {
         didSet { renderer.splitPosition = splitPosition }
+    }
+    @Published var activeTool: EditorTool = .adjust {
+        didSet {
+            guard activeTool != oldValue else { return }
+            renderer.allowsZoom = activeTool != .crop
+            updateRenderer()
+        }
     }
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false
@@ -76,9 +104,10 @@ final class EditorSession: ObservableObject, Identifiable {
         let document = self.document
         let original = source.original
         let analysis = self.analysis
-        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis)
+        let includeCrop = activeTool != .crop
+        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis, includeCrop: includeCrop)
         renderer.fullResolutionImage = {
-            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis)
+            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis, includeCrop: includeCrop)
         }
     }
 
@@ -142,6 +171,90 @@ final class EditorSession: ObservableObject, Identifiable {
     func jumpToHistory(appliedCount: Int) {
         if let target = history.jump(toAppliedCount: appliedCount) {
             document = target
+        }
+    }
+
+    // MARK: - Crop & rotate
+
+    /// Size of the rotated (uncropped) preview, which crop rectangles are relative to.
+    private var uncroppedSize: CGSize {
+        let size = proxy.extent.size
+        let rotated = GeometryMath.rotatedSize(width: Double(size.width), height: Double(size.height), quarterTurns: document.geometry.quarterTurns)
+        return CGSize(width: rotated.0, height: rotated.1)
+    }
+
+    /// Pixel size of the exported image (after rotation and crop).
+    var outputPixelSize: CGSize {
+        let size = source.pixelSize
+        let geometry = document.geometry
+        let rotated = GeometryMath.rotatedSize(width: Double(size.width), height: Double(size.height), quarterTurns: geometry.quarterTurns)
+        return CGSize(width: rotated.0 * geometry.crop.width, height: rotated.1 * geometry.crop.height)
+    }
+
+    func setAspect(_ preset: AspectRatioPreset) {
+        let size = uncroppedSize
+        perform("Aspect \(preset.title)") { document in
+            document.geometry.aspect = preset
+            if let ratio = preset.ratio(originalWidth: Double(size.width), originalHeight: Double(size.height)) {
+                document.geometry.crop = GeometryMath.crop(aspect: ratio, imageWidth: Double(size.width), imageHeight: Double(size.height))
+            }
+        }
+    }
+
+    func rotateClockwise() {
+        perform("Rotate") { document in
+            var geometry = document.geometry
+            geometry.quarterTurns = (geometry.quarterTurns + 1) % 4
+            let crop = geometry.crop
+            geometry.crop = CropRect(x: crop.y, y: 1 - crop.x - crop.width, width: crop.height, height: crop.width).clamped(minimumSize: 0.01)
+            geometry.aspect = geometry.aspect.rotated
+            document.geometry = geometry
+        }
+    }
+
+    /// Flips as seen on screen. Flips are applied before rotation, so with an odd number of
+    /// quarter turns a horizontal flip on screen is a vertical flip of the source.
+    func flip(horizontal: Bool) {
+        perform(horizontal ? "Flip horizontal" : "Flip vertical") { document in
+            var geometry = document.geometry
+            let oddTurns = geometry.quarterTurns % 2 == 1
+            if horizontal != oddTurns {
+                geometry.flipHorizontal.toggle()
+            } else {
+                geometry.flipVertical.toggle()
+            }
+            if horizontal {
+                geometry.crop.x = 1 - geometry.crop.x - geometry.crop.width
+                geometry.horizontal = -geometry.horizontal
+            } else {
+                geometry.crop.y = 1 - geometry.crop.y - geometry.crop.height
+                geometry.vertical = -geometry.vertical
+            }
+            geometry.straighten = -geometry.straighten
+            document.geometry = geometry
+        }
+    }
+
+    func resetGeometry() {
+        perform("Reset crop") { $0.geometry = GeometrySettings() }
+    }
+
+    func autoStraighten() {
+        var level = document.geometry
+        level.straighten = 0
+        level.vertical = 0
+        level.horizontal = 0
+        level.crop = .full
+        let image = ImageSource.scaled(pipeline.applyGeometry(level, to: proxy, includeCrop: false), maxDimension: 1024)
+        Task {
+            let tilt = await Task.detached(priority: .userInitiated) {
+                HorizonDetector.tilt(of: image)
+            }.value
+            if let tilt, abs(tilt) > 0.05, abs(tilt) <= 45 {
+                perform("Auto straighten") { $0.geometry.straighten = (tilt * 10).rounded() / 10 }
+            } else {
+                showToast("No tilted horizon found")
+            }
         }
     }
 

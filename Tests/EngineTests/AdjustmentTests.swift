@@ -61,12 +61,10 @@ final class AdjustmentTests: XCTestCase {
         XCTAssertLessThan(deviation(render { $0.effects.texture = -100 }, TestScene.groundRect), base)
     }
 
-    func testDehazeSeparatesMountainsFromSky() {
-        func separation(_ image: CIImage) -> Float {
-            abs(luminance(image, TestScene.skyRect) - luminance(image, TestScene.mountainRect))
-        }
-        XCTAssertGreaterThan(separation(render { $0.effects.dehaze = 80 }), separation(Self.scene))
-        XCTAssertLessThan(separation(render { $0.effects.dehaze = -80 }), separation(Self.scene))
+    func testDehazeRevealsDetailInHazyMountains() {
+        let base = deviation(Self.scene, TestScene.mountainRect)
+        XCTAssertGreaterThan(deviation(render { $0.effects.dehaze = 80 }, TestScene.mountainRect), base * 1.2)
+        XCTAssertLessThan(deviation(render { $0.effects.dehaze = -80 }, TestScene.mountainRect), base)
     }
 
     func testVignetteDarkensCorners() {

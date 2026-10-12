@@ -15,6 +15,7 @@ struct EditorView: View {
             topBar
             canvas
             toolPanel
+            toolBar
         }
         .background(Theme.background.ignoresSafeArea())
         .overlay(alignment: .top) {
@@ -124,7 +125,9 @@ struct EditorView: View {
         CanvasView(renderer: session.renderer)
             .background(Color.black)
             .overlay {
-                if session.compareMode == .split {
+                if session.activeTool == .crop {
+                    CropOverlay(renderer: session.renderer, session: session)
+                } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
             }
@@ -156,45 +159,80 @@ struct EditorView: View {
 
     private var toolPanel: some View {
         VStack(spacing: 0) {
-            Group {
-                if section.scrolls {
-                    ScrollView {
+            switch session.activeTool {
+            case .adjust:
+                sectionChips
+                    .padding(.top, 10)
+                Group {
+                    if section.scrolls {
+                        ScrollView {
+                            panelContent
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 12)
+                        }
+                    } else {
                         panelContent
                             .padding(.horizontal, 22)
-                            .padding(.vertical, 14)
-                    }
-                } else {
-                    panelContent
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 14)
-                        .frame(maxHeight: .infinity, alignment: .top)
-                }
-            }
-            .frame(height: 264)
-
-            Divider().overlay(Color.white.opacity(0.06))
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(AdjustSection.allCases) { item in
-                        Button {
-                            section = item
-                        } label: {
-                            Label(item.title, systemImage: item.symbol)
-                                .font(.footnote.weight(.medium))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .foregroundStyle(section == item ? Color.black : Color.primary)
-                                .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
+                            .padding(.vertical, 12)
+                            .frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
-                .padding(.horizontal, 14)
+            case .crop:
+                CropPanel(session: session)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
-            .padding(.vertical, 10)
         }
+        .frame(height: 290)
+        .background(Theme.panel)
+    }
+
+    private var sectionChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(AdjustSection.allCases) { item in
+                    Button {
+                        section = item
+                    } label: {
+                        Label(item.title, systemImage: item.symbol)
+                            .font(.footnote.weight(.medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .foregroundStyle(section == item ? Color.black : Color.primary)
+                            .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+        }
+    }
+
+    private var toolBar: some View {
+        HStack {
+            ForEach(EditorTool.allCases) { tool in
+                Button {
+                    session.activeTool = tool
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: tool.symbol)
+                            .font(.system(size: 19))
+                        Text(tool.title)
+                            .font(.caption2.weight(.medium))
+                    }
+                    .foregroundStyle(session.activeTool == tool ? Theme.accent : Color.secondary)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
         .background(Theme.panel.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) {
+            Divider().overlay(Color.white.opacity(0.06))
+        }
     }
 
     @ViewBuilder

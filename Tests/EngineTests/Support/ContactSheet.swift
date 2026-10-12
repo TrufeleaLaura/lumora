@@ -25,9 +25,12 @@ enum ContactSheet {
         for (rowIndex, row) in rows.enumerated() {
             var height: CGFloat = 0
             for (columnIndex, item) in row.enumerated() {
-                let extent = item.1.extent
+                // Render each tile on its own so one broken tile can't spoil the sheet
+                // (transform robustness is checked separately in TransformRobustnessTests).
+                let tile = RenderContext.materialize(item.1, context: RenderContext.shared)
+                let extent = tile.extent
                 let scale = tileWidth / extent.width
-                let scaled = item.1
+                let scaled = tile
                     .transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
                     .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
                 height = max(height, scaled.extent.height)

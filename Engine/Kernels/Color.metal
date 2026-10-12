@@ -119,6 +119,13 @@ float4 lumora_color(sample_t s,
     float hueRadians = h / 57.2957795f;
     float2 ab = float2(cos(hueRadians), sin(hueRadians)) * chroma;
 
+    // Black & white with per-band luminance mix (before grading, so toning still works).
+    if (basic.z > 0.5f) {
+        float bwMix = w0 * lumoraPick(bwA, bwB, i0) + w1 * lumoraPick(bwA, bwB, i1);
+        L *= 1.0f + bwMix * 0.6f * smoothstep(0.0f, 0.12f, originalChroma);
+        ab = float2(0.0f);
+    }
+
     // Color grading.
     float balance = gradeParams.x;
     float blending = gradeParams.y;
@@ -130,13 +137,6 @@ float4 lumora_color(sample_t s,
     ab += gradeShadows.xy * wShadows + gradeMidtones.xy * wMidtones + gradeHighlights.xy * wHighlights + gradeGlobal.xy;
     L += gradeShadows.z * wShadows + gradeMidtones.z * wMidtones + gradeHighlights.z * wHighlights + gradeGlobal.z;
 
-    // Black & white with per-band luminance mix.
-    if (basic.z > 0.5f) {
-        float bwMix = w0 * lumoraPick(bwA, bwB, i0) + w1 * lumoraPick(bwA, bwB, i1);
-        L *= 1.0f + bwMix * 0.6f * smoothstep(0.0f, 0.12f, originalChroma);
-        ab = float2(0.0f);
-    }
-
     float3 rgb = lumoraOklabToLinear(float3(max(L, 0.0f), ab));
     return float4(max(rgb, float3(0.0f)), s.a);
 }
@@ -147,10 +147,14 @@ float4 lumora_toOklab(sample_t s) {
     return float4(lab, 1.0f);
 }
 
-// Replaces chroma with a smoothed version (color noise reduction).
-float4 lumora_chromaMerge(sample_t s, sample_t smoothedLab, float amount) {
-    float3 lab = lumoraLinearToOklab(max(s.rgb, float3(0.0f)));
-    lab.yz = mix(lab.yz, smoothedLab.yz, amount);
+// Replaces chroma with a smoothed version (color noise reduction). Near luminance edges
+// (where blurred luma differs from the pixel) the smoothing backs off so colors don't bleed.
+float4 lumora_chromaMerge(sample_t s, sample_t smoothedLab, sample_t blurredLuma, float amount) {
+    float3 c = max(s.rgb, float3(0.0f));
+    float3 lab = lumoraLinearToOklab(c);
+    float p = pow(max(dot(c, float3(0.2126f, 0.7152f, 0.0722f)), 0.0f), 1.0f / 2.2f);
+    float edge = smoothstep(0.015f, 0.06f, fabs(p - blurredLuma.r));
+    lab.yz = mix(lab.yz, smoothedLab.yz, amount * (1.0f - edge));
     return float4(max(lumoraOklabToLinear(lab), float3(0.0f)), s.a);
 }
 

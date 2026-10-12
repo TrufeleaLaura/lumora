@@ -232,6 +232,7 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var effects = EffectsSettings()
     public var detail = DetailSettings()
     public var optics = OpticsSettings()
+    public var geometry = GeometrySettings()
 
     public init() {}
 

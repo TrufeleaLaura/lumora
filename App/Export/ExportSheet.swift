@@ -20,7 +20,7 @@ struct ExportSheet: View {
     }
 
     private var outputSize: String {
-        let pixels = session.source.pixelSize
+        let pixels = session.outputPixelSize
         var scale: CGFloat = 1
         if let maxEdge = size.maxLongEdge {
             scale = min(1, CGFloat(maxEdge) / max(pixels.width, pixels.height))
