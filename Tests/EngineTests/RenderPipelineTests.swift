@@ -5,7 +5,8 @@ import XCTest
 
 final class RenderPipelineTests: XCTestCase {
     private let pipeline = RenderPipeline()
-    private let chart = TestImages.colorChart()
+    /// Decoded from a PNG file, like a real photo.
+    private let chart = TestImages.fileDecodedChart()!
 
     private func render(_ change: (inout EditDocument) -> Void) -> CIImage {
         var document = EditDocument()
@@ -69,6 +70,17 @@ final class RenderPipelineTests: XCTestCase {
         let data = try Exporter.encode(render { $0.light.exposure = 0.3 }, format: .jpeg)
         XCTAssertGreaterThan(data.count, 1000)
         XCTAssertEqual(Array(data.prefix(2)), [0xFF, 0xD8])
+    }
+
+    func testFileDecodedPhotoLoadsAsImageSource() throws {
+        let data = try XCTUnwrap(TestImages.chartPNG(width: 720, height: 480))
+        let source = try XCTUnwrap(ImageSource(data: data))
+        XCTAssertEqual(source.pixelSize, CGSize(width: 720, height: 480))
+        XCTAssertEqual(source.preferredFileExtension, "png")
+        XCTAssertFalse(source.isRAW)
+        let proxy = source.makeProxy(maxDimension: 360)
+        XCTAssertEqual(proxy.extent.width, 360)
+        XCTAssertEqual(proxy.extent.height, 240)
     }
 
     /// Visual review sheet uploaded by CI.

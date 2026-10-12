@@ -7,6 +7,8 @@ struct EditorView: View {
     var onClose: () -> Void
 
     @State private var selectedGroupID = AdjustmentCatalog.groups[0].id
+    @State private var isShowingExport = false
+    @State private var isShowingHistory = false
 
     private var selectedGroup: ToolGroup {
         AdjustmentCatalog.groups.first { $0.id == selectedGroupID } ?? AdjustmentCatalog.groups[0]
@@ -31,16 +33,27 @@ struct EditorView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.toast)
+        .sheet(isPresented: $isShowingExport) {
+            ExportSheet(session: session)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $isShowingHistory) {
+            HistorySheet(session: session)
+                .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: - Top bar
 
     private var topBar: some View {
-        HStack(spacing: 20) {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
+        HStack(spacing: 18) {
+            Button {
+                session.finish()
+                onClose()
+            } label: {
+                Image(systemName: "chevron.left")
             }
-            .accessibilityLabel("Close")
+            .accessibilityLabel("Back to library")
 
             Spacer()
 
@@ -56,20 +69,50 @@ struct EditorView: View {
             .disabled(!session.canRedo)
             .accessibilityLabel("Redo")
 
-            Image(systemName: "circle.lefthalf.filled")
-                .foregroundStyle(session.isShowingOriginal ? Theme.accent : Color.primary)
-                .onLongPressGesture(minimumDuration: 0.01, maximumDistance: 60, perform: {}, onPressingChanged: { pressing in
-                    session.isShowingOriginal = pressing
-                })
-                .accessibilityLabel("Hold to compare with original")
+            Button {
+                session.compareMode = session.compareMode == .split ? .none : .split
+            } label: {
+                Image(systemName: "square.split.2x1")
+                    .foregroundStyle(session.compareMode == .split ? Theme.accent : Color.primary)
+            }
+            .accessibilityLabel("Before and after split view")
+
+            Menu {
+                Button {
+                    isShowingHistory = true
+                } label: {
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                }
+                Button {
+                    session.copyEdits()
+                } label: {
+                    Label("Copy edits", systemImage: "doc.on.doc")
+                }
+                Button {
+                    session.pasteEdits()
+                } label: {
+                    Label("Paste edits", systemImage: "doc.on.clipboard")
+                }
+                .disabled(!session.canPasteEdits)
+                Divider()
+                Button(role: .destructive) {
+                    session.resetAll()
+                } label: {
+                    Label("Reset all", systemImage: "arrow.counterclockwise")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
 
             Spacer()
 
-            Button { session.saveToPhotos() } label: {
+            Button {
+                isShowingExport = true
+            } label: {
                 if session.isExporting {
                     ProgressView()
                 } else {
-                    Text("Save").fontWeight(.semibold)
+                    Text("Export").fontWeight(.semibold)
                 }
             }
             .disabled(session.isExporting)
@@ -82,21 +125,35 @@ struct EditorView: View {
     // MARK: - Canvas
 
     private var canvas: some View {
-        MetalImageView(image: session.displayImage)
+        CanvasView(renderer: session.renderer)
             .background(Color.black)
-            .overlay(alignment: .topLeading) {
-                if session.isShowingOriginal {
-                    Text("Original")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .padding(12)
+            .overlay {
+                if session.compareMode == .split {
+                    SplitDivider(position: $session.splitPosition)
                 }
             }
-            .onLongPressGesture(minimumDuration: 0.2, maximumDistance: 30, perform: {}, onPressingChanged: { pressing in
-                session.isShowingOriginal = pressing
-            })
+            .overlay(alignment: .topLeading) {
+                if session.compareMode == .holding {
+                    badge("Original")
+                } else if session.compareMode == .split {
+                    HStack {
+                        badge("Before")
+                        Spacer()
+                        badge("After")
+                    }
+                }
+            }
+            .clipped()
+    }
+
+    private func badge(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(12)
+            .allowsHitTesting(false)
     }
 
     // MARK: - Tools
@@ -113,7 +170,8 @@ struct EditorView: View {
                                 if editing {
                                     session.beginChange()
                                 } else {
-                                    session.endChange()
+                                    let value = session.document[keyPath: spec.keyPath]
+                                    session.endChange(label: "\(spec.title) \(spec.formatted(value))")
                                 }
                             },
                             onReset: { session.reset(spec) }
@@ -155,5 +213,41 @@ struct EditorView: View {
             get: { session.document[keyPath: spec.keyPath] },
             set: { session.document[keyPath: spec.keyPath] = $0 }
         )
+    }
+}
+
+/// Draggable vertical divider for the before/after split view.
+struct SplitDivider: View {
+    @Binding var position: CGFloat
+
+    var body: some View {
+        GeometryReader { proxy in
+            let x = proxy.size.width * position
+            ZStack {
+                Rectangle()
+                    .fill(Color.white)
+                    .frame(width: 2)
+                    .shadow(color: .black.opacity(0.4), radius: 2)
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Image(systemName: "arrow.left.and.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.black)
+                    )
+                    .shadow(color: .black.opacity(0.35), radius: 4)
+            }
+            .frame(width: 44)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .position(x: x, y: proxy.size.height / 2)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        position = min(max(value.location.x / proxy.size.width, 0.02), 0.98)
+                    }
+            )
+        }
     }
 }

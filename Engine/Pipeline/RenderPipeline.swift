@@ -8,7 +8,11 @@ import LumoraCore
 public struct RenderPipeline {
     public init() {}
 
-    public func apply(_ document: EditDocument, to input: CIImage) -> CIImage {
+    /// - Parameters:
+    ///   - input: the source image (full resolution or a downscaled proxy), origin at (0, 0).
+    ///   - scale: `input` width divided by the full-resolution width. Spatial effects
+    ///     (blur radii, grain size, …) use it so the proxy preview matches the export.
+    public func apply(_ document: EditDocument, to input: CIImage, scale: CGFloat = 1) -> CIImage {
         guard !document.isIdentity else { return input }
         var image = input
         image = applyWhiteBalance(document.color, to: image)
