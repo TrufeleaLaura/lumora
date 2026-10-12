@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.heic binary
+*.dng binary
+*.cube text eol=lf

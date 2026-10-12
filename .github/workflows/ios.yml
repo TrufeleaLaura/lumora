@@ -1,0 +1,101 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Choose simulator
+        id: sim
+        run: echo "udid=$(xcrun simctl list devices available -j | python3 scripts/pick_simulator.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and run tests
+        env:
+          TEST_RUNNER_LUMORA_TEST_OUTPUT: ${{ github.workspace }}/build/render-output
+        run: |
+          set -o pipefail
+          mkdir -p build/render-output
+          xcodebuild test \
+            -project Lumora.xcodeproj \
+            -scheme Lumora \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/xcodebuild-test.log | bash scripts/beautify.sh
+
+      - name: Upload render previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-output
+          path: build/render-output
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: build/xcodebuild-test.log
+          retention-days: 7
+
+  ipa:
+    name: Unsigned IPA
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned IPA
+        run: bash scripts/build-ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumora-ipa
+          path: build/Lumora.ipa
+          retention-days: 30
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa-log
+          path: build/xcodebuild-ipa.log
+          retention-days: 7
