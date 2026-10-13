@@ -29,6 +29,19 @@ struct RetouchPanel: View {
                         Toggle("Tap objects or people", isOn: $session.removeByTapping)
                             .tint(Theme.accent)
                     }
+                    if session.retouchTool == .clone {
+                        HStack {
+                            Label(session.cloneSource == nil ? "Step 1: tap what to copy" : "Step 2: paint where to copy it",
+                                  systemImage: session.cloneSource == nil ? "scope" : "paintbrush.pointed")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                            Spacer()
+                            if session.cloneSource != nil {
+                                Button("New source") { session.cloneSource = nil }
+                                    .font(.footnote)
+                            }
+                        }
+                    }
                     if !(session.retouchTool == .remove && session.removeByTapping) {
                         ToolSlider(title: "Brush size", value: $session.retouchSize, range: 0.005...0.15, format: { "\(Int(($0 * 100).rounded()))%" })
                     }
@@ -64,9 +77,9 @@ struct RetouchPanel: View {
     private var hint: String {
         switch session.retouchTool {
         case .heal:
-            return "Paint over spots, blemishes or dust. They're filled with matching skin or texture from nearby."
+            return "Tap a spot or paint over blemishes, dust or small objects. They're filled with matching texture from nearby."
         case .clone:
-            return "Paint the area to cover, then drag the source circle to choose what's copied there."
+            return "Copies one part of the photo over another: pick the source, then paint. The crosshair shows what's being copied. You can drag the source circle afterwards."
         case .remove:
             return session.removeByTapping
                 ? "Tap an object or person to remove it. The background is rebuilt from its surroundings."
@@ -94,6 +107,12 @@ struct RetouchCanvasOverlay: View {
                     strokePath(stroke, frame: frame)
                         .stroke(Color.white.opacity(0.45), style: StrokeStyle(lineWidth: CGFloat(stroke.radius) * frame.width * 2, lineCap: .round, lineJoin: .round))
                         .allowsHitTesting(false)
+                    // Clone: the crosshair follows the brush on the source area.
+                    if let offset = session.cloneStrokeOffset, let last = stroke.points.last {
+                        crosshair(viewPoint(last + offset, frame), radius: CGFloat(stroke.radius) * frame.width)
+                    }
+                } else if session.retouchTool == .clone, let source = session.cloneSource {
+                    crosshair(viewPoint(source, frame), radius: CGFloat(session.retouchSize) * frame.width)
                 }
                 if !session.isRetouching, let index = session.selectedRetouchIndex {
                     let operation = session.document.retouch.operations[index]
@@ -109,6 +128,20 @@ struct RetouchCanvasOverlay: View {
 
     private func viewPoint(_ p: SIMD2<Double>, _ frame: CGRect) -> CGPoint {
         CGPoint(x: frame.minX + CGFloat(p.x) * frame.width, y: frame.minY + CGFloat(1 - p.y) * frame.height)
+    }
+
+    private func crosshair(_ point: CGPoint, radius: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                .frame(width: max(radius * 2, 24), height: max(radius * 2, 24))
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .shadow(color: .black.opacity(0.6), radius: 1.5)
+        .position(point)
+        .allowsHitTesting(false)
     }
 
     private func strokePath(_ stroke: BrushStroke, frame: CGRect) -> Path {

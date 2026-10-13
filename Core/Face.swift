@@ -125,13 +125,13 @@ public struct FaceRetouchSettings: Codable, Hashable, Sendable {
             || m.contour != 0 || m.highlight != 0 || m.eyeshadowAmount != 0 || m.eyeliner != 0 || m.lashes != 0
     }
 
-    public var hasHairColor: Bool { makeup.hairColorAmount != 0 }
+    public var hasHairColor: Bool { makeup.hairColorAmount != 0 || makeup.hairOmbre != 0 || makeup.hairShine != 0 }
 
     /// True if any shape slider (which needs the warp stage) is used.
     public var hasReshape: Bool {
         eyeSize != 0 || eyeDistance != 0 || faceSlim != 0 || cheekbones != 0 || jaw != 0 || chin != 0
             || forehead != 0 || faceLength != 0 || noseWidth != 0 || noseLength != 0 || noseTip != 0
-            || lipsFullness != 0 || lipsWidth != 0 || smile != 0 || makeup.hasBrowShape
+            || lipsFullness != 0 || lipsWidth != 0 || smile != 0 || makeup.hasBrowShape || makeup.hairVolume != 0
     }
 
     public var hasRetouch: Bool {
@@ -184,7 +184,7 @@ public enum FaceCatalog {
             case .lipstick: return "Lipstick"
             case .cheeks: return "Blush & contour"
             case .eyeMakeup: return "Eye makeup"
-            case .hair: return "Hair color"
+            case .hair: return "Hair"
             }
         }
 
@@ -290,7 +290,12 @@ public enum FaceCatalog {
                 spec("lashes", "Lashes", \.makeup.lashes, range: 0...100),
             ]
         case .hair:
-            return [spec("hairColorAmount", "Hair color", \.makeup.hairColorAmount, range: 0...100)]
+            return [
+                spec("hairColorAmount", "Color", \.makeup.hairColorAmount, range: 0...100),
+                spec("hairOmbre", "Ombré", \.makeup.hairOmbre, range: 0...100),
+                spec("hairShine", "Shine", \.makeup.hairShine, range: 0...100),
+                spec("hairVolume", "Volume", \.makeup.hairVolume),
+            ]
         }
     }
 

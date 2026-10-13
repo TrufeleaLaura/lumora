@@ -41,6 +41,7 @@ public enum Inpainting {
             biases = solved.bias
         }
         if let nnf {
+            restoreTexture(&current, nnf: nnf, bias: biases)
             harmonize(&current, nnf: nnf, bias: biases, patchRadius: patchRadius)
         }
 
@@ -343,6 +344,22 @@ public enum Inpainting {
             }
         }
         return (nnf, bias)
+    }
+
+    /// Voting averages overlapping patches, which softens fine texture (grain, pores, fabric).
+    /// Each hole pixel takes most of its value from the center of its own best patch instead,
+    /// so the fill keeps the crispness of the surroundings.
+    static func restoreTexture(_ level: inout Level, nnf: [Int], bias: [SIMD3<Float>], amount: Float = 0.65) {
+        let count = level.width * level.height
+        guard nnf.count == count, bias.count == count else { return }
+        var updated = level.pixels
+        for q in 0..<count where level.hole[q] {
+            let s = nnf[q]
+            guard s >= 0, s < count, !level.hole[s] else { continue }
+            let copied: SIMD3<Float> = level.pixels[s] + bias[q]
+            updated[q] = level.pixels[q] + (copied - level.pixels[q]) * amount
+        }
+        level.pixels = updated
     }
 
     /// Healing-brush color matching: the fill's patches are also voted onto a thin band just

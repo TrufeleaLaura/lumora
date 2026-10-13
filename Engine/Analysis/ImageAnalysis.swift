@@ -31,6 +31,7 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedSkyRegion: CGRectValue??
     private var cachedPivot: Float?
     private var cachedHair: CIImage??
+    private var cachedHairRegion: CGRectValue??
     /// Mattes from the photo file (hair, skin, teeth, sky), stretched over the analyzed extent.
     public let mattes: SemanticMattes
     private var cachedBlemishes: [Int: [BlemishDetector.Spot]] = [:]
@@ -252,6 +253,22 @@ public final class ImageAnalysis: @unchecked Sendable {
         cachedHair = .some(result)
         lock.unlock()
         return result
+    }
+
+    /// Normalized bounds of the hair (for ombré), nil without a hair mask.
+    public var hairRegion: CGRectValue? {
+        guard let mask = hairMask else { return nil }
+        lock.lock()
+        if let cachedHairRegion {
+            lock.unlock()
+            return cachedHairRegion
+        }
+        lock.unlock()
+        let bounds = RenderPipeline.maskBounds(mask)
+        lock.lock()
+        cachedHairRegion = .some(bounds)
+        lock.unlock()
+        return bounds
     }
 
     /// True once face detection has run (so the UI can show results without blocking).

@@ -231,6 +231,28 @@ float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t b
     return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
 }
 
+// Hair ombré and shine on a hair mask. ramp: 0 at the top of the hair, 1 at the bottom.
+// params = (shine, ombré, 0, 0); ombre = (0, L, a, b) of the ombré color; hairTone = hair (L, a, b).
+float4 lumora_hairStyle(sample_t s, sample_t mask, sample_t faceArea, sample_t blurred, sample_t ramp, float4 params, float4 ombre, float4 hairTone) {
+    float m = clamp(mask.r, 0.0f, 1.0f) * (1.0f - clamp(faceArea.r, 0.0f, 1.0f));
+    if (m <= 0.0f) { return s; }
+    float3 lab = lumoraBToOklab(max(s.rgb, float3(0.0f)));
+    // Ombré: the lengths take the second color; lightness follows the hair's own strands.
+    float t = smoothstep(0.3f, 0.85f, ramp.r) * params.y * m;
+    if (t > 0.0f) {
+        float relative = clamp(lab.x / max(hairTone.x, 0.05f), 0.4f, 1.8f);
+        float targetChroma = length(ombre.zw);
+        float2 direction = targetChroma > 1.0e-4f ? ombre.zw / targetChroma : float2(0.0f);
+        float3 target = float3(ombre.y * mix(1.0f, relative, 0.7f), direction * targetChroma * (0.55f + 0.45f * relative));
+        lab = mix(lab, target, t);
+    }
+    // Shine: stronger strand detail and a lift of the hair's own highlights.
+    float3 soft = lumoraBToOklab(max(blurred.rgb, float3(0.0f)));
+    float detail = lab.x - soft.x;
+    lab.x += params.x * m * (detail * 1.1f + 0.07f * smoothstep(0.0f, 0.06f, detail));
+    return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
+}
+
 // Red-eye: inside the iris/pupil mask (masksB.g), strongly red pixels become dark and neutral.
 float4 lumora_redEye(sample_t s, sample_t masksB, float amount) {
     float m = masksB.g;

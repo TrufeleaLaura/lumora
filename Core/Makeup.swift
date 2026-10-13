@@ -66,15 +66,26 @@ public enum MakeupPalette {
 
     public static let hair: [(String, MakeupColor)] = [
         ("Black", MakeupColor(0.06, 0.05, 0.05)),
+        ("Soft black", MakeupColor(0.12, 0.10, 0.10)),
         ("Espresso", MakeupColor(0.20, 0.13, 0.09)),
+        ("Chocolate", MakeupColor(0.30, 0.18, 0.11)),
         ("Chestnut", MakeupColor(0.42, 0.24, 0.13)),
-        ("Copper", MakeupColor(0.72, 0.34, 0.14)),
+        ("Caramel", MakeupColor(0.62, 0.40, 0.22)),
         ("Honey blonde", MakeupColor(0.82, 0.62, 0.36)),
+        ("Golden blonde", MakeupColor(0.88, 0.72, 0.42)),
+        ("Ash blonde", MakeupColor(0.78, 0.72, 0.60)),
         ("Platinum", MakeupColor(0.90, 0.88, 0.82)),
-        ("Rose gold", MakeupColor(0.86, 0.56, 0.52)),
+        ("Strawberry", MakeupColor(0.85, 0.55, 0.38)),
+        ("Copper", MakeupColor(0.72, 0.34, 0.14)),
+        ("Auburn", MakeupColor(0.50, 0.20, 0.12)),
+        ("Cherry red", MakeupColor(0.62, 0.08, 0.12)),
         ("Burgundy", MakeupColor(0.42, 0.10, 0.16)),
+        ("Rose gold", MakeupColor(0.86, 0.56, 0.52)),
         ("Pastel pink", MakeupColor(0.96, 0.66, 0.78)),
+        ("Lavender", MakeupColor(0.72, 0.62, 0.88)),
+        ("Silver", MakeupColor(0.78, 0.79, 0.82)),
         ("Ash blue", MakeupColor(0.50, 0.60, 0.72)),
+        ("Teal", MakeupColor(0.20, 0.50, 0.52)),
     ]
 }
 
@@ -110,7 +121,14 @@ public struct MakeupSettings: Codable, Hashable, Sendable {
 
     // Hair
     public var hairColorAmount: Double = 0
-    public var hairColor = MakeupPalette.hair[3].1
+    public var hairColor = MakeupPalette.hair[4].1
+    /// Ombré / balayage: the lengths fade into a second color (0...100).
+    public var hairOmbre: Double = 0
+    public var hairOmbreColor = MakeupPalette.hair[7].1
+    /// Glossy shine (0...100).
+    public var hairShine: Double = 0
+    /// Fuller (+) or flatter (−) hair around the head (-100...100).
+    public var hairVolume: Double = 0
 
     public init() {}
 

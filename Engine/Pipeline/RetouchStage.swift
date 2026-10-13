@@ -108,8 +108,9 @@ extension RenderPipeline {
         ).integral.intersection(extent)
         guard region.width >= 8, region.height >= 8 else { return nil }
 
-        // Work at up to 512 px (a fill is O(pixels)); the patch is scaled back up.
-        let scale = min(1, 512 / max(region.width, region.height))
+        // Work at up to 1024 px for removals (768 for spots); the patch is scaled back up.
+        let limit: CGFloat = operation.tool == .remove ? 1024 : 768
+        let scale = min(1, limit / max(region.width, region.height))
         let width = max(8, Int(safe: (region.width * scale).rounded()))
         let height = max(8, Int(safe: (region.height * scale).rounded()))
         let sx = CGFloat(width) / region.width, sy = CGFloat(height) / region.height

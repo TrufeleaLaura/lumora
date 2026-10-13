@@ -8,7 +8,7 @@ struct LooksPanel: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var thumbnails: LookThumbnails
 
-    @State private var pack: LookPack = .essentials
+    @State private var pack: LookPack = .trending
     @State private var presets: [UserPreset] = []
     @State private var luts: [ImportedLUT] = []
     @State private var isNamingPreset = false

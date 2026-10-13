@@ -42,6 +42,9 @@ struct TextPanel: View {
                     if showsStickers {
                         stickerGrid
                     }
+                    if let index = session.selectedTextIndex, !session.document.texts[index].isSticker {
+                        styleChips(index)
+                    }
                     if let index = session.selectedTextIndex {
                         LayerEditor(session: session, index: index, onEditText: {
                             draft = session.document.texts[index].text
@@ -96,6 +99,38 @@ struct TextPanel: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    /// One-tap text styles, shown in their own font.
+    private func styleChips(_ index: Int) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(TextStylePreset.all) { preset in
+                    Button {
+                        session.updateSelectedText("Style \(preset.title)") { preset.style(&$0) }
+                    } label: {
+                        Text(preset.title)
+                            .font(previewFont(for: preset))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Theme.panelRaised, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func previewFont(for preset: TextStylePreset) -> Font {
+        var layer = TextLayer()
+        preset.style(&layer)
+        switch layer.font {
+        case .sans: return .system(size: 14, weight: .semibold)
+        case .serif: return .system(size: 14, weight: .semibold, design: .serif)
+        case .rounded: return .system(size: 14, weight: .semibold, design: .rounded)
+        case .mono: return .system(size: 14, weight: .semibold, design: .monospaced)
+        default: return .custom(layer.font.fontName ?? "", size: 15)
         }
     }
 
@@ -184,6 +219,30 @@ private struct LayerEditor: View {
             ColorRow(selected: layer.color) { color in
                 session.updateSelectedText("Color") { $0.color = color }
             }
+            if !layer.isSticker {
+                HStack(spacing: 8) {
+                    toggle("Label", on: layer.background) { $0.background.toggle() }
+                    toggle("Outline", on: layer.outline) { $0.outline.toggle() }
+                    toggle("Glow", on: layer.glow) { $0.glow.toggle() }
+                    toggle("CAPS", on: layer.uppercase) { $0.uppercase.toggle() }
+                }
+                if layer.background {
+                    Text("Label color")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ColorRow(selected: layer.backgroundColor) { color in
+                        session.updateSelectedText("Label color") { $0.backgroundColor = color }
+                    }
+                }
+                if layer.outline {
+                    Text("Outline color")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ColorRow(selected: layer.outlineColor) { color in
+                        session.updateSelectedText("Outline color") { $0.outlineColor = color }
+                    }
+                }
+            }
             SliderList(session: session, specs: specs(layer))
         }
     }
@@ -197,8 +256,26 @@ private struct LayerEditor: View {
         ]
         if !layer.isSticker {
             specs.append(SliderSpec(id: "text.spacing", title: "Letter spacing", range: 0...100, style: .integer, keyPath: path.appending(path: \.spacing)))
+            specs.append(SliderSpec(id: "text.lineSpacing", title: "Line spacing", range: 0...100, style: .integer, keyPath: path.appending(path: \.lineSpacing)))
+            if layer.background {
+                specs.append(SliderSpec(id: "text.backgroundOpacity", title: "Label opacity", range: 10...100, defaultValue: 90, style: .integer, keyPath: path.appending(path: \.backgroundOpacity)))
+            }
         }
         return specs
+    }
+
+    private func toggle(_ title: String, on: Bool, _ change: @escaping (inout TextLayer) -> Void) -> some View {
+        Button {
+            session.updateSelectedText(title) { change(&$0) }
+        } label: {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .foregroundStyle(on ? Color.black : Color.primary)
+                .background(on ? Theme.accent : Theme.panelRaised, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     private func previewFont(_ font: TextFont) -> Font {

@@ -155,6 +155,19 @@ public struct TextLayer: Codable, Hashable, Sendable, Identifiable {
     public var spacing: Double = 0
     public var alignment: TextAlign = .center
     public var shadow = false
+    /// A rounded label behind the text.
+    public var background = false
+    public var backgroundColor: RGBColor = .white
+    /// 0...100
+    public var backgroundOpacity: Double = 90
+    /// An outline around the letters.
+    public var outline = false
+    public var outlineColor: RGBColor = .black
+    /// A neon-like glow in the text color.
+    public var glow = false
+    public var uppercase = false
+    /// Extra space between lines, 0...100.
+    public var lineSpacing: Double = 0
 
     public init(text: String = "Text", symbol: String? = nil) {
         self.text = text
@@ -162,6 +175,56 @@ public struct TextLayer: Codable, Hashable, Sendable, Identifiable {
     }
 
     public var isSticker: Bool { symbol != nil }
+}
+
+/// One-tap text styles (current favourites for stories and captions).
+public struct TextStylePreset: Identifiable, Sendable {
+    public let id: String
+    public let title: String
+    let apply: @Sendable (inout TextLayer) -> Void
+
+    /// Applies the style to a layer, keeping its text and position.
+    public func style(_ layer: inout TextLayer) {
+        let text = layer.text, position = layer.position, rotation = layer.rotation, symbol = layer.symbol
+        var fresh = TextLayer(text: text, symbol: symbol)
+        fresh.id = layer.id
+        fresh.position = position
+        fresh.rotation = rotation
+        apply(&fresh)
+        layer = fresh
+    }
+
+    public static let all: [TextStylePreset] = [
+        TextStylePreset(id: "minimal", title: "Minimal") { $0.font = .sans; $0.size = 0.045; $0.spacing = 35; $0.uppercase = true },
+        TextStylePreset(id: "elegant", title: "Elegant") { $0.font = .didot; $0.size = 0.085 },
+        TextStylePreset(id: "signature", title: "Signature") { $0.font = .script; $0.size = 0.1; $0.shadow = true },
+        TextStylePreset(id: "boldCaps", title: "Bold caps") { $0.font = .futura; $0.size = 0.08; $0.uppercase = true; $0.spacing = 10 },
+        TextStylePreset(id: "magazine", title: "Magazine") { $0.font = .bodoni; $0.size = 0.13; $0.uppercase = true },
+        TextStylePreset(id: "typewriter", title: "Typewriter") { layer in
+            layer.font = .typewriter; layer.size = 0.042; layer.color = .black
+            layer.background = true; layer.backgroundColor = .cream
+        },
+        TextStylePreset(id: "neon", title: "Neon") { layer in
+            layer.font = .rounded; layer.size = 0.08; layer.color = RGBColor(1, 0.45, 0.75); layer.glow = true
+        },
+        TextStylePreset(id: "label", title: "Label") { layer in
+            layer.font = .sans; layer.size = 0.04; layer.color = .black; layer.uppercase = true; layer.spacing = 20
+            layer.background = true; layer.backgroundColor = .white
+        },
+        TextStylePreset(id: "handwritten", title: "Handwritten") { $0.font = .hand; $0.size = 0.075; $0.shadow = true },
+        TextStylePreset(id: "outline", title: "Outline") { layer in
+            layer.font = .futura; layer.size = 0.1; layer.uppercase = true; layer.outline = true; layer.outlineColor = .black
+        },
+        TextStylePreset(id: "retro", title: "Retro") { $0.font = .marker; $0.size = 0.08; $0.color = .stamp; $0.shadow = true },
+        TextStylePreset(id: "caption", title: "Caption") { $0.font = .hand; $0.size = 0.05; $0.color = .black },
+        TextStylePreset(id: "pinkLabel", title: "Pink label") { layer in
+            layer.font = .rounded; layer.size = 0.045; layer.color = .white
+            layer.background = true; layer.backgroundColor = RGBColor(0.93, 0.47, 0.62)
+        },
+        TextStylePreset(id: "quote", title: "Quote") { layer in
+            layer.font = .serif; layer.size = 0.055; layer.lineSpacing = 40; layer.shadow = true
+        },
+    ]
 }
 
 /// Stickers offered in the picker (SF Symbols).

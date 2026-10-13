@@ -125,6 +125,27 @@ extension EditorSession {
         }
     }
 
+    /// Applies a one-tap preset (finding the subject/sky/people first when it needs them).
+    func applyMaskPreset(_ preset: MaskPreset) {
+        let before = document.masks.count
+        let work = { [weak self] in
+            guard let self else { return }
+            self.perform(preset.title) { preset.apply(to: &$0) }
+            if self.document.masks.count > before, let last = self.document.masks.last {
+                self.maskPanel = .adjust
+                self.selectedMaskID = last.id
+                self.selectedComponentID = last.components.last?.id
+            } else {
+                self.showToast("\(preset.title) applied")
+            }
+        }
+        if let kind = preset.needs {
+            prepareAnalysis(for: kind, then: work)
+        } else {
+            work()
+        }
+    }
+
     func addComponent(_ kind: MaskKind, mode: MaskMode) {
         guard selectedMaskIndex != nil else { return }
         let component = newComponent(kind, mode: mode)

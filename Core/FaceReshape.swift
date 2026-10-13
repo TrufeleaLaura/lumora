@@ -47,7 +47,25 @@ public enum FaceReshape {
     }
 
     /// The warp for one face, or nil if no shape slider is used.
-    public static func field(for face: FaceLandmarks, settings s: FaceRetouchSettings, aspect: Double, resolution: Int = 72) -> DisplacementField? {
+    /// Eased slider response: small and medium values stay subtle (natural edits), the full
+    /// range is still there for stronger looks.
+    static func eased(_ value: Double) -> Double {
+        let t = min(abs(value) / 100, 1)
+        return (value < 0 ? -1 : 1) * pow(t, 1.35) * 100
+    }
+
+    static func eased(_ s: FaceRetouchSettings) -> FaceRetouchSettings {
+        var e = s
+        e.faceSlim = eased(s.faceSlim); e.jaw = eased(s.jaw); e.cheekbones = eased(s.cheekbones)
+        e.chin = eased(s.chin); e.faceLength = eased(s.faceLength); e.forehead = eased(s.forehead)
+        e.noseWidth = eased(s.noseWidth); e.noseLength = eased(s.noseLength); e.noseTip = eased(s.noseTip)
+        e.lipsFullness = eased(s.lipsFullness); e.lipsWidth = eased(s.lipsWidth); e.smile = eased(s.smile)
+        e.eyeSize = eased(s.eyeSize); e.eyeDistance = eased(s.eyeDistance)
+        return e
+    }
+
+    public static func field(for face: FaceLandmarks, settings raw: FaceRetouchSettings, aspect: Double, resolution: Int = 72) -> DisplacementField? {
+        let s = eased(raw)
         guard s.hasReshape, let f = frame(face, aspect: aspect) else { return nil }
         var controls: [WarpControl] = []
         var scales: [LocalScale] = []
@@ -121,6 +139,21 @@ public enum FaceReshape {
             let above: Double = 0.6 * f.eyeToMouth * (1 - 0.7 * t * t)
             let point: SIMD2<Double> = browMid + f.right * across + f.up * above
             controls.append(WarpControl(source: point, target: point + f.up * foreheadLift))
+        }
+
+        // Hair volume: a ring around the head (outside the face) moves outward for fuller hair
+        // or inward for flatter hair; the face outline above stays put.
+        if s.makeup.hairVolume != 0 {
+            let center: SIMD2<Double> = f.eyeMid + f.up * (0.35 * f.eyeToMouth)
+            let radius = 0.85 * f.faceWidth
+            let push = s.makeup.hairVolume / 100 * 0.07 * f.faceWidth
+            for k in 0..<14 {
+                let angle = -0.35 * Double.pi + Double(k) / 13 * 1.7 * Double.pi
+                let direction: SIMD2<Double> = f.right * cos(angle) + f.up * sin(angle)
+                let point: SIMD2<Double> = center + direction * radius
+                let target: SIMD2<Double> = point + direction * push
+                controls.append(WarpControl(source: point, target: target))
+            }
         }
 
         // Eyes: distance moves eyes (and half the brows) sideways.
@@ -224,7 +257,7 @@ public enum FaceReshape {
             }
         }
 
-        let region = face.bounds.expanded(by: 2.1)
+        let region = face.bounds.expanded(by: s.makeup.hairVolume != 0 ? 2.8 : 2.1)
         return DisplacementField.build(controls: controls, scales: scales, region: region, aspect: aspect, columns: resolution, rows: resolution)
     }
 

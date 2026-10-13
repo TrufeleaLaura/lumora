@@ -6,6 +6,8 @@ struct MasksPanel: View {
     @ObservedObject var session: EditorSession
     @State private var isRenaming = false
     @State private var newName = ""
+    @State private var showsPresets = true
+    @State private var presetCategory: MaskPreset.Category = .portrait
 
     private static let creatable: [MaskKind] = [.subject, .sky, .background, .people, .object, .brush, .linear, .radial, .color, .luminance, .point]
 
@@ -14,11 +16,25 @@ struct MasksPanel: View {
             if let preparing = session.preparingMask {
                 ProgressView(preparing)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if session.document.masks.isEmpty {
-                Text("Add a mask to edit part of the photo")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                createGrid
+            } else if session.document.masks.isEmpty || showsPresets && session.selectedMaskID == nil {
+                HStack {
+                    Picker("Start", selection: $showsPresets) {
+                        Text("One-tap presets").tag(true)
+                        Text("Make a mask").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    if !session.document.masks.isEmpty {
+                        Button("Masks") { showsPresets = false; session.selectMask(session.document.masks.last?.id) }
+                            .font(.footnote)
+                    }
+                }
+                ScrollView {
+                    if showsPresets {
+                        presetsGrid
+                    } else {
+                        createGrid
+                    }
+                }
             } else {
                 maskStrip
                 if let maskIndex = session.selectedMaskIndex {
@@ -73,8 +89,54 @@ struct MasksPanel: View {
         }
     }
 
+    private var presetsGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(MaskPreset.Category.allCases) { category in
+                        Button {
+                            presetCategory = category
+                        } label: {
+                            Label(category.title, systemImage: category.symbol)
+                                .font(.footnote.weight(.medium))
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(presetCategory == category ? Color.black : Color.primary)
+                                .background(presetCategory == category ? Theme.accent : Theme.panelRaised, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(MaskPresetLibrary.presets(in: presetCategory)) { preset in
+                    Button {
+                        session.applyMaskPreset(preset)
+                        showsPresets = false
+                    } label: {
+                        Text(preset.title)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .padding(.horizontal, 4)
+                            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     private var addMenu: some View {
         Menu {
+            Button {
+                session.selectMask(nil)
+                showsPresets = true
+            } label: {
+                Label("One-tap presets", systemImage: "wand.and.stars")
+            }
+            Divider()
             ForEach(Self.creatable) { kind in
                 Button {
                     session.addMask(kind)

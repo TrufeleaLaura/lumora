@@ -210,7 +210,7 @@ final class FaceTests: XCTestCase {
             ("Smoky eyes", edit { $0.eyeshadowAmount = 80; $0.eyeshadowColor = MakeupPalette.eyeshadow[2].1; $0.eyeliner = 80; $0.lashes = 70 }),
             ("Fuller, darker brows", edit { $0.browThickness = 80; $0.browColorAmount = 60; $0.browColor = MakeupPalette.brows[0].1 }),
             ("Brow lift + arch", edit { $0.browLift = 60; $0.browArch = 60 }),
-            ("Copper hair", edit { $0.hairColorAmount = 80; $0.hairColor = MakeupPalette.hair[3].1 }),
+            ("Copper hair", edit { $0.hairColorAmount = 80; $0.hairColor = MakeupPalette.hair[11].1 }),
             ("Full glam", edit {
                 $0.lipstickAmount = 80; $0.lipstickColor = MakeupPalette.lipstick[1].1
                 $0.blushAmount = 50; $0.contour = 50; $0.highlight = 60

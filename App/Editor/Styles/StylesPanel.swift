@@ -4,32 +4,41 @@ import SwiftUI
 /// Snapseed-style creative effects: pick an effect, adjust its sliders.
 struct StylesPanel: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject var thumbnails: LookThumbnails
     @State private var effect: StyleCatalog.Effect = .hdr
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(StyleCatalog.Effect.allCases) { item in
                         let active = item.isActive(session.document.styles)
                         Button {
                             effect = item
                             session.focusEditing = item == .lensBlur
                         } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: item.symbol)
-                                Text(item.title)
-                                if active {
-                                    Circle()
-                                        .fill(effect == item ? Color.black : Theme.accent)
-                                        .frame(width: 5, height: 5)
+                            VStack(spacing: 4) {
+                                ZStack(alignment: .topTrailing) {
+                                    thumbnail(item)
+                                        .frame(width: 62, height: 62)
+                                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 9)
+                                                .stroke(effect == item ? Theme.accent : Color.clear, lineWidth: 2.5)
+                                        )
+                                    if active {
+                                        Circle()
+                                            .fill(Theme.accent)
+                                            .frame(width: 8, height: 8)
+                                            .padding(4)
+                                    }
                                 }
+                                Text(item.title)
+                                    .font(.system(size: 10, weight: effect == item ? .semibold : .regular))
+                                    .lineLimit(1)
+                                    .foregroundStyle(effect == item ? Theme.accent : Color.primary)
                             }
-                            .font(.footnote.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .foregroundStyle(effect == item ? Color.black : Color.primary)
-                            .background(effect == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                            .frame(width: 66)
                         }
                         .buttonStyle(.plain)
                     }
@@ -67,6 +76,37 @@ struct StylesPanel: View {
         }
         .onAppear { session.focusEditing = effect == .lensBlur }
         .onDisappear { session.focusEditing = false }
+    }
+
+    /// A preview of the effect on this photo.
+    @ViewBuilder
+    private func thumbnail(_ item: StyleCatalog.Effect) -> some View {
+        var preview = EditDocument()
+        let _ = Self.configure(item, &preview.styles)
+        if let image = thumbnails.image(for: "style.\(item.rawValue)", document: preview) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            Theme.panelRaised
+                .overlay(Image(systemName: item.symbol).foregroundStyle(.secondary))
+        }
+    }
+
+    /// Typical settings used for the preview tiles.
+    static func configure(_ item: StyleCatalog.Effect, _ styles: inout CreativeSettings) {
+        switch item {
+        case .hdr: styles.hdr = 75
+        case .drama: styles.drama = 65
+        case .tonal: styles.tonalHigh = 60; styles.tonalMid = 60; styles.tonalLow = 60
+        case .glow: styles.glow = 75
+        case .halation: styles.halation = 80
+        case .vintage: styles.vintage = 75
+        case .noir: styles.noir = 75
+        case .grunge: styles.grunge = 65
+        case .rgbSplit: styles.rgbSplit = 80
+        case .lensBlur: styles.lensBlur.amount = 85
+        }
     }
 
     private var specs: [SliderSpec] {

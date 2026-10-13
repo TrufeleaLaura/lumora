@@ -11,6 +11,11 @@ extension EditorSession {
         guard activeTool == .retouch, !isRetouching else { return }
         if retouchTool == .remove && removeByTapping {
             renderer.onTap = { [weak self] point in self?.removeObject(at: point) }
+        } else if retouchTool == .clone && cloneSource == nil {
+            // First tap picks what to copy.
+            renderer.onTap = { [weak self] point in
+                self?.cloneSource = SIMD2(Double(point.x), Double(point.y))
+            }
         } else {
             renderer.onPaint = { [weak self] phase, point in self?.paintRetouch(phase, at: point) }
         }
@@ -31,6 +36,9 @@ extension EditorSession {
         switch phase {
         case .began:
             pendingRetouch = BrushStroke(points: [p], radius: retouchSize, feather: retouchTool == .clone ? 40 : 25, flow: 100)
+            if retouchTool == .clone, let source = cloneSource {
+                cloneStrokeOffset = source - p
+            }
         case .moved, .ended:
             guard var stroke = pendingRetouch, let last = stroke.points.last else { return }
             let dx = p.x - last.x
@@ -42,7 +50,8 @@ extension EditorSession {
             if phase == .ended {
                 var operation = RetouchOperation(tool: retouchTool, strokes: [stroke])
                 if retouchTool == .clone {
-                    operation.sourceOffset = automaticCloneOffset(for: operation)
+                    operation.sourceOffset = cloneStrokeOffset ?? automaticCloneOffset(for: operation)
+                    cloneStrokeOffset = nil
                 }
                 commitRetouch(operation)
             }

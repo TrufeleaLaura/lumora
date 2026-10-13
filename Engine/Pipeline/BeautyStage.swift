@@ -59,8 +59,13 @@ extension RenderPipeline {
             }
             if settings.hasHairColor, let masks = face.makeup {
                 if let hairMask = analysis.hairMask {
-                    image = hair(face, masks: masks, hairMask: hairMask, settings: settings.makeup, image: image)
-                } else if let person = analysis.personMask {
+                    if settings.makeup.hairColorAmount != 0 {
+                        image = hair(face, masks: masks, hairMask: hairMask, settings: settings.makeup, image: image)
+                    }
+                    if settings.makeup.hairOmbre != 0 || settings.makeup.hairShine != 0 {
+                        image = hairStyle(face, masks: masks, hairMask: hairMask, region: analysis.hairRegion, settings: settings.makeup, image: image)
+                    }
+                } else if settings.makeup.hairColorAmount != 0, let person = analysis.personMask {
                     image = hair(face, masks: masks, person: person, analysisSize: analysis.imageSize, settings: settings.makeup, image: image)
                 }
             }
@@ -130,6 +135,37 @@ extension RenderPipeline {
             Self.tone(face.hairTone),
             Self.tone(face.skinTone),
             Float(1)
+        )
+    }
+
+    /// Ombré and shine along the whole hairstyle.
+    private func hairStyle(_ face: FaceInfo, masks: MakeupMaskSet, hairMask: CIImage, region: CGRectValue?, settings m: MakeupSettings, image: CIImage) -> CIImage {
+        let extent = image.extent
+        let mask = Self.stretch(hairMask, over: extent)
+        let faceArea = Self.place(masks.d, region: face.maskRegion, in: extent)
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0, y: 0, z: 1, w: 0),
+                "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            ])
+            .composited(over: Self.black(extent))
+            .cropped(to: extent)
+        let blurred = GuidedFilter.gaussian(image, radius: max(1.5, CGFloat(face.landmarks.bounds.width) * extent.width * 0.012))
+        // Vertical position within the hair (top 0 → bottom 1).
+        let hair = region ?? CGRectValue(x: 0, y: 0, width: 1, height: 1)
+        let ramp = CIFilter(name: "CILinearGradient", parameters: [
+            "inputPoint0": CIVector(x: extent.midX, y: extent.minY + CGFloat(hair.y + hair.height) * extent.height),
+            "inputPoint1": CIVector(x: extent.midX, y: extent.minY + CGFloat(hair.y) * extent.height),
+            "inputColor0": CIColor(red: 0, green: 0, blue: 0),
+            "inputColor1": CIColor(red: 1, green: 1, blue: 1),
+        ])?.outputImage?.cropped(to: extent) ?? Self.black(extent)
+        let ombre = m.hairOmbreColor.oklab
+        return Kernels.hairStyle.apply(
+            image, mask, faceArea, blurred, ramp,
+            CIVector(x: CGFloat(m.hairShine / 100), y: CGFloat(m.hairOmbre / 100), z: 0, w: 0),
+            CIVector(x: 0, y: CGFloat(ombre.0), z: CGFloat(ombre.1), w: CGFloat(ombre.2)),
+            Self.tone(face.hairTone)
         )
     }
 

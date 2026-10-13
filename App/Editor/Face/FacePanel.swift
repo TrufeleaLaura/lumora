@@ -25,6 +25,12 @@ struct FacePanel: View {
                     ScrollView {
                         if let palette = section.palette {
                             paletteRow(palette.colors, keyPath: palette.keyPath)
+                            if section == .hair {
+                                Text("Ombré color")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                paletteRow(MakeupPalette.hair, keyPath: \.hairOmbreColor)
+                            }
                         }
                         if section == .lipstick {
                             Picker("Finish", selection: Binding(

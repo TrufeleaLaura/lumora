@@ -217,7 +217,7 @@ struct EditorView: View {
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)
             case .styles:
-                StylesPanel(session: session)
+                StylesPanel(session: session, thumbnails: session.lookThumbnails)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)

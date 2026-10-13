@@ -68,12 +68,13 @@ public enum CurveShape {
 }
 
 public enum LookPack: String, CaseIterable, Codable, Sendable, Identifiable {
-    case essentials, film, portrait, bright, moody, vintage, blackAndWhite, landscape, custom
+    case trending, essentials, film, portrait, bright, moody, vintage, blackAndWhite, landscape, custom
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
+        case .trending: return "Trending"
         case .essentials: return "Essentials"
         case .film: return "Film"
         case .portrait: return "Portrait"
@@ -145,7 +146,7 @@ public struct LookSettings: Codable, Equatable, Sendable {
 
 /// Built-in looks. Hue angles: 0 red, 30 orange, 60 yellow, 120 green, 180 cyan, 220 blue, 300 magenta.
 public enum LookLibrary {
-    public static let all: [Look] = essentials + film + portrait + bright + moody + vintage + blackAndWhite + landscape
+    public static let all: [Look] = trending + essentials + film + portrait + bright + moody + vintage + blackAndWhite + landscape
 
     public static func look(id: String) -> Look? {
         all.first { $0.id == id }
@@ -154,6 +155,67 @@ public enum LookLibrary {
     public static func looks(in pack: LookPack) -> [Look] {
         all.filter { $0.pack == pack }
     }
+
+    /// Current favourites for portraits and social feeds.
+    static let trending: [Look] = [
+        Look(.trending, "Clean Girl") { r in
+            r.light.exposure = 0.1; r.light.contrast = -8; r.light.highlights = -10; r.light.shadows = 12
+            r.color.temperature = 8; r.color.vibrance = 8; r.color.saturation = -5
+            r.mix(.orange, luminance: 8); r.fade = 5
+        },
+        Look(.trending, "Latte") { r in
+            r.light.contrast = -5; r.color.temperature = 18; r.color.tint = 4; r.color.saturation = -12
+            r.mix(.orange, hue: 5); r.shadows(30, 12); r.highlights(45, 10); r.fade = 12
+        },
+        Look(.trending, "Mocha") { r in
+            r.light.exposure = -0.1; r.light.contrast = 10; r.color.temperature = 12; r.color.saturation = -18
+            r.shadows(25, 20, luminance: -5); r.mix(.blue, saturation: -40); r.fade = 8
+        },
+        Look(.trending, "Soft Pink") { r in
+            r.light.exposure = 0.1; r.light.contrast = -10; r.color.tint = 8; r.color.saturation = -5
+            r.highlights(340, 12); r.mix(.red, luminance: 10); r.mix(.magenta, luminance: 10); r.fade = 10
+        },
+        Look(.trending, "Coquette") { r in
+            r.light.contrast = -12; r.color.tint = 10; r.color.temperature = 6
+            r.highlights(350, 15); r.shadows(330, 8); r.fade = 15; r.grain = 10
+        },
+        Look(.trending, "Cinematic") { r in
+            r.light.contrast = 15; r.color.saturation = -5
+            r.shadows(200, 25); r.highlights(35, 20); r.curve.master = CurveShape.matte(black: 0.04); r.vignette = -15
+        },
+        Look(.trending, "Flash") { r in
+            r.light.exposure = 0.25; r.light.contrast = 25; r.light.whites = 20; r.light.blacks = -15; r.light.highlights = -5
+            r.color.saturation = 5; r.vignette = -25; r.grain = 20
+        },
+        Look(.trending, "Portra") { r in
+            r.light.contrast = -6; r.light.highlights = -15; r.light.shadows = 10; r.color.temperature = 6; r.color.tint = 4
+            r.mix(.green, hue: 15, saturation: -15); r.mix(.orange, saturation: -5, luminance: 6)
+            r.highlights(45, 10); r.shadows(200, 6); r.fade = 8; r.grain = 20
+        },
+        Look(.trending, "Y2K") { r in
+            r.light.contrast = 18; r.color.tint = 12; r.color.temperature = -8; r.color.saturation = 15
+            r.highlights(300, 10); r.shadows(190, 15); r.grain = 15; r.vignette = -10
+        },
+        Look(.trending, "Golden Glow") { r in
+            r.light.exposure = 0.1; r.light.highlights = -20; r.color.temperature = 25; r.color.tint = 6
+            r.color.vibrance = 15; r.highlights(40, 18)
+        },
+        Look(.trending, "Matte") { r in
+            r.light.contrast = -10; r.color.saturation = -10; r.fade = 20; r.curve.master = CurveShape.matte(black: 0.06)
+        },
+        Look(.trending, "Retro Film") { r in
+            r.color.temperature = 10; r.color.saturation = -15; r.shadows(190, 12); r.highlights(50, 12)
+            r.fade = 15; r.grain = 30; r.vignette = -20
+        },
+        Look(.trending, "Clean Bright") { r in
+            r.light.exposure = 0.2; r.light.whites = 15; r.light.highlights = -20; r.light.shadows = 15
+            r.color.vibrance = 10; r.color.temperature = 3
+        },
+        Look(.trending, "Moody Brown") { r in
+            r.light.exposure = -0.15; r.light.contrast = 15; r.color.temperature = 15; r.color.saturation = -20
+            r.mix(.green, saturation: -50); r.mix(.blue, saturation: -40); r.shadows(30, 15)
+        },
+    ]
 
     static let essentials: [Look] = [
         Look(.essentials, "Vivid") { r in

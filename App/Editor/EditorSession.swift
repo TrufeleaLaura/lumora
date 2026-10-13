@@ -131,6 +131,12 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var isRetouching = false
     /// The clone operation whose source can be dragged.
     @Published var selectedRetouchID: UUID?
+    /// Clone: the point to copy from (set by a tap before painting).
+    @Published var cloneSource: SIMD2<Double>? {
+        didSet { updateMaskInteraction() }
+    }
+    /// Clone: offset from the stroke being painted to its source.
+    @Published var cloneStrokeOffset: SIMD2<Double>?
     /// Styles tool: lens blur focus handles are shown.
     @Published var focusEditing = false
     /// Text tool: the layer being edited.
