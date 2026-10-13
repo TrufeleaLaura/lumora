@@ -37,32 +37,44 @@ public enum BodyAnalyzer {
         func normal(_ p: SIMD2<Double>) -> SIMD2<Double> { SIMD2(p.x, p.y / aspect) }
         func lerp(_ a: SIMD2<Double>, _ b: SIMD2<Double>, _ t: Double) -> SIMD2<Double> { a + (b - a) * t }
 
-        /// Walks from `center` along ±`direction` until leaving the person (or a default width).
-        func measure(center: SIMD2<Double>, direction: SIMD2<Double>, maxDistance: Double, fallback: Double) -> EdgePair {
+        /// Walks from `center` along ±`direction` until leaving the person. Stops early at a dip
+        /// in the mask (the thin gap between an arm and the torso), and never goes far beyond the
+        /// width expected from the joints, so arms touching the body aren't mistaken for the torso.
+        func measure(center: SIMD2<Double>, direction: SIMD2<Double>, expected: Double) -> EdgePair {
             func edge(_ sign: Double) -> SIMD2<Double> {
-                let step = maxDistance / 120
-                if let mask {
-                    var last = center
-                    var distance = step
-                    while distance <= maxDistance {
-                        let probe: SIMD2<Double> = center + direction * (sign * distance)
-                        if mask.value(at: normal(probe)) < 0.5 { return last }
-                        last = probe
-                        distance += step
-                    }
+                let limit = expected * 1.3
+                let step = limit / 160
+                guard let mask else { return center + direction * (sign * expected) }
+                var last = center
+                var distance = step
+                var peak: Float = 0
+                while distance <= limit {
+                    let probe: SIMD2<Double> = center + direction * (sign * distance)
+                    let value = mask.value(at: normal(probe))
+                    if value < 0.5 { return last }
+                    peak = max(peak, value)
+                    // A clear dip after the body interior, past 60% of the expected width.
+                    if distance > expected * 0.6, peak > 0.9, value < peak - 0.18 { return last }
+                    last = probe
+                    distance += step
                 }
-                return center + direction * (sign * fallback)
+                return center + direction * (sign * expected)
             }
             return EdgePair(first: normal(edge(-1)), second: normal(edge(1)), center: normal(center))
         }
 
         var outline: [BodyLevel: EdgePair] = [:]
         let sw = frame.shoulderWidth
+        var hipHalf = sw * 0.3
+        if let l = pose[.leftHip], let r = pose[.rightHip] {
+            hipHalf = max(BodyReshape.length(iso(l) - iso(r)) / 2, sw * 0.15)
+        }
+        let shoulderHalf = sw / 2
         let torsoPoint: (Double) -> SIMD2<Double> = { t in lerp(frame.shoulders, frame.hips, t) }
-        outline[.shoulders] = measure(center: torsoPoint(0.05), direction: frame.right, maxDistance: sw * 1.1, fallback: sw * 0.55)
-        outline[.chest] = measure(center: torsoPoint(0.3), direction: frame.right, maxDistance: sw * 0.9, fallback: sw * 0.45)
-        outline[.waist] = measure(center: torsoPoint(0.62), direction: frame.right, maxDistance: sw * 0.8, fallback: sw * 0.36)
-        outline[.hips] = measure(center: torsoPoint(1.06), direction: frame.right, maxDistance: sw * 0.9, fallback: sw * 0.45)
+        outline[.shoulders] = measure(center: torsoPoint(0.05), direction: frame.right, expected: shoulderHalf * 1.18)
+        outline[.chest] = measure(center: torsoPoint(0.3), direction: frame.right, expected: shoulderHalf * 0.95)
+        outline[.waist] = measure(center: torsoPoint(0.62), direction: frame.right, expected: max(shoulderHalf * 0.72, hipHalf * 1.25))
+        outline[.hips] = measure(center: torsoPoint(1.06), direction: frame.right, expected: hipHalf * 1.65)
 
         for (hipJoint, kneeJoint, upper, middle) in [
             (BodyJoint.leftHip, BodyJoint.leftKnee, BodyLevel.upperThighLeft, BodyLevel.midThighLeft),
@@ -72,8 +84,8 @@ public enum BodyAnalyzer {
             let axis: SIMD2<Double> = knee - hip
             let legLength = max(BodyReshape.length(axis), 1e-6)
             let across = SIMD2(axis.y, -axis.x) / legLength
-            outline[upper] = measure(center: lerp(hip, knee, 0.22), direction: across, maxDistance: sw * 0.45, fallback: sw * 0.2)
-            outline[middle] = measure(center: lerp(hip, knee, 0.5), direction: across, maxDistance: sw * 0.4, fallback: sw * 0.17)
+            outline[upper] = measure(center: lerp(hip, knee, 0.22), direction: across, expected: hipHalf * 0.95)
+            outline[middle] = measure(center: lerp(hip, knee, 0.5), direction: across, expected: hipHalf * 0.75)
         }
         for (shoulderJoint, elbowJoint, level) in [
             (BodyJoint.leftShoulder, BodyJoint.leftElbow, BodyLevel.upperArmLeft),
@@ -83,7 +95,7 @@ public enum BodyAnalyzer {
             let axis: SIMD2<Double> = elbow - shoulder
             let armLength = max(BodyReshape.length(axis), 1e-6)
             let across = SIMD2(axis.y, -axis.x) / armLength
-            outline[level] = measure(center: lerp(shoulder, elbow, 0.5), direction: across, maxDistance: sw * 0.25, fallback: sw * 0.1)
+            outline[level] = measure(center: lerp(shoulder, elbow, 0.5), direction: across, expected: sw * 0.11)
         }
 
         // Region: all joints plus a margin, so warps fade out well away from the body.
@@ -111,8 +123,8 @@ struct MaskSampler {
     private let height: Int
 
     init(mask: CIImage, imageSize: CGSize, context: CIContext) {
-        // Work at up to 512 px: plenty for finding outlines.
-        let scale = min(1, 512 / max(mask.extent.width, mask.extent.height, 1))
+        // Work at up to 1024 px so thin gaps between arms and torso survive.
+        let scale = min(1, 1024 / max(mask.extent.width, mask.extent.height, 1))
         let small = mask.transformed(by: CGAffineTransform(translationX: -mask.extent.minX, y: -mask.extent.minY))
             .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let data = RenderContext.readFloats(small, context: context)

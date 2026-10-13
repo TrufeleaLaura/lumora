@@ -43,10 +43,11 @@ float4 lumora_faceRetouch(sample_t s, sample_t base, sample_t fine, sample_t chr
     float p = lumoraBToPerceptual(y);
     float3 lab = lumoraBToOklab(c);
 
-    // Skin probability: inside the face mask and close to the measured skin tone.
-    float chromaDistance = length(lab.yz - tone.yz);
+    // Skin probability: inside the face mask and close to the measured skin tone. Uses the
+    // smoothed color so film grain / sensor noise doesn't break the match pixel by pixel.
+    float chromaDistance = length(chroma.yz - tone.yz);
     float colorMatch = 1.0f - smoothstep(0.05f, 0.11f, chromaDistance);
-    float lightMatch = smoothstep(tone.x - 0.38f, tone.x - 0.2f, lab.x);
+    float lightMatch = smoothstep(tone.x - 0.38f, tone.x - 0.2f, chroma.x);
     float skin = masksA.r * colorMatch * lightMatch;
 
     // Frequency separation: low (edge-aware) + mid (blotches) + high (pores).
