@@ -2,6 +2,7 @@ import LumoraCore
 import LumoraEngine
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @StateObject private var library = LibraryModel()
@@ -11,6 +12,15 @@ struct LibraryView: View {
     @State private var isSelecting = false
     @State private var selection: Set<UUID> = []
     @State private var isConfirmingBatchDelete = false
+    @State private var mode: Mode = .edits
+    @State private var isMakingCollage = false
+    @State private var dragged: UUID?
+
+    enum Mode: String, CaseIterable, Identifiable {
+        case edits, feed
+        var id: String { rawValue }
+        var title: String { self == .edits ? "Edits" : "Feed plan" }
+    }
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 4)]
 
@@ -19,19 +29,30 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 newEditButton
+                collageButton
 
                 if !library.projects.isEmpty {
                     HStack {
-                        Text("Recent")
-                            .font(.title3.weight(.semibold))
-                        Spacer()
-                        Button(isSelecting ? "Done" : "Select") {
-                            isSelecting.toggle()
-                            selection.removeAll()
+                        Picker("View", selection: $mode) {
+                            ForEach(Mode.allCases) { item in
+                                Text(item.title).tag(item)
+                            }
                         }
-                        .font(.subheadline.weight(.semibold))
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 220)
+                        Spacer()
+                        if mode == .edits {
+                            Button(isSelecting ? "Done" : "Select") {
+                                isSelecting.toggle()
+                                selection.removeAll()
+                            }
+                            .font(.subheadline.weight(.semibold))
+                        }
                     }
                     .padding(.top, 4)
+                    if mode == .feed {
+                        feedGrid
+                    } else {
                     LazyVGrid(columns: columns, spacing: 4) {
                         ForEach(library.projects) { project in
                             ProjectTile(image: library.thumbnail(for: project))
@@ -68,6 +89,7 @@ struct LibraryView: View {
                                     }
                                 }
                         }
+                    }
                     }
                 } else {
                     emptyState
@@ -121,6 +143,11 @@ struct LibraryView: View {
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             importPhoto(item)
+        }
+        .fullScreenCover(isPresented: $isMakingCollage) {
+            CollageView(store: library.store, projects: library.projects, thumbnail: { library.thumbnail(for: $0) }) {
+                isMakingCollage = false
+            }
         }
         .fullScreenCover(item: $session, onDismiss: { library.reload() }) { session in
             EditorView(session: session) {
@@ -207,6 +234,63 @@ struct LibraryView: View {
         .disabled(library.isBusy)
     }
 
+    private var collageButton: some View {
+        Button {
+            isMakingCollage = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 20, weight: .semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Collage & story")
+                        .font(.headline)
+                    Text("Layouts, moodboards and 9:16 stories")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(library.isBusy)
+    }
+
+    /// Instagram-style 3-column preview of the planned feed; drag tiles to reorder.
+    private var feedGrid: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Drag photos to plan how your grid will look. Top-left is the newest post.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
+                ForEach(library.feed) { project in
+                    Theme.panelRaised
+                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                        .overlay {
+                            if let image = library.thumbnail(for: project) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                            }
+                        }
+                        .clipped()
+                        .opacity(dragged == project.id ? 0.5 : 1)
+                        .contentShape(Rectangle())
+                        .onTapGesture { open(project) }
+                        .onDrag {
+                            dragged = project.id
+                            return NSItemProvider(object: project.id.uuidString as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: FeedDropDelegate(target: project.id, dragged: $dragged, library: library))
+                }
+            }
+        }
+    }
+
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "photo.stack")
@@ -257,5 +341,31 @@ struct ProjectTile: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .contentShape(Rectangle())
+    }
+}
+
+
+/// Reorders the feed plan while a tile is dragged over another.
+struct FeedDropDelegate: DropDelegate {
+    let target: UUID
+    @Binding var dragged: UUID?
+    let library: LibraryModel
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged, dragged != target else { return }
+        MainActor.assumeIsolated {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                library.moveInFeed(dragged, to: target)
+            }
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragged = nil
+        return true
     }
 }

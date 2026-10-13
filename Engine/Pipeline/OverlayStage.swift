@@ -110,10 +110,10 @@ extension RenderPipeline {
             ) ?? Self.white(extent)
             // Cream paper with fibers: 1 = no change.
             let paper = texture.applyingFilter("CIColorMatrix", parameters: [
-                "inputRVector": CIVector(x: 0.2, y: 0, z: 0, w: 0),
-                "inputGVector": CIVector(x: 0.2, y: 0, z: 0, w: 0),
-                "inputBVector": CIVector(x: 0.2, y: 0, z: 0, w: 0),
-                "inputBiasVector": CIVector(x: 0.88, y: 0.85, z: 0.78, w: 0),
+                "inputRVector": CIVector(x: 0.45, y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0.45, y: 0, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0.45, y: 0, z: 0, w: 0),
+                "inputBiasVector": CIVector(x: 0.72, y: 0.67, z: 0.55, w: 0),
             ]).cropped(to: extent)
             image = Kernels.multiplyBlend.apply(image, paper, Float(o.paper / 100))
         }
@@ -126,7 +126,8 @@ extension RenderPipeline {
                 roiCallback: { _, rect in rect },
                 arguments: [CIVector(x: CGFloat(kind.style), y: kind.angle, z: longSide * 0.045, w: longSide * 0.006), CIVector(x: extent.width, y: extent.height)]
             ) ?? Self.white(extent)
-            image = Kernels.multiplyBlend.apply(image, GuidedFilter.gaussian(layer, radius: longSide * 0.004), Float(o.shadows / 100))
+            let softness = style >= 3 ? longSide * 0.01 : longSide * 0.004
+            image = Kernels.multiplyBlend.apply(image, GuidedFilter.gaussian(layer, radius: softness), Float(o.shadows / 100))
         }
         if o.lightLeak > 0 {
             image = Kernels.screenBlend.apply(image, lightLeak(style: Int(o.lightLeakStyle.rounded()), extent: extent), Float(o.lightLeak / 100))

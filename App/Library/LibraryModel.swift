@@ -38,8 +38,22 @@ final class LibraryModel: ObservableObject {
         let document: EditDocument
     }
 
+    /// Projects in the planned feed order (top-left first).
+    @Published private(set) var feed: [ProjectMetadata] = []
+
     func reload() {
         projects = store.list()
+        feed = ProjectStore.feed(projects, order: store.feedOrder())
+    }
+
+    /// Moves a project to another project's place in the feed plan.
+    func moveInFeed(_ id: UUID, to target: UUID) {
+        guard id != target, let from = feed.firstIndex(where: { $0.id == id }), let to = feed.firstIndex(where: { $0.id == target }) else { return }
+        var items = feed
+        let item = items.remove(at: from)
+        items.insert(item, at: to)
+        feed = items
+        store.saveFeedOrder(items.map(\.id))
     }
 
     func thumbnail(for project: ProjectMetadata) -> UIImage? {

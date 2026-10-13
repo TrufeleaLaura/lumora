@@ -181,26 +181,26 @@ public enum FrameLayout {
         case .none, .vhs:
             return (contentWidth, contentHeight, CGRectValue(x: 0, y: 0, width: contentWidth, height: contentHeight))
         case .border:
-            let b = short * 0.1 * frame.width / 100
+            let b = (short * 0.1 * frame.width / 100).rounded()
             return (contentWidth + 2 * b, contentHeight + 2 * b, CGRectValue(x: b, y: b, width: contentWidth, height: contentHeight))
         case .polaroid:
-            let side = short * 0.065
-            let bottom = short * 0.26
+            let side = (short * 0.065).rounded()
+            let bottom = (short * 0.26).rounded()
             return (contentWidth + 2 * side, contentHeight + side + bottom, CGRectValue(x: side, y: bottom, width: contentWidth, height: contentHeight))
         case .film:
             // Sprocket strips along the long edges.
             if contentWidth >= contentHeight {
-                let strip = contentHeight * 0.16
-                let end = contentWidth * 0.02
+                let strip = (contentHeight * 0.16).rounded()
+                let end = (contentWidth * 0.02).rounded()
                 return (contentWidth + 2 * end, contentHeight + 2 * strip, CGRectValue(x: end, y: strip, width: contentWidth, height: contentHeight))
             } else {
-                let strip = contentWidth * 0.16
-                let end = contentHeight * 0.02
+                let strip = (contentWidth * 0.16).rounded()
+                let end = (contentHeight * 0.02).rounded()
                 return (contentWidth + 2 * strip, contentHeight + 2 * end, CGRectValue(x: strip, y: end, width: contentWidth, height: contentHeight))
             }
         case .super8:
-            let border = short * 0.09
-            let left = short * 0.2
+            let border = (short * 0.09).rounded()
+            let left = (short * 0.2).rounded()
             return (contentWidth + left + border, contentHeight + 2 * border, CGRectValue(x: left, y: border, width: contentWidth, height: contentHeight))
         }
     }

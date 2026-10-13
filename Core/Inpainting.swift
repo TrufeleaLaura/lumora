@@ -425,6 +425,93 @@ public enum Inpainting {
         for q in holeIndices {
             level.pixels[q] = level.pixels[q] + correction[q]
         }
+        smoothBackground(&level, band: band, holeIndices: holeIndices)
+    }
+
+    /// In smooth surroundings (sky, walls, skin) the fill's broad brightness is replaced by a
+    /// smooth interpolation of the surroundings, keeping only the fill's fine texture. Fills of
+    /// smooth gradients (a glow) then can't sag into darker or lighter blotches. Textured or
+    /// structured surroundings are left to the patches.
+    static func smoothBackground(_ level: inout Level, band: [Bool], holeIndices: [Int]) {
+        let w = level.width, h = level.height
+        let count = w * h
+        guard !holeIndices.isEmpty else { return }
+        // How smooth is the ring around the hole? (mean color difference between neighbors)
+        var gradient: Float = 0
+        var samples: Float = 0
+        for q in 0..<count where band[q] {
+            let x = q % w, y = q / w
+            if x + 1 < w, band[q + 1] {
+                let d = level.pixels[q + 1] - level.pixels[q]
+                gradient += abs(d.x) + abs(d.y) + abs(d.z)
+                samples += 1
+            }
+            if y + 1 < h, band[q + w] {
+                let d = level.pixels[q + w] - level.pixels[q]
+                gradient += abs(d.x) + abs(d.y) + abs(d.z)
+                samples += 1
+            }
+        }
+        guard samples > 0 else { return }
+        let roughness = gradient / samples
+        let weight: Float = 1 - min(max((roughness - 0.012) / 0.03, 0), 1)
+        guard weight > 0.01 else { return }
+
+        // Membrane: Laplace interpolation of the surrounding pixels into the hole.
+        var membrane = level.pixels
+        var mean = SIMD3<Float>.zero
+        var n: Float = 0
+        for q in 0..<count where band[q] {
+            mean += level.pixels[q]
+            n += 1
+        }
+        mean /= max(n, 1)
+        for q in holeIndices { membrane[q] = mean }
+        let omega: Float = 1.85
+        for _ in 0..<400 {
+            var change: Float = 0
+            for q in holeIndices {
+                let x = q % w, y = q / w
+                var total = SIMD3<Float>.zero
+                var k: Float = 0
+                if x > 0 { total += membrane[q - 1]; k += 1 }
+                if x < w - 1 { total += membrane[q + 1]; k += 1 }
+                if y > 0 { total += membrane[q - w]; k += 1 }
+                if y < h - 1 { total += membrane[q + w]; k += 1 }
+                let delta: SIMD3<Float> = (total / k - membrane[q]) * omega
+                membrane[q] += delta
+                change = max(change, max(abs(delta.x), max(abs(delta.y), abs(delta.z))))
+            }
+            if change < 1e-4 { break }
+        }
+
+        // Low-pass of the fill (box blur over the hole's neighborhood via an integral image).
+        var minX = w, minY = h, maxX = 0, maxY = 0
+        for q in holeIndices {
+            minX = min(minX, q % w); maxX = max(maxX, q % w)
+            minY = min(minY, q / w); maxY = max(maxY, q / w)
+        }
+        let radius = max(2, min(maxX - minX, maxY - minY) / 6)
+        var integral = [SIMD3<Float>](repeating: .zero, count: (w + 1) * (h + 1))
+        for y in 0..<h {
+            var row = SIMD3<Float>.zero
+            for x in 0..<w {
+                row += level.pixels[y * w + x]
+                integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1] + row
+            }
+        }
+        for q in holeIndices {
+            let x = q % w, y = q / w
+            let x0 = max(0, x - radius), x1 = min(w - 1, x + radius)
+            let y0 = max(0, y - radius), y1 = min(h - 1, y + radius)
+            let area = Float((x1 - x0 + 1) * (y1 - y0 + 1))
+            let a = integral[(y1 + 1) * (w + 1) + x1 + 1]
+            let b = integral[y0 * (w + 1) + x1 + 1]
+            let c = integral[(y1 + 1) * (w + 1) + x0]
+            let d = integral[y0 * (w + 1) + x0]
+            let low: SIMD3<Float> = (a - b - c + d) / area
+            level.pixels[q] += (membrane[q] - low) * weight
+        }
     }
 
     /// Doubles a nearest-neighbor field to the next finer level.

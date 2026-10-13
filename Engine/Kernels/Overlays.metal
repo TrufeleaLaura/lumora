@@ -54,18 +54,22 @@ float4 lumora_shadowLayer(float4 params, float2 size, destination dest) {
         float2 uv = p / size;
         light = mix(1.0f, light, smoothstep(0.0f, 0.35f, uv.x + uv.y * 0.3f) * (1.0f - smoothstep(0.85f, 1.3f, uv.x + uv.y * 0.3f)));
     } else {
-        // Leaves / dappled light: soft cells.
-        float2 q = r / (period * 2.5f);
+        // Leaves / dappled light: warped, elongated cells (leaf-like blobs, not dots).
+        float2 q = r / (period * 2.2f);
+        q += 0.45f * float2(sin(q.y * 1.7f + 0.6f * sin(q.x * 2.3f)), sin(q.x * 1.3f + 0.8f * sin(q.y * 1.9f)));
         float2 cell = floor(q);
-        float best = 1.0f;
+        float best = 2.0f;
         for (int j = -1; j <= 1; j++) {
             for (int i = -1; i <= 1; i++) {
                 float2 g = cell + float2(i, j);
                 float2 o = float2(lumoraOHash(g), lumoraOHash(g + 17.0f));
-                best = min(best, length(q - g - o));
+                float angle = lumoraOHash(g + 41.0f) * 3.14159f;
+                float2 d = q - g - o;
+                float2 local = float2(d.x * cos(angle) + d.y * sin(angle), -d.x * sin(angle) + d.y * cos(angle));
+                best = min(best, length(local * float2(1.0f, 2.2f)));
             }
         }
-        light = style < 3.5f ? smoothstep(0.25f, 0.55f, best) : 1.0f - smoothstep(0.2f, 0.5f, best);
+        light = style < 3.5f ? smoothstep(0.3f, 0.7f, best) : 1.0f - smoothstep(0.25f, 0.6f, best);
     }
     float m = mix(0.35f, 1.0f, light);
     return float4(m, m, m, 1.0f);

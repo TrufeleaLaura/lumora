@@ -29,7 +29,7 @@ _Created: 2026-10-12 · Companion to [RESEARCH.md](RESEARCH.md)_
 | 8 · Masking | ✅ Done — subject, background, sky, objects (tap), people parts, brush + auto edge, linear/radial, color/luminance range, control points, add/subtract/intersect, local adjustments |
 | 9 · Retouch & remove | ✅ Done — heal, clone, remove (content-aware fill, tap objects/people), red eye |
 | 10 · Creative styles | ✅ Done — HDR Scape, Drama, Tonal Contrast, Glamour Glow, Halation, Vintage, Noir, Grunge, RGB split, lens blur (subject/radial/tilt-shift) |
-| 11 · Aesthetic & templates | 🔨 In progress — overlays (dust, scratches, light leaks, paper, plastic, shadows, prism), frames (border, instant, 35 mm, Super 8, VHS), date stamp, text & stickers; next: collage/story templates, feed planner |
+| 11 · Aesthetic & templates | ✅ Done — overlays (dust, scratches, light leaks, paper, plastic, shadows, prism), frames (border, instant, 35 mm, Super 8, VHS), date stamp, text & stickers, collage/story/moodboard maker, feed planner |
 | 12–13 | ⏳ Planned |
 
 Testing note: the iOS simulator's Vision returns scrambled face landmarks, so CI runs

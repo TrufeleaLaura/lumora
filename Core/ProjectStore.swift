@@ -163,3 +163,31 @@ public final class ProjectStore: @unchecked Sendable {
         return decoder
     }()
 }
+
+// MARK: - Feed planner
+
+extension ProjectStore {
+    private var feedOrderURL: URL { rootURL.appendingPathComponent("feed.json") }
+
+    /// The planned order of the feed grid (top-left first).
+    public func feedOrder() -> [UUID] {
+        guard let data = try? Data(contentsOf: feedOrderURL),
+              let ids = try? JSONDecoder().decode([UUID].self, from: data) else { return [] }
+        return ids
+    }
+
+    public func saveFeedOrder(_ ids: [UUID]) {
+        if let data = try? JSONEncoder().encode(ids) {
+            try? data.write(to: feedOrderURL, options: .atomic)
+        }
+    }
+
+    /// Projects in feed order: anything not yet placed goes first (newest first, like a new
+    /// post), then the planned order; deleted projects drop out.
+    public static func feed(_ projects: [ProjectMetadata], order: [UUID]) -> [ProjectMetadata] {
+        let byID = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0) })
+        let placed = Set(order)
+        let unplaced = projects.filter { !placed.contains($0.id) }.sorted { $0.createdAt > $1.createdAt }
+        return unplaced + order.compactMap { byID[$0] }
+    }
+}
