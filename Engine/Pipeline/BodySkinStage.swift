@@ -112,9 +112,8 @@ extension RenderPipeline {
 
         // Smoothing inputs at body scale.
         let swPixels = CGFloat(sw) * extent.width
-        let pair = Kernels.perceptualLumaPair.apply(crop)
-        let base = GuidedFilter.selfCoefficients(pair: pair, radius: max(2, swPixels * 0.03), eps: 0.0016)
         let fine = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(crop), radius: max(0.6, swPixels * 0.004))
+        let base = GuidedFilter.selfCoefficients(pair: Kernels.lumaPair.apply(fine), radius: max(2, swPixels * 0.03), eps: 0.0016)
         let chroma = GuidedFilter.gaussian(Kernels.toOklab.apply(crop), radius: max(2, swPixels * 0.03))
 
         // Cellulite area: below the hips, fading in over a short band.

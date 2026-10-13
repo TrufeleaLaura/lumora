@@ -25,25 +25,33 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedBodies: [BodyShape]?
     private let knownPoses: [BodyPose]?
     private var warpCache: [String: DisplacementField] = [:]
+    private var cachedSubject: SubjectAnalysis??
+    private let knownSubject: CIImage?
+    private var cachedSky: CIImage??
 
     private let knownLandmarks: [FaceLandmarks]?
 
     /// - Parameters:
     ///   - faceLandmarks: landmarks to use instead of Vision detection (reference data in tests).
     ///   - personMask: person mask to use instead of Vision segmentation (reference data in tests).
-    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil, personMask: CIImage? = nil, bodyPoses: [BodyPose]? = nil) {
+    ///   - subjectMask: subject mask to use instead of Vision foreground segmentation (tests).
+    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil, personMask: CIImage? = nil, bodyPoses: [BodyPose]? = nil, subjectMask: CIImage? = nil) {
         self.source = image
         self.context = context
         self.knownLandmarks = faceLandmarks
         self.knownPoses = bodyPoses
+        self.knownSubject = subjectMask.map { Self.stretch($0, over: image.extent) }
         if let personMask {
-            let extent = image.extent
-            let mask = personMask
-                .transformed(by: CGAffineTransform(translationX: -personMask.extent.minX, y: -personMask.extent.minY))
-                .transformed(by: CGAffineTransform(scaleX: extent.width / max(personMask.extent.width, 1), y: extent.height / max(personMask.extent.height, 1)))
-                .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
-            self.cachedPerson = .some(mask)
+            self.cachedPerson = .some(Self.stretch(personMask, over: image.extent))
         }
+    }
+
+    /// Stretches a mask (any extent) over `extent`.
+    static func stretch(_ mask: CIImage, over extent: CGRect) -> CIImage {
+        mask
+            .transformed(by: CGAffineTransform(translationX: -mask.extent.minX, y: -mask.extent.minY))
+            .transformed(by: CGAffineTransform(scaleX: extent.width / max(mask.extent.width, 1), y: extent.height / max(mask.extent.height, 1)))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
     }
 
     /// Local average brightness (guided-filter coefficients of log luminance, large radius).
@@ -106,6 +114,41 @@ public final class ImageAnalysis: @unchecked Sendable {
         let size = source.extent.size
         let result = poses.compactMap { BodyAnalyzer.shape(for: $0, personMask: mask, imageSize: size, image: source, context: context) }
         cachedBodies = result
+        return result
+    }
+
+    /// Vision's foreground objects (nil when segmentation isn't available).
+    public var subject: SubjectAnalysis? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedSubject { return cachedSubject }
+        let result = knownSubject == nil ? SubjectSegmenter.analyze(source, context: context) : nil
+        cachedSubject = .some(result)
+        return result
+    }
+
+    /// Soft mask of the main subject(s) over the analyzed extent: Vision's foreground objects,
+    /// falling back to people.
+    public var subjectMask: CIImage? {
+        if let knownSubject { return knownSubject }
+        if let all = subject?.allMask { return all }
+        return personMask
+    }
+
+    /// Soft mask of the foreground objects under normalized points (y up).
+    public func objectMask(at points: [SIMD2<Double>]) -> CIImage? {
+        guard !points.isEmpty, let subject else { return nil }
+        return subject.mask(instances: subject.instances(at: points))
+    }
+
+    /// Guided-filter coefficients of the sky mask over the analyzed extent, nil when there's no sky.
+    public var skyCoefficients: CIImage? {
+        let person = personMask
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedSky { return cachedSky }
+        let result = SkyDetector.coefficients(source, person: person, context: context)
+        cachedSky = .some(result)
         return result
     }
 

@@ -26,9 +26,9 @@ extension RenderPipeline {
         let faceWidth = CGFloat(face.landmarks.bounds.width) * extent.width
 
         let crop = image.clampedToExtent().cropped(to: rect)
-        let pair = Kernels.perceptualLumaPair.apply(crop)
-        let base = GuidedFilter.selfCoefficients(pair: pair, radius: max(2, faceWidth * 0.03), eps: 0.0016)
         let fine = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(crop), radius: max(0.6, faceWidth * 0.0045))
+        // Guided by the blurred luma, so the smooth base layer can't carry grain back in.
+        let base = GuidedFilter.selfCoefficients(pair: Kernels.lumaPair.apply(fine), radius: max(2, faceWidth * 0.03), eps: 0.0016)
         let chroma = GuidedFilter.gaussian(Kernels.toOklab.apply(crop), radius: max(2, faceWidth * 0.04))
         let masksA = Self.place(face.masksA, region: face.maskRegion, in: extent).cropped(to: rect)
         let masksB = Self.place(face.masksB, region: face.maskRegion, in: extent).cropped(to: rect)

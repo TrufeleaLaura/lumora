@@ -20,9 +20,17 @@ _Created: 2026-10-12 · Companion to [RESEARCH.md](RESEARCH.md)_
 |---|---|
 | 0 · Pipeline setup | ✅ Done — repo, XcodeGen, CI (tests + render previews + unsigned IPA) |
 | 1 · Editor foundation | ✅ Done — projects, RAW, zoom/pan canvas, compare/split, history, export options |
-| 2 · Pro adjustments | ✅ Engine + panels (light, color, mixer, grading, curves, effects, detail, optics), crop/rotate/perspective |
-| 3 · Looks & presets | 🔨 In progress — 56 built-in looks, strength, presets, LUT import, batch paste |
-| 4–13 | ⏳ Planned |
+| 2 · Pro adjustments | ✅ Done — light, color, mixer, grading, curves, effects, detail, optics, crop/rotate/perspective |
+| 3 · Looks & presets | ✅ Done — 56 looks in 8 packs, strength, presets, LUT import, batch paste |
+| 4 · Face beauty | ✅ Done — skin, eyes, teeth, iris, face reshape (MLS warps), all/per-face |
+| 5 · Brows, makeup, hair | ✅ Done — brows, lipstick finishes, blush/contour/highlight, eye makeup, hair recolor |
+| 6 · Body editor | ✅ Done — waist, hips, butt/lift, bust, thighs, legs, height, arms, shoulders, neck, head |
+| 7 · Muscles & body skin | 🔨 In review — abs (6/8/11), chest, arms, V-line, body smooth, tan, cellulite |
+| 8–13 | ⏳ Planned |
+
+Testing note: the iOS simulator's Vision returns scrambled face landmarks, so CI runs
+`scripts/reference_analysis.swift` on macOS (real Vision) and the tests use those
+landmarks, body poses and person masks for the photos in `Fixtures/Photos`.
 
 ## 1. Architecture
 

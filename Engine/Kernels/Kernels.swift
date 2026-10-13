@@ -51,6 +51,7 @@ enum Kernels {
     static let logLumaPair = colorKernel("lumora_logLumaPair")
     static let perceptualLuma = colorKernel("lumora_perceptualLuma")
     static let perceptualLumaPair = colorKernel("lumora_perceptualLumaPair")
+    static let lumaPair = colorKernel("lumora_lumaPair")
     static let guidedSelfCoefficients = colorKernel("lumora_guidedSelfCoefficients")
     static let guidedPack = colorKernel("lumora_guidedPack")
     static let guidedPackSquare = colorKernel("lumora_guidedPackSquare")
@@ -77,6 +78,20 @@ enum Kernels {
     static let hairColor = colorKernel("lumora_hairColor")
     static let bodySkin = colorKernel("lumora_bodySkin")
     static let displace = generalKernel("lumora_displace")
+
+    // Masks
+    static let linearMask = generalKernel("lumora_linearMask")
+    static let radialMask = generalKernel("lumora_radialMask")
+    static let colorRangeMask = colorKernel("lumora_colorRangeMask")
+    static let luminanceMask = colorKernel("lumora_luminanceMask")
+    static let maskCombine = colorKernel("lumora_maskCombine")
+    static let maskInvert = colorKernel("lumora_maskInvert")
+    static let maskMultiply = colorKernel("lumora_maskMultiply")
+    static let guidedMask = colorKernel("lumora_guidedMask")
+    static let maskBlend = colorKernel("lumora_maskBlend")
+    static let maskOverlay = colorKernel("lumora_maskOverlay")
+    static let peopleBody = colorKernel("lumora_peopleBody")
+    static let peopleFace = colorKernel("lumora_peopleFace")
 }
 
 extension CIColorKernel {

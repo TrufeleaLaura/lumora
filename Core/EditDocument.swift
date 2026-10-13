@@ -236,6 +236,8 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var look = LookSettings()
     public var beauty = BeautySettings()
     public var body = BodyEditSettings()
+    /// Local adjustments, applied in order.
+    public var masks: [Mask] = []
 
     public init() {}
 
@@ -246,6 +248,12 @@ public struct EditDocument: Codable, Equatable, Sendable {
         // Per-face/per-person edits are tied to this photo; the "all" settings carry over.
         copy.beauty.faces = []
         copy.body.bodies = []
+        // Automatic and shape masks carry over; painted strokes and tapped objects belong to this photo.
+        copy.masks = masks.compactMap { mask in
+            var mask = mask
+            mask.components.removeAll { $0.kind == .brush || $0.kind == .object }
+            return mask.components.isEmpty ? nil : mask
+        }
         return copy
     }
 

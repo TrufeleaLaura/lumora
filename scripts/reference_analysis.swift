@@ -64,9 +64,10 @@ for file in files {
     let personRequest = VNGeneratePersonSegmentationRequest()
     personRequest.qualityLevel = .accurate
     personRequest.outputPixelFormat = kCVPixelFormatType_OneComponent8
+    let subjectRequest = VNGenerateForegroundInstanceMaskRequest()
     let handler = VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:])
     do {
-        try handler.perform([faceRequest, bodyRequest, personRequest])
+        try handler.perform([faceRequest, bodyRequest, personRequest, subjectRequest])
     } catch {
         FileHandle.standardError.write("Vision failed on \(file): \(error)\n".data(using: .utf8)!)
         continue
@@ -110,6 +111,27 @@ for file in files {
         let context = CIContext()
         if let cgMask = context.createCGImage(mask, from: mask.extent, format: .L8, colorSpace: CGColorSpaceCreateDeviceGray()) {
             let name = (file as NSString).deletingPathExtension + "-person.png"
+            let maskURL = folder.appendingPathComponent(name)
+            if let destination = CGImageDestinationCreateWithURL(maskURL as CFURL, UTType.png.identifier as CFString, 1, nil) {
+                CGImageDestinationAddImage(destination, cgMask, nil)
+                CGImageDestinationFinalize(destination)
+            }
+        }
+    }
+    // Subject (all foreground objects) mask: <name>-subject.png
+    if let observation = subjectRequest.results?.first,
+       let buffer = try? observation.generateScaledMaskForImage(forInstances: observation.allInstances, from: handler) {
+        let raw = CIImage(cvPixelBuffer: buffer)
+        let gray = raw.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 1, y: 0, z: 0, w: 0),
+            "inputGVector": CIVector(x: 1, y: 0, z: 0, w: 0),
+            "inputBVector": CIVector(x: 1, y: 0, z: 0, w: 0),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+            "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+        ])
+        let context = CIContext(options: [.workingColorSpace: NSNull()])
+        if let cgMask = context.createCGImage(gray, from: raw.extent, format: .L8, colorSpace: CGColorSpaceCreateDeviceGray()) {
+            let name = (file as NSString).deletingPathExtension + "-subject.png"
             let maskURL = folder.appendingPathComponent(name)
             if let destination = CGImageDestinationCreateWithURL(maskURL as CFURL, UTType.png.identifier as CFString, 1, nil) {
                 CGImageDestinationAddImage(destination, cgMask, nil)

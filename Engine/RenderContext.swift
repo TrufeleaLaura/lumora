@@ -39,7 +39,7 @@ public enum RenderContext {
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
     }
 
-    /// Reads a data image into a float array (RGBA per pixel, rows bottom-up), without color management.
+    /// Reads a data image into a float array (RGBA per pixel, rows top-down), without color management.
     public static func readFloats(_ image: CIImage, context: CIContext = analysis) -> (pixels: [Float], width: Int, height: Int) {
         let extent = image.extent.integral
         let width = Int(extent.width)

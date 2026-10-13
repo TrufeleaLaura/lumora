@@ -52,8 +52,9 @@ float4 lumora_faceRetouch(sample_t s, sample_t base, sample_t fine, sample_t chr
     float lightMatch = smoothstep(tone.x - 0.4f, tone.x - 0.22f, chroma.x);
     float skin = masksA.r * mix(0.45f, 1.0f, colorMatch * lightMatch) * smoothstep(0.1f, 0.3f, lightMatch + colorMatch);
 
-    // Frequency separation: low (edge-aware) + mid (blotches) + high (pores).
-    float low = base.r * p + base.g;
+    // Frequency separation: low (edge-aware, guided by the slightly blurred luma so it holds no
+    // grain) + mid (blotches) + high (pores).
+    float low = base.r * fine.r + base.g;
     float mid = fine.r - low;
     float high = p - fine.r;
     float smooth = skinParams.x * skin;
@@ -202,14 +203,14 @@ float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t b
     float skin = person.r * colorMatch * lightMatch;
     if (skin <= 0.0f) { return s; }
 
-    float low = base.r * p + base.g;
+    float low = base.r * fine.r + base.g;
     float mid = fine.r - low;
     float high = p - fine.r;
     float smooth = skin * clamp(skinParams.x + skinParams.z * lowerBody.r, 0.0f, 1.0f);
     float p2 = p - smooth * mid * 0.9f - skinParams.x * skin * high * 0.3f;
 
     // Muscle relief: lift the lit edges, deepen the grooves (multiplicative, keeps skin texture).
-    p2 *= 1.0f + (shading.r * 0.22f - shading.g * 0.3f) * skin;
+    p2 *= 1.0f + (shading.r * 0.12f - shading.g * 0.32f) * skin;
 
     float y2 = lumoraBToLinear(max(p2, 0.0f));
     c = y > 1.0e-6f ? c * (y2 / y) : float3(y2);

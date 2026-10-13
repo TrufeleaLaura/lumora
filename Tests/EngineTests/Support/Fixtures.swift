@@ -96,6 +96,14 @@ enum Fixtures {
         return CIImage(contentsOf: url, options: [.colorSpace: NSNull()])
     }
 
+    /// Reference subject mask (macOS Vision foreground instances) for a fixture photo, if generated.
+    static func subjectMask(_ name: String) -> CIImage? {
+        let bundle = Bundle(for: FixtureBundleMarker.self)
+        guard let url = bundle.url(forResource: "\(name)-subject", withExtension: "png", subdirectory: "Photos")
+                ?? bundle.url(forResource: "\(name)-subject", withExtension: "png") else { return nil }
+        return CIImage(contentsOf: url, options: [.colorSpace: NSNull()])
+    }
+
     /// Reference body poses for a fixture photo.
     static func poses(_ name: String) -> [BodyPose] {
         bodies(name).map { joints in
@@ -115,7 +123,8 @@ enum Fixtures {
             image: image,
             faceLandmarks: hasReference ? faces(name) : nil,
             personMask: personMask(name),
-            bodyPoses: hasReference ? poses(name) : nil
+            bodyPoses: hasReference ? poses(name) : nil,
+            subjectMask: subjectMask(name)
         )
     }
 

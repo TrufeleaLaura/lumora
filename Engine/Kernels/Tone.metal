@@ -76,6 +76,11 @@ float4 lumora_perceptualLumaPair(sample_t s) {
     return float4(p, p * p, 0.0f, 1.0f);
 }
 
+// (value, its square, 0) of a single-channel image (in .r).
+float4 lumora_lumaPair(sample_t s) {
+    return float4(s.r, s.r * s.r, 0.0f, 1.0f);
+}
+
 // Self-guided filter coefficients from box-filtered (mean I, mean I²).
 float4 lumora_guidedSelfCoefficients(sample_t means, float eps) {
     float meanI = means.r;
