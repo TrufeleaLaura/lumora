@@ -7,7 +7,7 @@ import LumoraCore
 struct MakeupMaskSet {
     /// (blush, contour, highlight) — heavily feathered. Same region as the retouch masks.
     let c: CIImage
-    /// (eyeshadow, brow distance field, 0) — medium feather.
+    /// (eyeshadow, brow distance field, solid face area) — medium feather.
     let d: CIImage
     /// (eyeliner, lashes, brow core) — light feather.
     let e: CIImage
@@ -168,7 +168,28 @@ enum MakeupMasks {
                 }
             }
         }
-        let empty = [UInt8](repeating: 0, count: width * height)
+        // Solid face area (no holes for eyes/lips) — keeps hair color off the face.
+        let faceArea = FaceMasks.rasterize(width: width, height: height) { ctx in
+            var outline: [SIMD2<Double>] = contour
+            let browPoints = brows[0] + brows[1]
+            let browMid = browPoints.isEmpty ? frame.eyeMid + frame.up * (0.35 * em) : FaceLandmarks.centroid(browPoints)
+            for t in stride(from: -0.5, through: 0.5, by: 0.1) {
+                outline.append(move(browMid, right: t * fw * 0.95, up: em * 0.6 * (1 - 1.6 * t * t)))
+            }
+            outline.sort { a, b in
+                let ca: SIMD2<Double> = a - frame.eyeMid
+                let cb: SIMD2<Double> = b - frame.eyeMid
+                return atan2(ca.y, ca.x) < atan2(cb.y, cb.x)
+            }
+            guard let first = outline.first else { return }
+            let path = CGMutablePath()
+            path.move(to: px(first))
+            for point in outline.dropFirst() { path.addLine(to: px(point)) }
+            path.closeSubpath()
+            ctx.setFillColor(gray: 1, alpha: 1)
+            ctx.addPath(path)
+            ctx.fillPath()
+        }
 
         // Eyeliner, lashes, brow core.
         let liner = FaceMasks.rasterize(width: width, height: height) { ctx in
@@ -207,7 +228,7 @@ enum MakeupMasks {
             RenderContext.materialize(GuidedFilter.gaussian(image, radius: max(0.5, radius)), context: context)
         }
         let c = soften(FaceMasks.pack(blush, sculpt, glow, width: width, height: height), featherScale * 0.03)
-        let d = soften(FaceMasks.pack(lids, browField, empty, width: width, height: height), featherScale * 0.012)
+        let d = soften(FaceMasks.pack(lids, browField, faceArea, width: width, height: height), featherScale * 0.012)
         let e = soften(FaceMasks.pack(liner, lashes, browCore, width: width, height: height), featherScale * 0.003)
 
         // Head area for hair color: a tall ellipse around the head, in its own larger region.

@@ -162,13 +162,17 @@ float4 lumora_makeup(sample_t s, sample_t masksA, sample_t masksB, sample_t mask
 }
 
 // Hair recolor around one head. person: person segmentation (r); head: head area (r);
-// faceMasks: masksA placed over this region (skin oval in r, to protect the face).
+// faceArea: solid face mask (r) to keep the face, eyes and lips untouched.
 // target: (amount, L, a, b); hairTone/tone: average hair and skin (L, a, b).
-float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t faceMasks, float4 target, float4 hairTone, float4 tone) {
+float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t faceArea, float4 target, float4 hairTone, float4 tone) {
     float3 c = max(s.rgb, float3(0.0f));
     float3 lab = lumoraBToOklab(c);
     float skinLike = (1.0f - smoothstep(0.04f, 0.09f, length(lab.yz - tone.yz))) * smoothstep(tone.x - 0.3f, tone.x - 0.15f, lab.x);
-    float hair = person.r * head.r * (1.0f - skinLike * 0.9f) * (1.0f - faceMasks.r);
+    // Similar to the sampled hair color (lightness counts half, so highlights/shadows still match).
+    float3 diff = lab - hairTone.xyz;
+    float hairDistance = length(float3(diff.x * 0.5f, diff.yz));
+    float hairLike = 1.0f - smoothstep(0.1f, 0.2f, hairDistance);
+    float hair = person.r * head.r * hairLike * (1.0f - skinLike * 0.9f) * (1.0f - faceArea.r);
     float weight = hair * target.x;
     if (weight <= 0.0f) { return s; }
     // Shift lightness toward the target, keep strand-level variation.

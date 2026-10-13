@@ -87,14 +87,19 @@ public enum BodyAnalyzer {
         }
 
         // Region: all joints plus a margin, so warps fade out well away from the body.
-        let points = pose.joints.values.map(iso)
-        let xs = points.map(\.x), ys = points.map(\.y)
-        let margin = sw * 0.6
-        let minX = max(0, (xs.min() ?? 0) - margin)
-        let maxX = min(1, (xs.max() ?? 1) + margin)
-        let minY = max(0, ((ys.min() ?? 0) - margin) / aspect)
-        let maxY = min(1, ((ys.max() ?? aspect) + margin) / aspect)
-        let region = CGRectValue(x: minX, y: minY, width: max(maxX - minX, 0.01), height: max(maxY - minY, 0.01))
+        let points: [SIMD2<Double>] = pose.joints.values.map(iso)
+        let xs: [Double] = points.map { $0.x }
+        let ys: [Double] = points.map { $0.y }
+        let margin: Double = sw * 0.6
+        let lowX: Double = (xs.min() ?? 0) - margin
+        let highX: Double = (xs.max() ?? 1) + margin
+        let lowY: Double = ((ys.min() ?? 0) - margin) / aspect
+        let highY: Double = ((ys.max() ?? aspect) + margin) / aspect
+        let minX: Double = Swift.max(0.0, lowX)
+        let maxX: Double = Swift.min(1.0, highX)
+        let minY: Double = Swift.max(0.0, lowY)
+        let maxY: Double = Swift.min(1.0, highY)
+        let region = CGRectValue(x: minX, y: minY, width: Swift.max(maxX - minX, 0.01), height: Swift.max(maxY - minY, 0.01))
         return BodyShape(pose: pose, outline: outline, region: region)
     }
 }

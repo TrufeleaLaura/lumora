@@ -35,20 +35,21 @@ public struct BodyShape: Equatable, Sendable {
 }
 
 public enum BodyReshape {
-    struct Frame {
-        var hips: SIMD2<Double>
-        var shoulders: SIMD2<Double>
-        var up: SIMD2<Double>
-        var right: SIMD2<Double>
-        var torso: Double
-        var shoulderWidth: Double
+    /// Body axes in isotropic units (x across the image width, y scaled by the aspect ratio).
+    public struct Frame: Sendable {
+        public var hips: SIMD2<Double>
+        public var shoulders: SIMD2<Double>
+        public var up: SIMD2<Double>
+        public var right: SIMD2<Double>
+        public var torso: Double
+        public var shoulderWidth: Double
     }
 
     static func iso(_ p: SIMD2<Double>, _ aspect: Double) -> SIMD2<Double> { SIMD2(p.x, p.y * aspect) }
 
-    static func length(_ v: SIMD2<Double>) -> Double { (v.x * v.x + v.y * v.y).squareRoot() }
+    public static func length(_ v: SIMD2<Double>) -> Double { (v.x * v.x + v.y * v.y).squareRoot() }
 
-    static func frame(_ pose: BodyPose, aspect: Double) -> Frame? {
+    public static func frame(_ pose: BodyPose, aspect: Double) -> Frame? {
         guard let hipsN = pose.hipCenter, let shouldersN = pose.shoulderCenter else { return nil }
         let hips = iso(hipsN, aspect)
         let shoulders = iso(shouldersN, aspect)

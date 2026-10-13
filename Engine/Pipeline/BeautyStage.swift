@@ -117,11 +117,18 @@ extension RenderPipeline {
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
             .cropped(to: rect)
         let head = Self.place(masks.head, region: masks.headRegion, in: extent).cropped(to: rect)
-        let faceOval = Self.place(face.masksA, region: face.maskRegion, in: extent)
+        // Solid face area lives in the blue channel of mask set D; move it to red for the kernel.
+        let faceArea = Self.place(masks.d, region: face.maskRegion, in: extent)
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0, y: 0, z: 1, w: 0),
+                "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            ])
             .composited(over: CIImage(color: CIColor(red: 0, green: 0, blue: 0)).cropped(to: rect))
             .cropped(to: rect)
         let result = Kernels.hairColor.apply(
-            crop, personScaled, head, faceOval,
+            crop, personScaled, head, faceArea,
             Self.vector(m.hairColorAmount, m.hairColor),
             Self.tone(face.hairTone),
             Self.tone(face.skinTone)
