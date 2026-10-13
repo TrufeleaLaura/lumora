@@ -123,6 +123,9 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
         tap.require(toFail: doubleTap)
         view.addGestureRecognizer(tap)
 
+        view.isAccessibilityElement = true
+        view.accessibilityIdentifier = "canvas"
+        view.accessibilityLabel = "Photo"
         panRecognizer = pan
         paintRecognizer = paint
         tapRecognizer = tap
@@ -311,6 +314,10 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
 
     private func contentChanged() {
         generation += 1
+        // Lets UI tests check what is on screen.
+        let extent = imageExtent
+        view?.accessibilityValue = "\(Int(extent.width))x\(Int(extent.height)) at \(Int(extent.minX)),\(Int(extent.minY)) zoom \(String(format: "%.2f", zoom))"
+
         clampPan()
         publishViewport()
         requestDraw()

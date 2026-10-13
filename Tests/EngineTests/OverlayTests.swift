@@ -41,6 +41,20 @@ final class OverlayTests: XCTestCase {
         }
     }
 
+    func testInstantFrameOnTheAppPreviewPath() {
+        // Same path as the editor: source → proxy → pipeline with analysis and preview scale.
+        let source = ImageSource(image: Fixtures.photo("portrait-smile"))
+        let proxy = source.makeProxy(maxDimension: 2560)
+        var document = EditDocument()
+        document.frame.style = .polaroid
+        let output = pipeline.apply(document, to: proxy, scale: proxy.extent.width / source.pixelSize.width, analysis: ImageAnalysis(image: proxy))
+        let layout = FrameLayout.layout(document.frame, contentWidth: Double(proxy.extent.width), contentHeight: Double(proxy.extent.height))
+        XCTAssertEqual(Double(output.extent.width), layout.width, accuracy: 0.5)
+        XCTAssertEqual(Double(output.extent.height), layout.height, accuracy: 0.5)
+        XCTAssertEqual(output.extent.minX, 0)
+        XCTAssertEqual(output.extent.minY, 0)
+    }
+
     func testTextAndStickersAppearWhereTheyArePlaced() {
         let dark = TestScene.shadowRect
         let position = SIMD2(Double(dark.midX) / 960, Double(dark.midY) / 640)

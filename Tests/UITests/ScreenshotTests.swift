@@ -70,6 +70,12 @@ final class ScreenshotTests: XCTestCase {
             if button(app, containing: "Instant").exists { button(app, containing: "Instant").tap() }
             sleep(3)
             save("21-overlays-frame")
+            let canvas = app.descendants(matching: .any)["canvas"]
+            let info = "canvas: \(canvas.value as? String ?? "?") frame: \(canvas.frame)"
+            print(info)
+            if let directory = outputDirectory {
+                try? info.write(to: directory.appendingPathComponent("canvas-info.txt"), atomically: true, encoding: .utf8)
+            }
         }
         open(app, tool: "styles")
         sleep(1)
