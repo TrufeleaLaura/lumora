@@ -90,7 +90,11 @@ targets:
   LumoraEngineTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [Tests/EngineTests]
+    sources:
+      - path: Tests/EngineTests
+      - path: Fixtures/Photos
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: LumoraCore
       - target: LumoraEngine

@@ -234,6 +234,7 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var optics = OpticsSettings()
     public var geometry = GeometrySettings()
     public var look = LookSettings()
+    public var beauty = BeautySettings()
 
     public init() {}
 
@@ -241,6 +242,8 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public func adjustmentsOnly(keeping geometry: GeometrySettings) -> EditDocument {
         var copy = self
         copy.geometry = geometry
+        // Per-face edits are tied to faces in this photo; the "all faces" settings carry over.
+        copy.beauty.faces = []
         return copy
     }
 

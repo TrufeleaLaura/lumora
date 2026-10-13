@@ -70,6 +70,10 @@ enum Kernels {
     static let lensVignette = generalKernel("lumora_lensVignette")
     static let lensDistortion = generalKernel("lumora_lensDistortion")
     static let homography = generalKernel("lumora_homography")
+
+    // Face & body
+    static let faceRetouch = colorKernel("lumora_faceRetouch")
+    static let displace = generalKernel("lumora_displace")
 }
 
 extension CIColorKernel {

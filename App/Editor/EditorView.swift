@@ -127,6 +127,8 @@ struct EditorView: View {
             .overlay {
                 if session.activeTool == .crop {
                     CropOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .face && session.compareMode == .none {
+                    FaceMarkersOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
@@ -182,6 +184,11 @@ struct EditorView: View {
                             .frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
+            case .face:
+                FacePanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .crop:
                 CropPanel(session: session)
                     .padding(.horizontal, 22)

@@ -6,7 +6,7 @@ import LumoraCore
 /// Turns a source image + `EditDocument` into the edited image (a lazy Core Image graph).
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
-/// Stage order: optics → local contrast → white balance → dehaze → tone → curves → color → look
+/// Stage order: face retouch → face reshape → optics → local contrast → white balance → dehaze → tone → curves → color → look
 /// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
 public struct RenderPipeline {
     /// Looks up imported LUTs by id.
@@ -22,10 +22,13 @@ public struct RenderPipeline {
     ///     (sharpening, noise reduction) use it so the preview matches the export.
     ///   - analysis: cached per-photo analysis; computed on demand when nil.
     ///   - includeCrop: false while the crop tool is open (shows the whole rotated photo).
-    public func apply(_ document: EditDocument, to input: CIImage, scale: CGFloat = 1, analysis: ImageAnalysis? = nil, includeCrop: Bool = true) -> CIImage {
+    ///   - includeGeometry: false while face/body tools are open (overlays match the source photo).
+    public func apply(_ document: EditDocument, to input: CIImage, scale: CGFloat = 1, analysis: ImageAnalysis? = nil, includeCrop: Bool = true, includeGeometry: Bool = true) -> CIImage {
         guard !document.isIdentity else { return input }
         let analysis = analysis ?? ImageAnalysis(image: input)
         var image = input
+        image = applyBeauty(document.beauty, to: image, analysis: analysis)
+        image = applyFaceWarp(document.beauty, to: image, analysis: analysis)
         image = applyOptics(document.optics, to: image, scale: scale)
         image = applyLocalContrast(document.effects, to: image, analysis: analysis)
         image = applyWhiteBalance(document.color, to: image)
@@ -36,7 +39,9 @@ public struct RenderPipeline {
         image = applyLook(document.look, to: image, analysis: analysis)
         image = applyNoiseReduction(document.detail, to: image, scale: scale)
         image = applySharpening(document.detail, to: image, scale: scale)
-        image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
+        if includeGeometry {
+            image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
+        }
         image = applyFinish(effectiveEffects(document), to: image)
         return image
     }

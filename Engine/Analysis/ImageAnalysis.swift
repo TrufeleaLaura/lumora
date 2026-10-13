@@ -1,5 +1,6 @@
 import CoreImage
 import Foundation
+import LumoraCore
 
 /// Results of the haze analysis used by Dehaze.
 public struct HazeAnalysis {
@@ -19,6 +20,8 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedToneBase: CIImage?
     private var cachedClarityBase: CIImage?
     private var cachedHaze: HazeAnalysis?
+    private var cachedFaces: [FaceInfo]?
+    private var warpCache: [String: DisplacementField] = [:]
 
     public init(image: CIImage, context: CIContext = RenderContext.analysis) {
         self.source = image
@@ -54,11 +57,48 @@ public final class ImageAnalysis: @unchecked Sendable {
         return result
     }
 
+    /// Faces found in the photo (landmarks, skin tone, feature masks), left to right.
+    public var faces: [FaceInfo] {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedFaces { return cachedFaces }
+        let result = FaceAnalyzer.analyze(source, context: context)
+        cachedFaces = result
+        return result
+    }
+
+    /// True once face detection has run (so the UI can show results without blocking).
+    public var hasAnalyzedFaces: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cachedFaces != nil
+    }
+
+    /// Size of the analyzed image (the preview proxy).
+    public var imageSize: CGSize { source.extent.size }
+
+    /// Memoized warp fields (computing MLS on every slider tick would be wasteful).
+    func cachedField(key: String, build: () -> DisplacementField?) -> DisplacementField? {
+        lock.lock()
+        if let field = warpCache[key] {
+            lock.unlock()
+            return field
+        }
+        lock.unlock()
+        guard let field = build() else { return nil }
+        lock.lock()
+        if warpCache.count > 64 { warpCache.removeAll() }
+        warpCache[key] = field
+        lock.unlock()
+        return field
+    }
+
     /// Computes everything in advance (call from a background task).
     public func prewarm() {
         _ = toneBase
         _ = clarityBase
         _ = haze
+        _ = faces
     }
 
     // MARK: - Computation

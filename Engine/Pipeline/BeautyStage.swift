@@ -1,0 +1,131 @@
+import CoreImage
+import Foundation
+import LumoraCore
+
+extension RenderPipeline {
+    // MARK: - Retouch
+
+    /// Skin, eyes and teeth retouching, face by face (only inside each face's region).
+    func applyBeauty(_ beauty: BeautySettings, to input: CIImage, analysis: ImageAnalysis) -> CIImage {
+        guard !beauty.isIdentity else { return input }
+        let faces = analysis.faces
+        guard !faces.isEmpty else { return input }
+        var image = input
+        for face in faces {
+            let settings = beauty.settings(for: face.landmarks.anchor)
+            guard settings.hasRetouch else { continue }
+            image = retouch(face, settings: settings, image: image)
+        }
+        return image
+    }
+
+    private func retouch(_ face: FaceInfo, settings: FaceRetouchSettings, image: CIImage) -> CIImage {
+        let extent = image.extent
+        let rect = Self.pixelRect(face.maskRegion, in: extent).integral.intersection(extent)
+        guard rect.width > 4, rect.height > 4 else { return image }
+        let faceWidth = CGFloat(face.landmarks.bounds.width) * extent.width
+
+        let crop = image.clampedToExtent().cropped(to: rect)
+        let pair = Kernels.perceptualLumaPair.apply(crop)
+        let base = GuidedFilter.selfCoefficients(pair: pair, radius: max(2, faceWidth * 0.03), eps: 0.0016)
+        let fine = GuidedFilter.gaussian(Kernels.perceptualLuma.apply(crop), radius: max(0.6, faceWidth * 0.0045))
+        let chroma = GuidedFilter.gaussian(Kernels.toOklab.apply(crop), radius: max(2, faceWidth * 0.04))
+        let masksA = Self.place(face.masksA, region: face.maskRegion, in: extent).cropped(to: rect)
+        let masksB = Self.place(face.masksB, region: face.maskRegion, in: extent).cropped(to: rect)
+
+        let iris = ColorMath.oklabDirection(forWheelHue: settings.irisHue)
+        let retouched = Kernels.faceRetouch.apply(
+            crop, base, fine, chroma, masksA, masksB,
+            CIVector(x: CGFloat(settings.smooth / 100), y: CGFloat(settings.texture / 100), z: CGFloat(settings.evenTone / 100), w: CGFloat(settings.shine / 100)),
+            CIVector(x: CGFloat(settings.darkCircles / 100), y: CGFloat(settings.teethWhiten / 100), z: CGFloat(settings.eyeBrighten / 100), w: CGFloat(settings.eyeWhiten / 100)),
+            CIVector(x: CGFloat(settings.irisColor / 100), y: CGFloat(iris.0), z: CGFloat(iris.1), w: 0),
+            CIVector(x: CGFloat(face.skinTone.x), y: CGFloat(face.skinTone.y), z: CGFloat(face.skinTone.z), w: 0)
+        )
+        return retouched.composited(over: image)
+    }
+
+    // MARK: - Reshape
+
+    /// Face reshaping (slim, jaw, eyes, nose, lips…) as one smooth warp per face.
+    func applyFaceWarp(_ beauty: BeautySettings, to input: CIImage, analysis: ImageAnalysis) -> CIImage {
+        guard !beauty.isIdentity else { return input }
+        let extent = input.extent
+        let aspect = Double(extent.height / max(extent.width, 1))
+        var image = input
+        for (index, face) in analysis.faces.enumerated() {
+            let settings = beauty.settings(for: face.landmarks.anchor)
+            guard settings.hasReshape else { continue }
+            let key = "face-\(index)-\(settings.hashValue)-\(Int(aspect * 10000))"
+            guard let field = analysis.cachedField(key: key, build: {
+                FaceReshape.field(for: face.landmarks, settings: settings, aspect: aspect)
+            }) else { continue }
+            image = applyDisplacement(field, to: image)
+        }
+        return image
+    }
+
+    /// Warps an image with a backward displacement field.
+    public func applyDisplacement(_ field: DisplacementField, to image: CIImage) -> CIImage {
+        guard !field.isEmpty, field.columns > 1, field.rows > 1 else { return image }
+        let extent = image.extent
+        let width = extent.width
+        let height = extent.height
+
+        var floats = [Float](repeating: 1, count: field.columns * field.rows * 4)
+        var maxOffset: CGFloat = 0
+        for row in 0..<field.rows {
+            for column in 0..<field.columns {
+                let offset = field.offsets[row * field.columns + column]
+                // Bitmap rows are stored top-down; field rows are bottom-up.
+                let index = ((field.rows - 1 - row) * field.columns + column) * 4
+                floats[index] = offset.x
+                floats[index + 1] = offset.y
+                floats[index + 2] = 0
+                maxOffset = max(maxOffset, abs(CGFloat(offset.x)) * width, abs(CGFloat(offset.y)) * height)
+            }
+        }
+        let data = floats.withUnsafeBufferPointer { Data(buffer: $0) }
+        let fieldImage = CIImage(
+            bitmapData: data,
+            bytesPerRow: field.columns * 16,
+            size: CGSize(width: field.columns, height: field.rows),
+            format: .RGBAf,
+            colorSpace: nil
+        )
+        // Pixel centers of the field image sit on the grid vertices.
+        let stepX = CGFloat(field.region.width) * width / CGFloat(field.columns - 1)
+        let stepY = CGFloat(field.region.height) * height / CGFloat(field.rows - 1)
+        let placed = fieldImage.transformed(by: CGAffineTransform(translationX: -0.5, y: -0.5)
+            .concatenating(CGAffineTransform(scaleX: stepX, y: stepY))
+            .concatenating(CGAffineTransform(translationX: extent.minX + CGFloat(field.region.x) * width, y: extent.minY + CGFloat(field.region.y) * height)))
+
+        let margin = maxOffset + 2
+        return Kernels.displace.apply(
+            extent: extent,
+            roiCallback: { index, rect in index == 0 ? rect.insetBy(dx: -margin, dy: -margin) : rect },
+            arguments: [image.clampedToExtent(), placed, CIVector(x: width, y: height)]
+        ) ?? image
+    }
+
+    // MARK: - Helpers
+
+    static func pixelRect(_ region: CGRectValue, in extent: CGRect) -> CGRect {
+        CGRect(
+            x: extent.minX + CGFloat(region.x) * extent.width,
+            y: extent.minY + CGFloat(region.y) * extent.height,
+            width: CGFloat(region.width) * extent.width,
+            height: CGFloat(region.height) * extent.height
+        )
+    }
+
+    /// Stretches a mask image (covering `region`, normalized) over the matching pixels of `extent`.
+    static func place(_ mask: CIImage, region: CGRectValue, in extent: CGRect) -> CIImage {
+        let target = pixelRect(region, in: extent)
+        let source = mask.extent
+        guard source.width > 0, source.height > 0 else { return mask }
+        return mask
+            .transformed(by: CGAffineTransform(translationX: -source.minX, y: -source.minY)
+                .concatenating(CGAffineTransform(scaleX: target.width / source.width, y: target.height / source.height))
+                .concatenating(CGAffineTransform(translationX: target.minX, y: target.minY)))
+    }
+}

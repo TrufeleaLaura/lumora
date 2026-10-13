@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, crop
+    case looks, adjust, face, crop
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .looks: return "Looks"
         case .adjust: return "Adjust"
+        case .face: return "Face"
         case .crop: return "Crop"
         }
     }
@@ -21,9 +22,13 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .looks: return "camera.filters"
         case .adjust: return "slider.horizontal.3"
+        case .face: return "face.smiling"
         case .crop: return "crop.rotate"
         }
     }
+
+    /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
+    var showsSourceGeometry: Bool { self == .face }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -55,6 +60,9 @@ final class EditorSession: ObservableObject, Identifiable {
             guard activeTool != oldValue else { return }
             renderer.allowsZoom = activeTool != .crop
             updateRenderer()
+            if activeTool == .face {
+                prepareFaces()
+            }
         }
     }
     @Published private(set) var history = EditHistory()
@@ -107,9 +115,10 @@ final class EditorSession: ObservableObject, Identifiable {
         let original = source.original
         let analysis = self.analysis
         let includeCrop = activeTool != .crop
-        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis, includeCrop: includeCrop)
+        let includeGeometry = !activeTool.showsSourceGeometry
+        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
         renderer.fullResolutionImage = {
-            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis, includeCrop: includeCrop)
+            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
         }
     }
 
@@ -174,6 +183,73 @@ final class EditorSession: ObservableObject, Identifiable {
         if let target = history.jump(toAppliedCount: appliedCount) {
             document = target
         }
+    }
+
+    // MARK: - Face
+
+    /// Faces found in the photo (nil while detection hasn't finished).
+    @Published private(set) var faces: [FaceLandmarks]?
+    /// nil = edit all faces together.
+    @Published private(set) var selectedFaceIndex: Int?
+
+    func prepareFaces() {
+        guard faces == nil else { return }
+        let analysis = self.analysis
+        Task {
+            let found = await Task.detached(priority: .userInitiated) {
+                analysis.faces.map(\.landmarks)
+            }.value
+            faces = found
+            updateRenderer()
+        }
+    }
+
+    /// The face settings the Face panel edits right now.
+    var faceTarget: WritableKeyPath<EditDocument, FaceRetouchSettings> {
+        guard let index = selectedFaceIndex, let faces, index < faces.count,
+              let editIndex = document.beauty.faces.firstIndex(where: { $0.anchor.matches(faces[index].anchor) }) else {
+            return \EditDocument.beauty.allFaces
+        }
+        return \EditDocument.beauty.faces[editIndex].settings
+    }
+
+    /// Selects one face for individual edits (starting from the all-faces settings), or nil for all.
+    func selectFace(_ index: Int?) {
+        selectedFaceIndex = index
+        guard let index, let faces, index < faces.count else { return }
+        let anchor = faces[index].anchor
+        if !document.beauty.faces.contains(where: { $0.anchor.matches(anchor) }) {
+            document.beauty.faces.append(FaceEdit(anchor: anchor, settings: document.beauty.allFaces))
+        }
+    }
+
+    func autoBeauty() {
+        let target = faceTarget
+        perform("Auto beauty") { document in
+            var settings = FaceCatalog.autoBeauty
+            let current = document[keyPath: target]
+            // Keep any shape changes the user already made.
+            settings.eyeSize = current.eyeSize
+            settings.eyeDistance = current.eyeDistance
+            settings.faceSlim = current.faceSlim
+            settings.cheekbones = current.cheekbones
+            settings.jaw = current.jaw
+            settings.chin = current.chin
+            settings.forehead = current.forehead
+            settings.faceLength = current.faceLength
+            settings.noseWidth = current.noseWidth
+            settings.noseLength = current.noseLength
+            settings.noseTip = current.noseTip
+            settings.lipsFullness = current.lipsFullness
+            settings.lipsWidth = current.lipsWidth
+            settings.smile = current.smile
+            document[keyPath: target] = settings
+        }
+    }
+
+    func resetFace() {
+        let target = faceTarget
+        perform("Reset face") { $0[keyPath: target] = FaceRetouchSettings() }
     }
 
     // MARK: - Crop & rotate
