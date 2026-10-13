@@ -55,6 +55,29 @@ final class OverlayTests: XCTestCase {
         XCTAssertEqual(output.extent.minY, 0)
     }
 
+    /// Draws a framed photo the way the editor canvas does (scaled to fit, over black) and
+    /// checks nothing paints outside the frame.
+    func testFramedImageDoesNotSpillOnTheCanvas() {
+        let source = ImageSource(image: Fixtures.photo("portrait-smile"))
+        let proxy = source.makeProxy(maxDimension: 2560)
+        for style in [FrameStyle.polaroid, .border, .film] {
+            var document = EditDocument()
+            document.frame.style = style
+            let output = pipeline.apply(document, to: proxy, scale: 1, analysis: ImageAnalysis(image: proxy))
+            let bounds = CGRect(x: 0, y: 0, width: 1206, height: 1161)
+            let extent = output.extent
+            let scale = min(bounds.width / extent.width, bounds.height / extent.height)
+            let transform = CGAffineTransform(translationX: -extent.midX, y: -extent.midY)
+                .concatenating(CGAffineTransform(scaleX: scale, y: scale))
+                .concatenating(CGAffineTransform(translationX: bounds.midX, y: bounds.midY))
+            let display = output.transformed(by: transform)
+                .composited(over: CIImage(color: CIColor(red: 0, green: 0, blue: 0)).cropped(to: bounds))
+                .cropped(to: bounds)
+            let outside = CGRect(x: 10, y: 500, width: 20, height: 20)
+            XCTAssertLessThan(luminance(display, outside), 0.01, "\(style) spills outside its frame")
+        }
+    }
+
     func testTextAndStickersAppearWhereTheyArePlaced() {
         let dark = TestScene.shadowRect
         let position = SIMD2(Double(dark.midX) / 960, Double(dark.midY) / 640)
