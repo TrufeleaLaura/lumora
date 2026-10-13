@@ -40,7 +40,9 @@ public enum FaceReshape {
         let sides = contour.map { dot($0 - eyeMid, rightAxis) }
         let width = (sides.max() ?? 0) - (sides.min() ?? 0)
         let faceWidth = width > 1e-6 ? width : face.bounds.width
-        let eyeToMouth = max(((eyeMid - mouth).x * (eyeMid - mouth).x + (eyeMid - mouth).y * (eyeMid - mouth).y).squareRoot(), 1e-6)
+        let between: SIMD2<Double> = eyeMid - mouth
+        let distance: Double = (between.x * between.x + between.y * between.y).squareRoot()
+        let eyeToMouth: Double = max(distance, 1e-6)
         return Frame(eyeMid: eyeMid, mouth: mouth, up: up, right: rightAxis, faceWidth: faceWidth, eyeToMouth: eyeToMouth)
     }
 
@@ -52,30 +54,43 @@ public enum FaceReshape {
         let iso: (SIMD2<Double>) -> SIMD2<Double> = { FaceReshape.iso($0, aspect: aspect) }
 
         // Face contour: slim, jaw, cheekbones, chin, length.
+        let fw = f.faceWidth
+        let em = f.eyeToMouth
         for point in face.contour.map(iso) {
-            let side = f.side(point)
-            let height = f.height(point)
+            let side: Double = f.side(point)
+            let height: Double = f.height(point)
             let sign: Double = side < 0 ? -1 : 1
-            let lateral = min(1, abs(side) / (0.45 * f.faceWidth))
-            var delta = SIMD2<Double>(0, 0)
-            delta -= f.right * sign * (s.faceSlim / 100 * 0.07 * f.faceWidth) * lateral
-            let jawWeight = smoothstep(0, 1, (-height - 0.6 * f.eyeToMouth) / (0.9 * f.eyeToMouth))
-            delta -= f.right * sign * (s.jaw / 100 * 0.06 * f.faceWidth) * jawWeight * min(1, abs(side) / (0.3 * f.faceWidth))
-            let cheekWeight = exp(-pow((height + 0.25 * f.eyeToMouth) / (0.55 * f.eyeToMouth), 2))
-            delta += f.right * sign * (s.cheekbones / 100 * 0.05 * f.faceWidth) * cheekWeight
-            let chinWeight = exp(-pow(side / (0.2 * f.faceWidth), 2)) * smoothstep(0, 1, (-height - f.eyeToMouth) / (0.5 * f.eyeToMouth))
-            delta -= f.up * (s.chin / 100 * 0.12 * f.eyeToMouth) * chinWeight
-            delta -= f.up * (s.faceLength / 100 * 0.09 * f.eyeToMouth) * min(max(-height / (2 * f.eyeToMouth), 0), 1)
-            controls.append(WarpControl(source: point, target: point + delta))
+            let absSide: Double = abs(side)
+            let lateral: Double = min(1, absSide / (0.45 * fw))
+
+            let slimAmount: Double = s.faceSlim / 100 * 0.07 * fw * lateral
+            let jawWeight: Double = smoothstep(0, 1, (-height - 0.6 * em) / (0.9 * em))
+            let jawLateral: Double = min(1, absSide / (0.3 * fw))
+            let jawAmount: Double = s.jaw / 100 * 0.06 * fw * jawWeight * jawLateral
+            let cheekShape: Double = (height + 0.25 * em) / (0.55 * em)
+            let cheekWeight: Double = exp(-cheekShape * cheekShape)
+            let cheekAmount: Double = s.cheekbones / 100 * 0.05 * fw * cheekWeight
+            let chinShape: Double = side / (0.2 * fw)
+            let chinWeight: Double = exp(-chinShape * chinShape) * smoothstep(0, 1, (-height - em) / (0.5 * em))
+            let chinAmount: Double = s.chin / 100 * 0.12 * em * chinWeight
+            let lengthWeight: Double = min(max(-height / (2 * em), 0), 1)
+            let lengthAmount: Double = s.faceLength / 100 * 0.09 * em * lengthWeight
+
+            let sideways: Double = sign * (cheekAmount - slimAmount - jawAmount)
+            let vertical: Double = -(chinAmount + lengthAmount)
+            let target: SIMD2<Double> = point + f.right * sideways + f.up * vertical
+            controls.append(WarpControl(source: point, target: target))
         }
 
         // Forehead: synthetic points above the brows.
         let browPoints = (face.leftBrow + face.rightBrow).map(iso)
         let browMid = browPoints.isEmpty ? f.eyeMid + f.up * 0.35 * f.eyeToMouth : FaceLandmarks.centroid(browPoints)
+        let foreheadLift: Double = s.forehead / 100 * 0.14 * f.eyeToMouth
         for t in [-0.42, -0.2, 0.0, 0.2, 0.42] {
-            let point = browMid + f.right * t * f.faceWidth + f.up * (0.6 * f.eyeToMouth) * (1 - 0.7 * t * t)
-            let lift = s.forehead / 100 * 0.14 * f.eyeToMouth
-            controls.append(WarpControl(source: point, target: point + f.up * lift))
+            let across: Double = t * f.faceWidth
+            let above: Double = 0.6 * f.eyeToMouth * (1 - 0.7 * t * t)
+            let point: SIMD2<Double> = browMid + f.right * across + f.up * above
+            controls.append(WarpControl(source: point, target: point + f.up * foreheadLift))
         }
 
         // Eyes: distance moves eyes (and half the brows) sideways.
@@ -97,22 +112,23 @@ public enum FaceReshape {
             let tipIndex = nose.indices.min { f.height(nose[$0]) < f.height(nose[$1]) } ?? 0
             for (index, point) in nose.enumerated() {
                 if index == tipIndex {
-                    let move = -s.noseLength / 100 * 0.08 * f.eyeToMouth + s.noseTip / 100 * 0.04 * f.eyeToMouth
-                    controls.append(WarpControl(source: point, target: point + f.up * move))
+                    let lengthMove: Double = -s.noseLength / 100 * 0.08 * f.eyeToMouth
+                    let tipMove: Double = s.noseTip / 100 * 0.04 * f.eyeToMouth
+                    controls.append(WarpControl(source: point, target: point + f.up * (lengthMove + tipMove)))
                 } else {
                     controls.append(.anchor(point))
                 }
             }
             if s.noseWidth != 0 {
                 let center = FaceLandmarks.centroid(nose)
-                let width = (nose.map(f.side).max() ?? 0) - (nose.map(f.side).min() ?? 0)
-                let height = (nose.map(f.height).max() ?? 0) - (nose.map(f.height).min() ?? 0)
-                scales.append(LocalScale(
-                    center: center,
-                    radius: SIMD2(max(width, 0.05 * f.faceWidth) * 0.95, max(height, 0.1 * f.faceWidth) * 0.75),
-                    axis: f.right,
-                    scale: SIMD2(1 + s.noseWidth / 100 * 0.25, 1)
-                ))
+                let noseSides: [Double] = nose.map(f.side)
+                let noseHeights: [Double] = nose.map(f.height)
+                let width: Double = (noseSides.max() ?? 0) - (noseSides.min() ?? 0)
+                let height: Double = (noseHeights.max() ?? 0) - (noseHeights.min() ?? 0)
+                let radiusX: Double = max(width, 0.05 * f.faceWidth) * 0.95
+                let radiusY: Double = max(height, 0.1 * f.faceWidth) * 0.75
+                let widthScale: Double = 1 + s.noseWidth / 100 * 0.25
+                scales.append(LocalScale(center: center, radius: SIMD2(radiusX, radiusY), axis: f.right, scale: SIMD2(widthScale, 1)))
             }
         }
 
@@ -126,8 +142,10 @@ public enum FaceReshape {
             for (index, point) in lips.enumerated() {
                 if index == leftCorner || index == rightCorner {
                     let sign: Double = index == leftCorner ? -1 : 1
-                    let lift = s.smile / 100 * 0.07 * mouthWidth
-                    controls.append(WarpControl(source: point, target: point + f.up * lift + f.right * sign * lift * 0.3))
+                    let lift: Double = s.smile / 100 * 0.07 * mouthWidth
+                    let outward: Double = sign * lift * 0.3
+                    let target: SIMD2<Double> = point + f.up * lift + f.right * outward
+                    controls.append(WarpControl(source: point, target: target))
                 } else {
                     controls.append(.anchor(point))
                 }
@@ -135,12 +153,11 @@ public enum FaceReshape {
             let heights = lips.map(f.height)
             let mouthHeight = (heights.max() ?? 0) - (heights.min() ?? 0)
             if s.lipsFullness != 0 || s.lipsWidth != 0 {
-                scales.append(LocalScale(
-                    center: FaceLandmarks.centroid(lips),
-                    radius: SIMD2(mouthWidth * 0.75, max(mouthHeight, 0.04 * f.faceWidth) * 1.4),
-                    axis: f.right,
-                    scale: SIMD2(1 + s.lipsWidth / 100 * 0.2 + s.lipsFullness / 100 * 0.05, 1 + s.lipsFullness / 100 * 0.3)
-                ))
+                let radiusX: Double = mouthWidth * 0.75
+                let radiusY: Double = max(mouthHeight, 0.04 * f.faceWidth) * 1.4
+                let scaleX: Double = 1 + s.lipsWidth / 100 * 0.2 + s.lipsFullness / 100 * 0.05
+                let scaleY: Double = 1 + s.lipsFullness / 100 * 0.3
+                scales.append(LocalScale(center: FaceLandmarks.centroid(lips), radius: SIMD2(radiusX, radiusY), axis: f.right, scale: SIMD2(scaleX, scaleY)))
             }
         }
 
@@ -148,8 +165,9 @@ public enum FaceReshape {
         if s.eyeSize != 0 {
             for eye in [face.leftEye, face.rightEye] where !eye.isEmpty {
                 let points = eye.map(iso)
-                let width = (points.map(f.side).max() ?? 0) - (points.map(f.side).min() ?? 0)
-                let factor = 1 + s.eyeSize / 100 * 0.22
+                let sides: [Double] = points.map(f.side)
+                let width: Double = (sides.max() ?? 0) - (sides.min() ?? 0)
+                let factor: Double = 1 + s.eyeSize / 100 * 0.22
                 // Scales are evaluated in source space (after the backward MLS map), so the
                 // original eye center is the right center even when eye distance changes.
                 scales.append(LocalScale(

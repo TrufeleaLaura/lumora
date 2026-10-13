@@ -87,12 +87,16 @@ public struct LocalScale: Equatable, Sendable {
         let yAxis = SIMD2(-axis.y, axis.x)
         let a = d.x * xAxis.x + d.y * xAxis.y
         let b = d.x * yAxis.x + d.y * yAxis.y
-        let r2 = (a / max(radius.x, 1e-9)) * (a / max(radius.x, 1e-9)) + (b / max(radius.y, 1e-9)) * (b / max(radius.y, 1e-9))
+        let ua: Double = a / max(radius.x, 1e-9)
+        let ub: Double = b / max(radius.y, 1e-9)
+        let r2: Double = ua * ua + ub * ub
         guard r2 < 1 else { return SIMD2(0, 0) }
-        let falloff = (1 - r2) * (1 - r2)
-        let sa = 1 + (scale.x - 1) * falloff
-        let sb = 1 + (scale.y - 1) * falloff
-        return (a / sa - a) * xAxis + (b / sb - b) * yAxis
+        let falloff: Double = (1 - r2) * (1 - r2)
+        let sa: Double = 1 + (scale.x - 1) * falloff
+        let sb: Double = 1 + (scale.y - 1) * falloff
+        let moveA: Double = a / sa - a
+        let moveB: Double = b / sb - b
+        return xAxis * moveA + yAxis * moveB
     }
 }
 

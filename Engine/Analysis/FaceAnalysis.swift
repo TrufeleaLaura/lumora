@@ -87,7 +87,9 @@ public enum FaceAnalyzer {
         for eye in [face.leftEye, face.rightEye] {
             let eyeCenter = FaceReshape.iso(FaceLandmarks.centroid(eye), aspect: aspect)
             let sign: Double = frame.side(eyeCenter) < 0 ? -1 : 1
-            let cheek = eyeCenter - frame.up * frame.eyeToMouth * 0.55 + frame.right * sign * frame.faceWidth * 0.05
+            let down: Double = frame.eyeToMouth * 0.55
+            let outward: Double = sign * frame.faceWidth * 0.05
+            let cheek: SIMD2<Double> = eyeCenter - frame.up * down + frame.right * outward
             let size = frame.faceWidth * 0.1
             let rect = CGRect(
                 x: CGFloat(cheek.x - size / 2) * extent.width,
@@ -143,7 +145,9 @@ enum FaceMasks {
                 let browMid = FaceReshape.iso(brows.isEmpty ? FaceLandmarks.centroid(face.leftEye + face.rightEye) : FaceLandmarks.centroid(brows), aspect: aspect)
                 // Forehead arc between the temples (Vision's contour only covers the jaw).
                 for t in stride(from: -0.5, through: 0.5, by: 0.1) {
-                    let p = browMid + frame.right * t * frame.faceWidth * 0.95 + frame.up * frame.eyeToMouth * (0.75 * (1 - 1.6 * t * t))
+                    let across: Double = t * frame.faceWidth * 0.95
+                    let above: Double = frame.eyeToMouth * 0.75 * (1 - 1.6 * t * t)
+                    let p: SIMD2<Double> = browMid + frame.right * across + frame.up * above
                     outline.append(SIMD2(p.x, p.y / aspect))
                 }
                 // The face is star-shaped around the eyes: order all points by angle.
@@ -221,8 +225,12 @@ enum FaceMasks {
                 let center = FaceLandmarks.centroid(isoPoints)
                 let lower = isoPoints.filter { frame.height($0) <= frame.height(center) }.sorted { frame.side($0) < frame.side($1) }
                 guard lower.count >= 2 else { continue }
-                let drop = frame.eyeToMouth * 0.32
-                let bottom = lower.reversed().map { $0 - frame.up * drop * (1 - 0.5 * pow(abs(frame.side($0) - frame.side(center)) / max(frame.faceWidth * 0.12, 1e-6), 2)) }
+                let drop: Double = frame.eyeToMouth * 0.32
+                let bottom: [SIMD2<Double>] = lower.reversed().map { point in
+                    let distance: Double = abs(frame.side(point) - frame.side(center)) / max(frame.faceWidth * 0.12, 1e-6)
+                    let depth: Double = drop * (1 - 0.5 * distance * distance)
+                    return point - frame.up * depth
+                }
                 let outline = (lower + bottom).map { SIMD2($0.x, $0.y / aspect) }
                 ctx.addPath(polygon(outline))
                 ctx.fillPath()
