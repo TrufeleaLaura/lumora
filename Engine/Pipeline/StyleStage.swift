@@ -64,33 +64,12 @@ extension RenderPipeline {
         let extent = image.extent
         let longSide = max(extent.width, extent.height)
         let variant = Int(styles.grungeStyle.rounded())
-        // Texture: two noise scales and faint scratches, relative to the image size.
-        let random = CIFilter.randomGenerator().outputImage!
-            .transformed(by: CGAffineTransform(translationX: CGFloat(variant) * 137, y: CGFloat(variant) * 71))
-        func noise(_ sx: CGFloat, _ sy: CGFloat) -> CIImage {
-            random.transformed(by: CGAffineTransform(scaleX: max(1, sx), y: max(1, sy)))
-                .cropped(to: extent)
-                .settingAlphaOne(in: extent)
-        }
-        let coarse = GuidedFilter.gaussian(noise(longSide * 0.02, longSide * 0.02), radius: longSide * 0.01)
-        let fine = noise(longSide * 0.0012, longSide * 0.0012)
-        let scratches = noise(longSide * 0.0008, longSide * 0.4)
-            .applyingFilter("CIColorControls", parameters: [kCIInputContrastKey: 6, kCIInputBrightnessKey: -1.8])
-        let texture = coarse
-            .applyingFilter("CIColorMatrix", parameters: [
-                "inputRVector": CIVector(x: 0.7, y: 0, z: 0, w: 0),
-                "inputGVector": CIVector(x: 0.7, y: 0, z: 0, w: 0),
-                "inputBVector": CIVector(x: 0.7, y: 0, z: 0, w: 0),
-                "inputBiasVector": CIVector(x: 0.15, y: 0.15, z: 0.15, w: 0),
-            ])
-            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: fine.applyingFilter("CIColorMatrix", parameters: [
-                "inputRVector": CIVector(x: 0.3, y: 0, z: 0, w: 0),
-                "inputGVector": CIVector(x: 0.3, y: 0, z: 0, w: 0),
-                "inputBVector": CIVector(x: 0.3, y: 0, z: 0, w: 0),
-                "inputBiasVector": CIVector(x: -0.15, y: -0.15, z: -0.15, w: 0),
-            ])])
-            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: scratches])
-            .cropped(to: extent)
+        // Texture: blotches, grit and a few faint scratches, sized relative to the image.
+        let texture = Kernels.grungeTexture.apply(
+            extent: extent,
+            roiCallback: { _, rect in rect },
+            arguments: [CIVector(x: CGFloat(variant) * 13.7 + 1, y: longSide * 0.03, z: max(1, longSide * 0.0015), w: 0.6)]
+        ) ?? CIImage(color: CIColor(red: 0.5, green: 0.5, blue: 0.5)).cropped(to: extent)
         // Each variant has its own color cast (OKLab a, b).
         let casts: [(Double, Double)] = [(0.01, 0.03), (-0.02, 0.02), (0.03, -0.01), (0.0, -0.03), (0.02, 0.05)]
         let cast = casts[min(max(variant, 0), casts.count - 1)]

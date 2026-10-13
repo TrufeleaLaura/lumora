@@ -25,6 +25,7 @@ public enum Inpainting {
         var current = levels[levels.count - 1]
         current.diffuseIntoHole()
         var nnf: [Int]? = nil
+        var biases: [SIMD3<Float>] = []
 
         for index in stride(from: levels.count - 1, through: 0, by: -1) {
             if index < levels.count - 1 {
@@ -35,10 +36,12 @@ public enum Inpainting {
                 nnf = nnf.map { upsample($0, from: coarse, to: current) }
             }
             let iterations = index == 0 ? 3 : (index == levels.count - 1 ? 8 : 5)
-            nnf = solve(&current, nnf: nnf, patchRadius: patchRadius, iterations: iterations, random: &random)
+            let solved = solve(&current, nnf: nnf, patchRadius: patchRadius, iterations: iterations, random: &random)
+            nnf = solved.nnf
+            biases = solved.bias
         }
         if let nnf {
-            harmonize(&current, nnf: nnf, patchRadius: patchRadius)
+            harmonize(&current, nnf: nnf, bias: biases, patchRadius: patchRadius)
         }
 
         var result = pixels
@@ -191,13 +194,17 @@ public enum Inpainting {
         return valid
     }
 
-    /// Patch distance (sum of squared differences over the in-bounds part of the target patch),
-    /// stopping early once it exceeds `limit`.
-    static func distance(_ level: Level, target: Int, source: Int, radius r: Int, limit: Float) -> Float {
+    /// Patch match cost with a per-patch color offset ("image melding"): a source patch may be
+    /// shifted in brightness/color by `bias` to fit, so smooth gradients (a glow, a vignette)
+    /// can be rebuilt from flat patches. The offset is limited and penalized, so exact matches
+    /// still win. Only the in-bounds part of the target patch counts.
+    static func match(_ level: Level, target: Int, source: Int, radius r: Int) -> (cost: Float, bias: SIMD3<Float>) {
         let w = level.width, h = level.height
         let tx = target % w, ty = target / w
         let sx = source % w, sy = source / w
-        var total: Float = 0
+        var sumD = SIMD3<Float>.zero
+        var sumD2: Float = 0
+        var n: Float = 0
         for dy in -r...r {
             let ty2 = ty + dy
             guard ty2 >= 0, ty2 < h else { continue }
@@ -207,23 +214,30 @@ public enum Inpainting {
                 let tx2 = tx + dx
                 guard tx2 >= 0, tx2 < w else { continue }
                 let d: SIMD3<Float> = level.pixels[tRow + tx2] - level.pixels[sRow + sx + dx]
-                total += d.x * d.x + d.y * d.y + d.z * d.z
+                sumD += d
+                sumD2 += d.x * d.x + d.y * d.y + d.z * d.z
+                n += 1
             }
-            if total > limit { return total }
         }
-        return total
+        guard n > 0 else { return (0, .zero) }
+        let penalty: Float = 0.25
+        let limit = SIMD3<Float>(repeating: 0.25)
+        let bias = (sumD / (n * (1 + penalty))).clamped(lowerBound: -limit, upperBound: limit)
+        let biasSquared = (bias * bias).sum()
+        let cost = sumD2 - 2 * (bias * sumD).sum() + n * (1 + penalty) * biasSquared
+        return (max(cost, 0), bias)
     }
 
     /// Runs EM iterations (PatchMatch search + voting) on one level; returns the nearest-neighbor
     /// field (source index per pixel, -1 where unused).
-    static func solve(_ level: inout Level, nnf initial: [Int]?, patchRadius r: Int, iterations: Int, random: inout Random) -> [Int] {
+    static func solve(_ level: inout Level, nnf initial: [Int]?, patchRadius r: Int, iterations: Int, random: inout Random) -> (nnf: [Int], bias: [SIMD3<Float>]) {
         let w = level.width, h = level.height
         let count = w * h
         let valid = validSources(level, radius: r)
         let sources = (0..<count).filter { valid[$0] }
         guard !sources.isEmpty else {
             level.diffuseIntoHole()
-            return [Int](repeating: -1, count: count)
+            return ([Int](repeating: -1, count: count), [SIMD3<Float>](repeating: .zero, count: count))
         }
 
         // Targets: pixels whose patch touches the hole.
@@ -243,18 +257,20 @@ public enum Inpainting {
 
         var nnf = initial ?? [Int](repeating: -1, count: count)
         var cost = [Float](repeating: .infinity, count: count)
+        var bias = [SIMD3<Float>](repeating: .zero, count: count)
         for t in targets {
             if nnf[t] < 0 || !valid[nnf[t]] {
                 nnf[t] = sources[random.int(sources.count)]
             }
-            cost[t] = distance(level, target: t, source: nnf[t], radius: r, limit: .infinity)
+            (cost[t], bias[t]) = match(level, target: t, source: nnf[t], radius: r)
         }
 
         func tryCandidate(_ t: Int, _ candidate: Int) {
             guard candidate >= 0, candidate < count, valid[candidate], candidate != nnf[t] else { return }
-            let d = distance(level, target: t, source: candidate, radius: r, limit: cost[t])
-            if d < cost[t] {
-                cost[t] = d
+            let result = match(level, target: t, source: candidate, radius: r)
+            if result.cost < cost[t] {
+                cost[t] = result.cost
+                bias[t] = result.bias
                 nnf[t] = candidate
             }
         }
@@ -264,7 +280,7 @@ public enum Inpainting {
             // Recompute costs: the hole's pixels changed in the last vote.
             if iteration > 0 {
                 for t in targets {
-                    cost[t] = distance(level, target: t, source: nnf[t], radius: r, limit: .infinity)
+                    (cost[t], bias[t]) = match(level, target: t, source: nnf[t], radius: r)
                 }
             }
             for pass in 0..<2 {
@@ -317,7 +333,7 @@ public enum Inpainting {
                         guard qx >= 0, qx < w else { continue }
                         let q = qy * w + qx
                         guard level.hole[q] else { continue }
-                        sum[q] += level.pixels[(sy + dy) * w + sx + dx] * weightT
+                        sum[q] += (level.pixels[(sy + dy) * w + sx + dx] + bias[t]) * weightT
                         weight[q] += weightT
                     }
                 }
@@ -326,14 +342,14 @@ public enum Inpainting {
                 level.pixels[q] = sum[q] / weight[q]
             }
         }
-        return nnf
+        return (nnf, bias)
     }
 
     /// Healing-brush color matching: the fill's patches are also voted onto a thin band just
     /// outside the hole; the difference to the real pixels there is spread smoothly through the
     /// hole (Laplace equation, solved with over-relaxation). Fixes fills that are darker or
     /// lighter than their surroundings (e.g. a glow around a removed sun).
-    static func harmonize(_ level: inout Level, nnf: [Int], patchRadius r: Int, band width: Int = 3) {
+    static func harmonize(_ level: inout Level, nnf: [Int], bias: [SIMD3<Float>], patchRadius r: Int, band width: Int = 3) {
         let w = level.width, h = level.height
         let count = w * h
         guard nnf.count == count else { return }
@@ -365,7 +381,7 @@ public enum Inpainting {
                     guard qx >= 0, qx < w, sx + dx >= 0, sx + dx < w else { continue }
                     let q = qy * w + qx
                     guard band[q] else { continue }
-                    sum[q] += level.pixels[(sy + dy) * w + sx + dx]
+                    sum[q] += level.pixels[(sy + dy) * w + sx + dx] + bias[t]
                     weight[q] += 1
                 }
             }

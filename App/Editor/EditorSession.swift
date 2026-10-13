@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, masks, retouch, styles, face, body, crop
+    case looks, adjust, masks, retouch, styles, overlays, text, face, body, crop
 
     var id: String { rawValue }
 
@@ -16,6 +16,8 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .masks: return "Masks"
         case .retouch: return "Retouch"
         case .styles: return "Styles"
+        case .overlays: return "Overlays"
+        case .text: return "Text"
         case .face: return "Face"
         case .body: return "Body"
         case .crop: return "Crop"
@@ -29,6 +31,8 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .masks: return "circle.dashed"
         case .retouch: return "bandage"
         case .styles: return "wand.and.stars"
+        case .overlays: return "square.stack"
+        case .text: return "textformat"
         case .face: return "face.smiling"
         case .body: return "figure.stand"
         case .crop: return "crop.rotate"
@@ -125,6 +129,8 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var selectedRetouchID: UUID?
     /// Styles tool: lens blur focus handles are shown.
     @Published var focusEditing = false
+    /// Text tool: the layer being edited.
+    @Published var selectedTextID: UUID?
 
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false

@@ -103,12 +103,22 @@ enum Kernels {
     static let vintage = colorKernel("lumora_vintage")
     static let noir = colorKernel("lumora_noir")
     static let grunge = colorKernel("lumora_grunge")
+    static let grungeTexture = generalKernel("lumora_grungeTexture")
     static let rgbSplit = generalKernel("lumora_rgbSplit")
     static let bandMask = generalKernel("lumora_bandMask")
     static let bokehBoost = colorKernel("lumora_bokehBoost")
     static let weighted = colorKernel("lumora_weighted")
     static let unweight = colorKernel("lumora_unweight")
     static let focusBlend = colorKernel("lumora_focusBlend")
+
+    // Overlays & frames
+    static let screenBlend = colorKernel("lumora_screenBlend")
+    static let multiplyBlend = colorKernel("lumora_multiplyBlend")
+    static let shadowLayer = generalKernel("lumora_shadowLayer")
+    static let plasticLayer = generalKernel("lumora_plasticLayer")
+    static let prismLayer = generalKernel("lumora_prismLayer")
+    static let vhs = generalKernel("lumora_vhs")
+    static let roundedMask = generalKernel("lumora_roundedMask")
 }
 
 extension CIColorKernel {

@@ -8,7 +8,8 @@ import LumoraCore
 ///
 /// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → optics → local contrast → white balance → dehaze → tone → curves → color
 /// → masks (local adjustments) → look → creative styles and lens blur
-/// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
+/// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain)
+/// → overlays → text & stickers → frame and date stamp.
 public struct RenderPipeline {
     /// Looks up imported LUTs by id.
     let lutProvider: (String) -> CubeLUT?
@@ -50,6 +51,12 @@ public struct RenderPipeline {
             image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
         }
         image = applyFinish(effectiveEffects(document), to: image)
+        // Overlays, text and frames belong to the final, cropped picture.
+        if includeGeometry && includeCrop {
+            image = applyOverlays(document.overlays, to: image)
+            image = applyTexts(document.texts, to: image)
+            image = applyFrame(document.frame, to: image)
+        }
         return image
     }
 

@@ -242,6 +242,12 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var retouch = RetouchSettings()
     /// Snapseed-style creative effects and lens blur.
     public var styles = CreativeSettings()
+    /// Texture overlays (dust, light leaks, paper…), applied to the cropped photo.
+    public var overlays = OverlaySettings()
+    /// Text and stickers on the cropped photo.
+    public var texts: [TextLayer] = []
+    /// Border or retro frame around everything, and the date stamp.
+    public var frame = FrameSettings()
 
     public init() {}
 
@@ -253,6 +259,7 @@ public struct EditDocument: Codable, Equatable, Sendable {
         copy.beauty.faces = []
         copy.body.bodies = []
         copy.retouch = RetouchSettings()
+        copy.texts = []
         // Automatic and shape masks carry over; painted strokes and tapped objects belong to this photo.
         copy.masks = masks.compactMap { mask in
             var mask = mask

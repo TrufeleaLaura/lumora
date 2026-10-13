@@ -137,6 +137,8 @@ struct EditorView: View {
                     RetouchCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.activeTool == .styles && session.compareMode == .none {
                     FocusOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .text && session.compareMode == .none {
+                    TextCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
@@ -204,6 +206,16 @@ struct EditorView: View {
                     .frame(maxHeight: .infinity, alignment: .top)
             case .styles:
                 StylesPanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            case .overlays:
+                OverlaysPanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            case .text:
+                TextPanel(session: session)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)

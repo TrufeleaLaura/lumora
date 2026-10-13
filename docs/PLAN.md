@@ -26,8 +26,11 @@ _Created: 2026-10-12 · Companion to [RESEARCH.md](RESEARCH.md)_
 | 5 · Brows, makeup, hair | ✅ Done — brows, lipstick finishes, blush/contour/highlight, eye makeup, hair recolor |
 | 6 · Body editor | ✅ Done — waist, hips, butt/lift, bust, thighs, legs, height, arms, shoulders, neck, head |
 | 7 · Muscles & body skin | ✅ Done — abs (6/8/11), chest, arms, V-line, body smooth, tan, cellulite |
-| 8 · Masking | 🔨 In review — subject, background, sky, objects (tap), people parts, brush + auto edge, linear/radial, color/luminance range, control points, add/subtract/intersect, local adjustments |
-| 9–13 | ⏳ Planned |
+| 8 · Masking | ✅ Done — subject, background, sky, objects (tap), people parts, brush + auto edge, linear/radial, color/luminance range, control points, add/subtract/intersect, local adjustments |
+| 9 · Retouch & remove | ✅ Done — heal, clone, remove (content-aware fill, tap objects/people), red eye |
+| 10 · Creative styles | ✅ Done — HDR Scape, Drama, Tonal Contrast, Glamour Glow, Halation, Vintage, Noir, Grunge, RGB split, lens blur (subject/radial/tilt-shift) |
+| 11 · Aesthetic & templates | 🔨 In progress — overlays (dust, scratches, light leaks, paper, plastic, shadows, prism), frames (border, instant, 35 mm, Super 8, VHS), date stamp, text & stickers; next: collage/story templates, feed planner |
+| 12–13 | ⏳ Planned |
 
 Testing note: the iOS simulator's Vision returns scrambled face landmarks, so CI runs
 `scripts/reference_analysis.swift` on macOS (real Vision) and the tests use those

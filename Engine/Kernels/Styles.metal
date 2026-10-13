@@ -52,7 +52,8 @@ float4 lumora_hdrDrama(sample_t s, sample_t toneBase, sample_t clarityBase, samp
     float mid = clarityBase.r * logY + clarityBase.g;
     const float grey = -2.47f;
     // Large-scale tones pulled toward mid grey (HDR compresses, Drama adds punch).
-    float baseOut = grey + (base - grey) * (1.0f - 0.5f * hdr + 0.15f * drama);
+    float spread = base < grey ? (1.0f - 0.5f * hdr) : (1.0f - 0.2f * hdr);
+    float baseOut = grey + (base - grey) * (spread + 0.15f * drama);
     float midDetail = lumoraSSoft(mid - base, 0.6f) * (1.0f + 0.9f * hdr + 0.6f * drama);
     float structure = lumoraSSoft(fineLog.r - mid, 1.0f) * (1.0f + 0.7f * hdr + 2.2f * drama);
     float fine = (logY - fineLog.r) * (1.0f + 0.4f * hdr + 0.6f * drama);
@@ -101,9 +102,13 @@ float4 lumora_brightParts(sample_t s, float threshold) {
 
 // Halation: blurred highlights added back as a red-orange halo.
 float4 lumora_halation(sample_t s, sample_t halo, float amount) {
-    float glow = lumoraSLuma(halo.rgb);
-    float3 color = float3(1.0f, 0.32f, 0.12f) * glow * amount * 1.6f;
-    return float4(s.rgb + color, s.a);
+    float3 c = max(s.rgb, float3(0.0f));
+    float y = lumoraSLuma(c);
+    float own = y * smoothstep(0.7f, 1.05f, y);
+    // Only the light that spills past bright edges glows red, not bright areas themselves.
+    float spill = max(lumoraSLuma(halo.rgb) - own * 0.9f, 0.0f);
+    float3 color = float3(1.0f, 0.3f, 0.1f) * spill * amount * 1.4f;
+    return float4(c + color, s.a);
 }
 
 // Vintage: lifted blacks, softened whites, warm fade, less saturation.
@@ -149,6 +154,30 @@ float4 lumora_grunge(sample_t s, sample_t texture, float4 params) {
     lab.yz = lab.yz * (1.0f - 0.45f * amount) + params.yz * amount;
     lab.x *= 1.0f - 0.08f * amount;
     return float4(max(lumoraSFromOklab(lab), float3(0.0f)), s.a);
+}
+
+// Grunge texture: grey ~0.5 with blotches, grit and a few faint scratches.
+// params = (seed, blotch size px, grit size px, scratch density 0...1).
+static inline float lumoraSValueNoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+    float2 u = f * f * (3.0f - 2.0f * f);
+    float a = fract(sin(dot(i, float2(127.1f, 311.7f))) * 43758.5453f);
+    float b = fract(sin(dot(i + float2(1.0f, 0.0f), float2(127.1f, 311.7f))) * 43758.5453f);
+    float c = fract(sin(dot(i + float2(0.0f, 1.0f), float2(127.1f, 311.7f))) * 43758.5453f);
+    float d = fract(sin(dot(i + float2(1.0f, 1.0f), float2(127.1f, 311.7f))) * 43758.5453f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float4 lumora_grungeTexture(float4 params, destination dest) {
+    float2 p = dest.coord() + params.x * 97.0f;
+    float blotch = lumoraSValueNoise(p / max(params.y, 1.0f)) * 0.6f + lumoraSValueNoise(p / max(params.y * 0.37f, 1.0f)) * 0.4f;
+    float grit = lumoraSValueNoise(p / max(params.z, 0.5f));
+    float column = floor(p.x / max(params.z * 1.5f, 1.0f));
+    float lineHash = fract(sin(column * 12.9898f + params.x) * 43758.5453f);
+    float scratch = step(1.0f - params.w * 0.02f, lineHash) * lumoraSValueNoise(float2(column, p.y / (params.y * 2.0f)));
+    float t = 0.5f + (blotch - 0.5f) * 0.55f + (grit - 0.5f) * 0.25f + scratch * 0.3f;
+    return float4(t, t, t, 1.0f);
 }
 
 // RGB split: red and blue sampled from opposite offsets (pixels).
