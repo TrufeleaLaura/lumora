@@ -135,6 +135,8 @@ struct EditorView: View {
                     MaskCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.activeTool == .retouch && session.compareMode == .none {
                     RetouchCanvasOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .styles && session.compareMode == .none {
+                    FocusOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
@@ -200,6 +202,11 @@ struct EditorView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)
+            case .styles:
+                StylesPanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .face:
                 FacePanel(session: session)
                     .padding(.horizontal, 18)
@@ -243,21 +250,29 @@ struct EditorView: View {
     }
 
     private var toolBar: some View {
-        HStack {
-            ForEach(EditorTool.allCases) { tool in
-                Button {
-                    session.activeTool = tool
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: tool.symbol)
-                            .font(.system(size: 19))
-                        Text(tool.title)
-                            .font(.caption2.weight(.medium))
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(EditorTool.allCases) { tool in
+                        Button {
+                            session.activeTool = tool
+                            withAnimation { proxy.scrollTo(tool.id, anchor: .center) }
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: tool.symbol)
+                                    .font(.system(size: 19))
+                                Text(tool.title)
+                                    .font(.caption2.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(session.activeTool == tool ? Theme.accent : Color.secondary)
+                            .frame(width: 64)
+                        }
+                        .buttonStyle(.plain)
+                        .id(tool.id)
                     }
-                    .foregroundStyle(session.activeTool == tool ? Theme.accent : Color.secondary)
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 6)
             }
         }
         .padding(.top, 8)

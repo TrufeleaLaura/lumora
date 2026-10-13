@@ -37,6 +37,9 @@ public enum Inpainting {
             let iterations = index == 0 ? 3 : (index == levels.count - 1 ? 8 : 5)
             nnf = solve(&current, nnf: nnf, patchRadius: patchRadius, iterations: iterations, random: &random)
         }
+        if let nnf {
+            harmonize(&current, nnf: nnf, patchRadius: patchRadius)
+        }
 
         var result = pixels
         for i in 0..<(width * height) where holeMask[i] {
@@ -324,6 +327,88 @@ public enum Inpainting {
             }
         }
         return nnf
+    }
+
+    /// Healing-brush color matching: the fill's patches are also voted onto a thin band just
+    /// outside the hole; the difference to the real pixels there is spread smoothly through the
+    /// hole (Laplace equation, solved with over-relaxation). Fixes fills that are darker or
+    /// lighter than their surroundings (e.g. a glow around a removed sun).
+    static func harmonize(_ level: inout Level, nnf: [Int], patchRadius r: Int, band width: Int = 3) {
+        let w = level.width, h = level.height
+        let count = w * h
+        guard nnf.count == count else { return }
+        // Band pixels: outside the hole, within `width` of it.
+        var band = [Bool](repeating: false, count: count)
+        for y in 0..<h {
+            for x in 0..<w where level.hole[y * w + x] {
+                for dy in -width...width {
+                    for dx in -width...width {
+                        let nx = x + dx, ny = y + dy
+                        guard nx >= 0, ny >= 0, nx < w, ny < h, !level.hole[ny * w + nx] else { continue }
+                        band[ny * w + nx] = true
+                    }
+                }
+            }
+        }
+        // What the fill's patches say the band should look like.
+        var sum = [SIMD3<Float>](repeating: .zero, count: count)
+        var weight = [Float](repeating: 0, count: count)
+        for t in 0..<count where nnf[t] >= 0 {
+            let s = nnf[t]
+            let tx = t % w, ty = t / w
+            let sx = s % w, sy = s / w
+            for dy in -r...r {
+                let qy = ty + dy
+                guard qy >= 0, qy < h, sy + dy >= 0, sy + dy < h else { continue }
+                for dx in -r...r {
+                    let qx = tx + dx
+                    guard qx >= 0, qx < w, sx + dx >= 0, sx + dx < w else { continue }
+                    let q = qy * w + qx
+                    guard band[q] else { continue }
+                    sum[q] += level.pixels[(sy + dy) * w + sx + dx]
+                    weight[q] += 1
+                }
+            }
+        }
+        var correction = [SIMD3<Float>](repeating: .zero, count: count)
+        var fixed = [Bool](repeating: false, count: count)
+        for q in 0..<count where band[q] && weight[q] > 0 {
+            correction[q] = level.pixels[q] - sum[q] / weight[q]
+            fixed[q] = true
+        }
+        // Start the hole from the average band difference, then relax.
+        var mean = SIMD3<Float>.zero
+        var fixedCount: Float = 0
+        for q in 0..<count where fixed[q] {
+            mean += correction[q]
+            fixedCount += 1
+        }
+        guard fixedCount > 0 else { return }
+        mean /= fixedCount
+        let holeIndices = (0..<count).filter { level.hole[$0] }
+        for q in holeIndices { correction[q] = mean }
+        let omega: Float = 1.85
+        for _ in 0..<300 {
+            var change: Float = 0
+            for q in holeIndices {
+                let x = q % w, y = q / w
+                var total = SIMD3<Float>.zero
+                var n: Float = 0
+                if x > 0, level.hole[q - 1] || fixed[q - 1] { total += correction[q - 1]; n += 1 }
+                if x < w - 1, level.hole[q + 1] || fixed[q + 1] { total += correction[q + 1]; n += 1 }
+                if y > 0, level.hole[q - w] || fixed[q - w] { total += correction[q - w]; n += 1 }
+                if y < h - 1, level.hole[q + w] || fixed[q + w] { total += correction[q + w]; n += 1 }
+                guard n > 0 else { continue }
+                let target: SIMD3<Float> = total / n
+                let delta: SIMD3<Float> = (target - correction[q]) * omega
+                correction[q] += delta
+                change = max(change, max(abs(delta.x), max(abs(delta.y), abs(delta.z))))
+            }
+            if change < 1e-4 { break }
+        }
+        for q in holeIndices {
+            level.pixels[q] = level.pixels[q] + correction[q]
+        }
     }
 
     /// Doubles a nearest-neighbor field to the next finer level.

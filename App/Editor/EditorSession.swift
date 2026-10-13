@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, masks, retouch, face, body, crop
+    case looks, adjust, masks, retouch, styles, face, body, crop
 
     var id: String { rawValue }
 
@@ -15,6 +15,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .adjust: return "Adjust"
         case .masks: return "Masks"
         case .retouch: return "Retouch"
+        case .styles: return "Styles"
         case .face: return "Face"
         case .body: return "Body"
         case .crop: return "Crop"
@@ -27,6 +28,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .adjust: return "slider.horizontal.3"
         case .masks: return "circle.dashed"
         case .retouch: return "bandage"
+        case .styles: return "wand.and.stars"
         case .face: return "face.smiling"
         case .body: return "figure.stand"
         case .crop: return "crop.rotate"
@@ -34,7 +36,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     }
 
     /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
-    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks || self == .retouch }
+    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks || self == .retouch || self == .styles }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -74,6 +76,10 @@ final class EditorSession: ObservableObject, Identifiable {
             }
             if activeTool == .masks || activeTool == .retouch {
                 prepareFaces()
+            }
+            if activeTool == .styles {
+                let analysis = self.analysis
+                Task.detached(priority: .utility) { _ = analysis.subjectMask }
             }
             updateMaskInteraction()
         }
@@ -117,6 +123,8 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var isRetouching = false
     /// The clone operation whose source can be dragged.
     @Published var selectedRetouchID: UUID?
+    /// Styles tool: lens blur focus handles are shown.
+    @Published var focusEditing = false
 
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false

@@ -240,6 +240,8 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var masks: [Mask] = []
     /// Heal, clone, remove and red eye (applied first).
     public var retouch = RetouchSettings()
+    /// Snapseed-style creative effects and lens blur.
+    public var styles = CreativeSettings()
 
     public init() {}
 

@@ -133,6 +133,40 @@ enum SkyDetector {
             }
         }
 
+        // Bright holes fully enclosed by sky (a sun with a hard edge, small clouds) are sky too:
+        // flood the non-sky area from the image border; whatever it can't reach is enclosed.
+        var outside = [Bool](repeating: false, count: count)
+        var border: [Int] = []
+        for x in 0..<w {
+            for y in [0, h - 1] where sky[y * w + x] == 0 && !outside[y * w + x] {
+                outside[y * w + x] = true
+                border.append(y * w + x)
+            }
+        }
+        for y in 0..<h {
+            for x in [0, w - 1] where sky[y * w + x] == 0 && !outside[y * w + x] {
+                outside[y * w + x] = true
+                border.append(y * w + x)
+            }
+        }
+        var borderHead = 0
+        while borderHead < border.count {
+            let i = border[borderHead]
+            borderHead += 1
+            let x = i % w, y = i / w
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let nx = x + dx, ny = y + dy
+                guard nx >= 0, ny >= 0, nx < w, ny < h else { continue }
+                let j = ny * w + nx
+                guard sky[j] == 0, !outside[j] else { continue }
+                outside[j] = true
+                border.append(j)
+            }
+        }
+        for i in 0..<count where sky[i] == 0 && !outside[i] && lightness[i] > 0.6 {
+            sky[i] = 1
+        }
+
         // Patches of the same sky seen through branches or between buildings: they must match
         // the sky's color at the same height (skies are vertical gradients).
         var rowSums = [SIMD4<Float>](repeating: .zero, count: h)

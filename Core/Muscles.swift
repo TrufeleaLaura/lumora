@@ -84,7 +84,7 @@ public enum MuscleRelief {
                 groove += gauss(u - 0.5, 0.035) * fadeV
                 let edgeOffset: Double = 0.07 + 0.03 * (1 - v)
                 groove += 0.4 * (gauss(u - edgeOffset, 0.05) + gauss(u - (1 - edgeOffset), 0.05)) * fadeV
-                let e = envelope(u, v)
+                let e = envelope(u, v, margin: 0.18)
                 return (height * e, min(1, groove) * e)
             case .elevenLine:
                 let grooves: Double = 0.8 * (gauss(u - 0.33, 0.055) + gauss(u - 0.67, 0.055)) + 0.3 * gauss(u - 0.5, 0.035)

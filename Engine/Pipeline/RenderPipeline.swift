@@ -7,7 +7,7 @@ import LumoraCore
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
 /// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → optics → local contrast → white balance → dehaze → tone → curves → color
-/// → masks (local adjustments) → look
+/// → masks (local adjustments) → look → creative styles and lens blur
 /// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
 public struct RenderPipeline {
     /// Looks up imported LUTs by id.
@@ -43,6 +43,7 @@ public struct RenderPipeline {
         image = applyColor(document, to: image)
         image = applyMasks(document.masks, to: image, reference: input, analysis: analysis, scale: scale)
         image = applyLook(document.look, to: image, analysis: analysis)
+        image = applyStyles(document.styles, to: image, reference: input, analysis: analysis, scale: scale)
         image = applyNoiseReduction(document.detail, to: image, scale: scale)
         image = applySharpening(document.detail, to: image, scale: scale)
         if includeGeometry {

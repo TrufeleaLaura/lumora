@@ -210,7 +210,7 @@ float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t b
     float p2 = p - smooth * mid * 0.9f - skinParams.x * skin * high * 0.3f;
 
     // Muscle relief: lift the lit edges, deepen the grooves (multiplicative, keeps skin texture).
-    p2 *= 1.0f + (shading.r * 0.18f - shading.g * 0.3f) * skin;
+    p2 *= 1.0f + (shading.r * 0.1f - shading.g * 0.32f) * skin;
 
     float y2 = lumoraBToLinear(max(p2, 0.0f));
     c = y > 1.0e-6f ? c * (y2 / y) : float3(y2);
