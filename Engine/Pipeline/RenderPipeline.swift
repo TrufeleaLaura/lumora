@@ -28,6 +28,7 @@ public struct RenderPipeline {
         let analysis = analysis ?? ImageAnalysis(image: input)
         var image = input
         image = applyBeauty(document.beauty, to: image, analysis: analysis)
+        image = applyMakeup(document.beauty, to: image, analysis: analysis)
         image = applyFaceWarp(document.beauty, to: image, analysis: analysis)
         image = applyOptics(document.optics, to: image, scale: scale)
         image = applyLocalContrast(document.effects, to: image, analysis: analysis)

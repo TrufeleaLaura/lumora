@@ -14,6 +14,13 @@ public struct FaceInfo: @unchecked Sendable {
     public let masksA: CIImage
     public let masksB: CIImage
     public let maskRegion: CGRectValue
+    /// Makeup masks over `maskRegion`: C = (blush, contour, highlight), D = (eyeshadow, brow field, 0),
+    /// E = (eyeliner, lashes, brow core). Nil if landmarks were incomplete.
+    let makeup: MakeupMaskSet?
+    /// Average brow, lip and hair colors (OKLab), for texture-preserving recoloring.
+    public let browTone: SIMD3<Float>
+    public let lipTone: SIMD3<Float>
+    public let hairTone: SIMD3<Float>
 }
 
 public enum FaceAnalyzer {
@@ -71,10 +78,51 @@ public enum FaceAnalyzer {
     /// Full analysis of each face: landmarks, skin tone and masks.
     public static func analyze(_ image: CIImage, context: CIContext = RenderContext.analysis) -> [FaceInfo] {
         let extent = image.extent
+        let aspect = Double(extent.height / max(extent.width, 1))
         return detect(in: image).map { face in
             let tone = skinTone(of: face, in: image, context: context)
             let masks = FaceMasks.render(face: face, imageSize: extent.size, context: context)
-            return FaceInfo(landmarks: face, skinTone: tone, masksA: masks.a, masksB: masks.b, maskRegion: masks.region)
+            let makeup = MakeupMasks.render(face: face, region: masks.region, imageSize: extent.size, context: context)
+            let frame = FaceReshape.frame(face, aspect: aspect)
+            var browTone = SIMD3<Float>(tone.x - 0.25, tone.y * 0.5, tone.z * 0.6)
+            var lipTone = SIMD3<Float>(tone.x - 0.08, tone.y + 0.05, tone.z)
+            var hairTone = SIMD3<Float>(0.3, 0.02, 0.03)
+            if let frame {
+                let fw = frame.faceWidth
+                let browSamples = [face.leftBrow, face.rightBrow].filter { !$0.isEmpty }.compactMap {
+                    MakeupMasks.tone(at: FaceReshape.iso(FaceLandmarks.centroid($0), aspect: aspect), size: fw * 0.035, in: image, aspect: aspect, context: context)
+                }
+                if !browSamples.isEmpty {
+                    browTone = browSamples.reduce(SIMD3<Float>(0, 0, 0), +) / Float(browSamples.count)
+                }
+                let outer = face.outerLips.map { FaceReshape.iso($0, aspect: aspect) }
+                let inner = face.innerLips.map { FaceReshape.iso($0, aspect: aspect) }
+                if let topOuter = outer.max(by: { frame.height($0) < frame.height($1) }),
+                   let topInner = inner.max(by: { frame.height($0) < frame.height($1) }) {
+                    let upperLip: SIMD2<Double> = (topOuter + topInner) / 2
+                    if let sample = MakeupMasks.tone(at: upperLip, size: fw * 0.03, in: image, aspect: aspect, context: context) {
+                        lipTone = sample
+                    }
+                }
+                let brows = (face.leftBrow + face.rightBrow).map { FaceReshape.iso($0, aspect: aspect) }
+                if !brows.isEmpty {
+                    let above: SIMD2<Double> = frame.up * (1.05 * frame.eyeToMouth)
+                    if let sample = MakeupMasks.tone(at: FaceLandmarks.centroid(brows) + above, size: fw * 0.12, in: image, aspect: aspect, context: context) {
+                        hairTone = sample
+                    }
+                }
+            }
+            return FaceInfo(
+                landmarks: face,
+                skinTone: tone,
+                masksA: masks.a,
+                masksB: masks.b,
+                maskRegion: masks.region,
+                makeup: makeup,
+                browTone: browTone,
+                lipTone: lipTone,
+                hairTone: hairTone
+            )
         }
     }
 

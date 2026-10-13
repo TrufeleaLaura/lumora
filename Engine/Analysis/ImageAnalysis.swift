@@ -21,6 +21,7 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedClarityBase: CIImage?
     private var cachedHaze: HazeAnalysis?
     private var cachedFaces: [FaceInfo]?
+    private var cachedPerson: CIImage??
     private var warpCache: [String: DisplacementField] = [:]
 
     public init(image: CIImage, context: CIContext = RenderContext.analysis) {
@@ -64,6 +65,17 @@ public final class ImageAnalysis: @unchecked Sendable {
         if let cachedFaces { return cachedFaces }
         let result = FaceAnalyzer.analyze(source, context: context)
         cachedFaces = result
+        return result
+    }
+
+    /// Soft mask of people in the photo (Vision person segmentation), over the analyzed image's
+    /// extent, or nil if segmentation isn't available.
+    public var personMask: CIImage? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedPerson { return cachedPerson }
+        let result = PersonSegmenter.mask(for: source, context: context)
+        cachedPerson = .some(result)
         return result
     }
 

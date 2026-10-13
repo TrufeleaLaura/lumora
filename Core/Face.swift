@@ -110,16 +110,26 @@ public struct FaceRetouchSettings: Codable, Hashable, Sendable {
     public var lipsFullness: Double = 0
     public var lipsWidth: Double = 0
     public var smile: Double = 0
+    // Eyebrows, makeup and hair color
+    public var makeup = MakeupSettings()
 
     public init() {}
 
     public var isIdentity: Bool { self == FaceRetouchSettings() }
 
+    public var hasMakeup: Bool {
+        let m = makeup
+        return m.browThickness != 0 || m.browColorAmount != 0 || m.lipstickAmount != 0 || m.blushAmount != 0
+            || m.contour != 0 || m.highlight != 0 || m.eyeshadowAmount != 0 || m.eyeliner != 0 || m.lashes != 0
+    }
+
+    public var hasHairColor: Bool { makeup.hairColorAmount != 0 }
+
     /// True if any shape slider (which needs the warp stage) is used.
     public var hasReshape: Bool {
         eyeSize != 0 || eyeDistance != 0 || faceSlim != 0 || cheekbones != 0 || jaw != 0 || chin != 0
             || forehead != 0 || faceLength != 0 || noseWidth != 0 || noseLength != 0 || noseTip != 0
-            || lipsFullness != 0 || lipsWidth != 0 || smile != 0
+            || lipsFullness != 0 || lipsWidth != 0 || smile != 0 || makeup.hasBrowShape
     }
 
     public var hasRetouch: Bool {
@@ -157,7 +167,7 @@ public struct BeautySettings: Codable, Equatable, Sendable {
 /// Slider definitions for the Face tool.
 public enum FaceCatalog {
     public enum Section: String, CaseIterable, Identifiable {
-        case skin, eyes, shape, noseLips, teeth
+        case skin, eyes, shape, noseLips, teeth, brows, lipstick, cheeks, eyeMakeup, hair
 
         public var id: String { rawValue }
 
@@ -168,6 +178,11 @@ public enum FaceCatalog {
             case .shape: return "Shape"
             case .noseLips: return "Nose & lips"
             case .teeth: return "Teeth"
+            case .brows: return "Brows"
+            case .lipstick: return "Lipstick"
+            case .cheeks: return "Blush & contour"
+            case .eyeMakeup: return "Eye makeup"
+            case .hair: return "Hair color"
             }
         }
 
@@ -178,6 +193,23 @@ public enum FaceCatalog {
             case .shape: return "face.dashed"
             case .noseLips: return "mouth"
             case .teeth: return "sparkle"
+            case .brows: return "eyebrow"
+            case .lipstick: return "paintbrush.pointed"
+            case .cheeks: return "circle.hexagongrid"
+            case .eyeMakeup: return "eye.circle"
+            case .hair: return "scissors"
+            }
+        }
+
+        /// Color palette shown in this section, with the setting it changes.
+        public var palette: (colors: [(String, MakeupColor)], keyPath: WritableKeyPath<MakeupSettings, MakeupColor>)? {
+            switch self {
+            case .brows: return (MakeupPalette.brows, \.browColor)
+            case .lipstick: return (MakeupPalette.lipstick, \.lipstickColor)
+            case .cheeks: return (MakeupPalette.blush, \.blushColor)
+            case .eyeMakeup: return (MakeupPalette.eyeshadow, \.eyeshadowColor)
+            case .hair: return (MakeupPalette.hair, \.hairColor)
+            default: return nil
             }
         }
     }
@@ -232,6 +264,30 @@ public enum FaceCatalog {
             ]
         case .teeth:
             return [spec("teethWhiten", "Whiten teeth", \.teethWhiten, range: 0...100)]
+        case .brows:
+            return [
+                spec("browThickness", "Fuller", \.makeup.browThickness, range: 0...100),
+                spec("browColorAmount", "Color", \.makeup.browColorAmount, range: 0...100),
+                spec("browLift", "Lift", \.makeup.browLift),
+                spec("browArch", "Arch", \.makeup.browArch),
+                spec("browTilt", "Tilt", \.makeup.browTilt),
+            ]
+        case .lipstick:
+            return [spec("lipstickAmount", "Lipstick", \.makeup.lipstickAmount, range: 0...100)]
+        case .cheeks:
+            return [
+                spec("blushAmount", "Blush", \.makeup.blushAmount, range: 0...100),
+                spec("contour", "Contour", \.makeup.contour, range: 0...100),
+                spec("highlight", "Highlight", \.makeup.highlight, range: 0...100),
+            ]
+        case .eyeMakeup:
+            return [
+                spec("eyeshadowAmount", "Eyeshadow", \.makeup.eyeshadowAmount, range: 0...100),
+                spec("eyeliner", "Eyeliner", \.makeup.eyeliner, range: 0...100),
+                spec("lashes", "Lashes", \.makeup.lashes, range: 0...100),
+            ]
+        case .hair:
+            return [spec("hairColorAmount", "Hair color", \.makeup.hairColorAmount, range: 0...100)]
         }
     }
 

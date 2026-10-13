@@ -93,6 +93,91 @@ float4 lumora_faceRetouch(sample_t s, sample_t base, sample_t fine, sample_t chr
     return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
 }
 
+// Eyebrows and makeup for one face. Masks are pixel-aligned over the face region:
+// masksA (skin, lips, mouth), masksB (eyes, iris, under-eye), masksC (blush, contour, highlight),
+// masksD (eyeshadow, brow distance field, -), masksE (eyeliner, lashes, brow core).
+// lip: (amount, L, a, b) target; lipFinish: (gloss, shimmer, matte, 0); lipTone: average lip (L, a, b)
+// blush: (amount, L, a, b); sculpt: (contour, highlight, 0, 0); shadow: (amount, L, a, b)
+// liner: (eyeliner, lashes, 0, 0); brow: (thickness, color amount, 0, 0); browColor/browTone: (L, a, b)
+// tone: average skin (L, a, b). All amounts 0...1.
+float4 lumora_makeup(sample_t s, sample_t masksA, sample_t masksB, sample_t masksC, sample_t masksD, sample_t masksE,
+                     float4 lip, float4 lipFinish, float4 lipTone, float4 blush, float4 sculpt, float4 shadow,
+                     float4 liner, float4 brow, float4 browColor, float4 browTone, float4 tone) {
+    float3 c = max(s.rgb, float3(0.0f));
+    float3 lab = lumoraBToOklab(c);
+    float originalL = lab.x;
+    float skin = masksA.r;
+
+    // Lipstick: target color, original light/shadow kept as an offset from the lips' average.
+    float lips = masksA.g * lip.x;
+    if (lips > 0.0f) {
+        float3 painted = float3(lip.y + (originalL - lipTone.x) * 0.9f, lip.zw + (lab.yz - lipTone.yz) * 0.25f);
+        float matte = lipFinish.z;
+        painted.x = mix(painted.x, lip.y, matte * 0.35f);
+        lab = mix(lab, painted, lips * 0.88f);
+        float shine = smoothstep(lipTone.x + 0.03f, lipTone.x + 0.15f, originalL);
+        float gloss = (lipFinish.x + lipFinish.y * 0.6f) * lips * shine;
+        lab.x += gloss * 0.2f * max(1.0f - lab.x, 0.0f);
+        lab.yz *= 1.0f - gloss * 0.35f;
+    }
+
+    // Blush: tint the cheek apples toward the blush color.
+    float blushWeight = masksC.r * blush.x * skin;
+    lab.yz = mix(lab.yz, blush.zw, blushWeight * 0.32f);
+    lab.x = mix(lab.x, blush.y, blushWeight * 0.08f);
+
+    // Contour (cool-neutral shadow) and highlight (soft sheen).
+    float contourWeight = masksC.g * sculpt.x * skin;
+    lab.x *= 1.0f - contourWeight * 0.14f;
+    lab.yz = mix(lab.yz, tone.yz * 0.85f, contourWeight * 0.2f);
+    float highlightWeight = masksC.b * sculpt.y * skin;
+    lab.x += highlightWeight * 0.09f * max(1.0f - lab.x, 0.0f);
+    lab.yz *= 1.0f - highlightWeight * 0.12f;
+
+    // Eyeshadow on the lids (never on the eye itself).
+    float shadowWeight = masksD.r * shadow.x * (1.0f - masksB.r);
+    float3 shaded = float3(shadow.y + (lab.x - tone.x) * 0.6f, shadow.zw);
+    lab = mix(lab, shaded, shadowWeight * 0.6f);
+
+    // Eyeliner and lashes: deep near-black lines.
+    float lineWeight = max(masksE.r * liner.x, masksE.g * liner.y) * (1.0f - masksB.r * 0.4f);
+    lab.x = mix(lab.x, 0.1f, lineWeight * 0.9f);
+    lab.yz *= 1.0f - lineWeight * 0.85f;
+
+    // Brows: thicken by filling around the existing brow (distance field), keeping
+    // the skin's fine variation as a hint of strands; then optionally recolor the whole brow.
+    float field = masksD.g;
+    float threshold = 1.0f - brow.x * 0.55f;
+    float fill = smoothstep(threshold, threshold + 0.12f, field) * (1.0f - masksE.b) * step(0.001f, brow.x);
+    float3 filled = float3(browTone.x + (originalL - tone.x) * 0.35f, browTone.yz);
+    lab = mix(lab, filled, fill * 0.7f);
+    float browArea = clamp(masksE.b + fill, 0.0f, 1.0f) * brow.y;
+    float3 tinted = float3(min(lab.x, browColor.x + (lab.x - browTone.x) * 0.8f), browColor.yz);
+    lab = mix(lab, tinted, browArea * 0.8f);
+
+    return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
+}
+
+// Hair recolor around one head. person: person segmentation (r); head: head area (r);
+// faceMasks: masksA placed over this region (skin oval in r, to protect the face).
+// target: (amount, L, a, b); hairTone/tone: average hair and skin (L, a, b).
+float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t faceMasks, float4 target, float4 hairTone, float4 tone) {
+    float3 c = max(s.rgb, float3(0.0f));
+    float3 lab = lumoraBToOklab(c);
+    float skinLike = (1.0f - smoothstep(0.04f, 0.09f, length(lab.yz - tone.yz))) * smoothstep(tone.x - 0.3f, tone.x - 0.15f, lab.x);
+    float hair = person.r * head.r * (1.0f - skinLike * 0.9f) * (1.0f - faceMasks.r);
+    float weight = hair * target.x;
+    if (weight <= 0.0f) { return s; }
+    // Shift lightness toward the target, keep strand-level variation.
+    float newL = lab.x + (target.y - hairTone.x) * 0.75f;
+    float targetChroma = length(target.zw);
+    float2 direction = targetChroma > 1.0e-4f ? target.zw / targetChroma : float2(0.0f);
+    float relative = clamp(lab.x / max(target.y, 0.05f), 0.3f, 1.6f);
+    float3 recolored = float3(max(newL, 0.0f), direction * targetChroma * (0.55f + 0.45f * relative));
+    lab = mix(lab, recolored, weight);
+    return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
+}
+
 // Backward warp: each output pixel samples the input at its position plus the displacement
 // field (normalized offsets in .rg, multiplied by the image size).
 float4 lumora_displace(sampler src, sampler field, float2 imageSize, destination dest) {

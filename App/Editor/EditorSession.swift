@@ -247,6 +247,16 @@ final class EditorSession: ObservableObject, Identifiable {
         }
     }
 
+    func setMakeupColor(_ color: MakeupColor, name: String, at keyPath: WritableKeyPath<MakeupSettings, MakeupColor>) {
+        let target = faceTarget.appending(path: \FaceRetouchSettings.makeup).appending(path: keyPath)
+        perform("Color \(name)") { $0[keyPath: target] = color }
+    }
+
+    func setLipFinish(_ finish: LipFinish) {
+        let target = faceTarget.appending(path: \FaceRetouchSettings.makeup.lipFinish)
+        perform("Lip finish \(finish.title)") { $0[keyPath: target] = finish }
+    }
+
     func resetFace() {
         let target = faceTarget
         perform("Reset face") { $0[keyPath: target] = FaceRetouchSettings() }

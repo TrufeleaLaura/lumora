@@ -44,6 +44,91 @@ extension RenderPipeline {
         return retouched.composited(over: image)
     }
 
+    // MARK: - Makeup & hair
+
+    /// Eyebrows, makeup and hair color, face by face.
+    func applyMakeup(_ beauty: BeautySettings, to input: CIImage, analysis: ImageAnalysis) -> CIImage {
+        guard !beauty.isIdentity else { return input }
+        let faces = analysis.faces
+        guard !faces.isEmpty else { return input }
+        var image = input
+        for face in faces {
+            let settings = beauty.settings(for: face.landmarks.anchor)
+            if settings.hasMakeup, let masks = face.makeup {
+                image = makeup(face, masks: masks, settings: settings.makeup, image: image)
+            }
+            if settings.hasHairColor, let masks = face.makeup, let person = analysis.personMask {
+                image = hair(face, masks: masks, person: person, analysisSize: analysis.imageSize, settings: settings.makeup, image: image)
+            }
+        }
+        return image
+    }
+
+    private static func vector(_ amount: Double, _ color: MakeupColor) -> CIVector {
+        let lab = color.oklab
+        return CIVector(x: CGFloat(amount / 100), y: CGFloat(lab.0), z: CGFloat(lab.1), w: CGFloat(lab.2))
+    }
+
+    private static func tone(_ value: SIMD3<Float>) -> CIVector {
+        CIVector(x: CGFloat(value.x), y: CGFloat(value.y), z: CGFloat(value.z), w: 0)
+    }
+
+    private func makeup(_ face: FaceInfo, masks: MakeupMaskSet, settings m: MakeupSettings, image: CIImage) -> CIImage {
+        let extent = image.extent
+        let rect = Self.pixelRect(face.maskRegion, in: extent).integral.intersection(extent)
+        guard rect.width > 4, rect.height > 4 else { return image }
+        let crop = image.clampedToExtent().cropped(to: rect)
+        func place(_ mask: CIImage) -> CIImage { Self.place(mask, region: face.maskRegion, in: extent).cropped(to: rect) }
+
+        let finish: CIVector
+        switch m.lipFinish {
+        case .matte: finish = CIVector(x: 0, y: 0, z: 1, w: 0)
+        case .satin: finish = CIVector(x: 0.35, y: 0, z: 0, w: 0)
+        case .gloss: finish = CIVector(x: 1, y: 0, z: 0, w: 0)
+        case .shimmer: finish = CIVector(x: 0.4, y: 1, z: 0, w: 0)
+        }
+        let browColor = m.browColor.oklab
+        let result = Kernels.makeup.apply(
+            crop,
+            place(face.masksA), place(face.masksB), place(masks.c), place(masks.d), place(masks.e),
+            Self.vector(m.lipstickAmount, m.lipstickColor),
+            finish,
+            Self.tone(face.lipTone),
+            Self.vector(m.blushAmount, m.blushColor),
+            CIVector(x: CGFloat(m.contour / 100), y: CGFloat(m.highlight / 100), z: 0, w: 0),
+            Self.vector(m.eyeshadowAmount, m.eyeshadowColor),
+            CIVector(x: CGFloat(m.eyeliner / 100), y: CGFloat(m.lashes / 100), z: 0, w: 0),
+            CIVector(x: CGFloat(m.browThickness / 100), y: CGFloat(m.browColorAmount / 100), z: 0, w: 0),
+            CIVector(x: CGFloat(browColor.0), y: CGFloat(browColor.1), z: CGFloat(browColor.2), w: 0),
+            Self.tone(face.browTone),
+            Self.tone(face.skinTone)
+        )
+        return result.composited(over: image)
+    }
+
+    private func hair(_ face: FaceInfo, masks: MakeupMaskSet, person: CIImage, analysisSize: CGSize, settings m: MakeupSettings, image: CIImage) -> CIImage {
+        let extent = image.extent
+        let rect = Self.pixelRect(masks.headRegion, in: extent).integral.intersection(extent)
+        guard rect.width > 4, rect.height > 4 else { return image }
+        let crop = image.clampedToExtent().cropped(to: rect)
+        // The person mask was made at analysis size; stretch it over this render's extent.
+        let personScaled = person
+            .transformed(by: CGAffineTransform(scaleX: extent.width / max(analysisSize.width, 1), y: extent.height / max(analysisSize.height, 1)))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+            .cropped(to: rect)
+        let head = Self.place(masks.head, region: masks.headRegion, in: extent).cropped(to: rect)
+        let faceOval = Self.place(face.masksA, region: face.maskRegion, in: extent)
+            .composited(over: CIImage(color: CIColor(red: 0, green: 0, blue: 0)).cropped(to: rect))
+            .cropped(to: rect)
+        let result = Kernels.hairColor.apply(
+            crop, personScaled, head, faceOval,
+            Self.vector(m.hairColorAmount, m.hairColor),
+            Self.tone(face.hairTone),
+            Self.tone(face.skinTone)
+        )
+        return result.composited(over: image)
+    }
+
     // MARK: - Reshape
 
     /// Face reshaping (slim, jaw, eyes, nose, lips…) as one smooth warp per face.

@@ -142,6 +142,42 @@ final class FaceTests: XCTestCase {
         XCTAssertGreaterThan(c.x + c.y + c.z, 0.005)
     }
 
+    // MARK: - Diagnostics
+
+    /// Landmarks drawn as dots: contour red, eyes yellow, brows orange, lips green, nose blue, pupils white.
+    private func landmarkOverlay(_ image: CIImage, _ analysis: ImageAnalysis) -> CIImage {
+        var output = image
+        let extent = image.extent
+        let dotRadius = max(3, extent.width * 0.004)
+        func dot(_ p: SIMD2<Double>, _ color: CIColor) {
+            let center = CGPoint(x: extent.minX + CGFloat(p.x) * extent.width, y: extent.minY + CGFloat(p.y) * extent.height)
+            let disc = CIImage(color: color).cropped(to: CGRect(x: center.x - dotRadius, y: center.y - dotRadius, width: dotRadius * 2, height: dotRadius * 2))
+            output = disc.composited(over: output)
+        }
+        for face in analysis.faces {
+            let f = face.landmarks
+            print("FACE bounds=\(f.bounds) leftEye=\(FaceLandmarks.centroid(f.leftEye)) rightEye=\(FaceLandmarks.centroid(f.rightEye)) lips=\(FaceLandmarks.centroid(f.outerLips)) contour=\(f.contour.count) pts")
+            f.contour.forEach { dot($0, CIColor(red: 1, green: 0, blue: 0)) }
+            (f.leftEye + f.rightEye).forEach { dot($0, CIColor(red: 1, green: 1, blue: 0)) }
+            (f.leftBrow + f.rightBrow).forEach { dot($0, CIColor(red: 1, green: 0.5, blue: 0)) }
+            (f.outerLips + f.innerLips).forEach { dot($0, CIColor(red: 0, green: 1, blue: 0)) }
+            (f.nose + f.noseCrest).forEach { dot($0, CIColor(red: 0, green: 0.4, blue: 1)) }
+            [f.leftPupil, f.rightPupil].compactMap { $0 }.forEach { dot($0, CIColor(red: 1, green: 1, blue: 1)) }
+            let b = f.bounds
+            let corners = [SIMD2(b.x, b.y), SIMD2(b.x + b.width, b.y), SIMD2(b.x, b.y + b.height), SIMD2(b.x + b.width, b.y + b.height)]
+            corners.forEach { dot($0, CIColor(red: 1, green: 0, blue: 1)) }
+        }
+        return output
+    }
+
+    func testWriteLandmarkSheet() throws {
+        try ContactSheet.write([
+            ("Portrait landmarks", landmarkOverlay(Self.portrait, Self.portraitAnalysis)),
+            ("Smile landmarks", landmarkOverlay(Self.smile, Self.smileAnalysis)),
+            ("Group landmarks", landmarkOverlay(Self.group, Self.groupAnalysis)),
+        ], name: "19-face-landmarks", columns: 3)
+    }
+
     // MARK: - Contact sheets
 
     private func faceCrop(_ image: CIImage, _ analysis: ImageAnalysis, index: Int = 0, grow: Double = 1.7) -> CIImage {

@@ -23,6 +23,27 @@ struct FacePanel: View {
                     header(faceCount: faces.count)
                     sectionChips
                     ScrollView {
+                        if let palette = section.palette {
+                            paletteRow(palette.colors, keyPath: palette.keyPath)
+                        }
+                        if section == .lipstick {
+                            Picker("Finish", selection: Binding(
+                                get: { session.document[keyPath: session.faceTarget].makeup.lipFinish },
+                                set: { session.setLipFinish($0) }
+                            )) {
+                                ForEach(LipFinish.allCases) { finish in
+                                    Text(finish.title).tag(finish)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.bottom, 6)
+                        }
+                        if section == .hair {
+                            Text("Works best on portraits where the hair is clearly visible.")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         SliderList(
                             session: session,
                             specs: FaceCatalog.sliders(section, target: session.faceTarget),
@@ -93,6 +114,36 @@ struct FacePanel: View {
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    private func paletteRow(_ colors: [(String, MakeupColor)], keyPath: WritableKeyPath<MakeupSettings, MakeupColor>) -> some View {
+        let current = session.document[keyPath: session.faceTarget].makeup[keyPath: keyPath]
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(Array(colors.enumerated()), id: \.offset) { _, item in
+                    let name = item.0
+                    let color = item.1
+                    Button {
+                        session.setMakeupColor(color, name: name, at: keyPath)
+                    } label: {
+                        VStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(red: color.red, green: color.green, blue: color.blue))
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(current == color ? Theme.accent : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
+                            Text(name)
+                                .font(.system(size: 9))
+                                .foregroundStyle(current == color ? Theme.accent : Color.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(width: 56)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(name)
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
 

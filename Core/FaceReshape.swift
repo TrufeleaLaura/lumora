@@ -101,9 +101,24 @@ public enum FaceReshape {
         for point in face.rightEye.map(iso) {
             controls.append(WarpControl(source: point, target: point + f.right * eyeShift))
         }
-        for point in browPoints {
-            let sign: Double = f.side(point) < 0 ? -1 : 1
-            controls.append(WarpControl(source: point, target: point + f.right * sign * eyeShift * 0.5))
+        // Brows: half the eye shift, plus lift, arch (peak about 2/3 out) and tilt (outer end).
+        for brow in [face.leftBrow, face.rightBrow] {
+            let points = brow.map(iso)
+            let sides: [Double] = points.map(f.side)
+            guard let innerSide = sides.min(by: { abs($0) < abs($1) }), let outerSide = sides.max(by: { abs($0) < abs($1) }) else { continue }
+            let span: Double = max(abs(outerSide - innerSide), 1e-6)
+            for (point, side) in zip(points, sides) {
+                let sign: Double = side < 0 ? -1 : 1
+                let along: Double = min(max(abs(side - innerSide) / span, 0), 1)
+                let archShape: Double = (along - 0.65) / 0.3
+                let arch: Double = exp(-archShape * archShape)
+                let lift: Double = s.makeup.browLift / 100 * 0.06 * f.eyeToMouth
+                let archLift: Double = s.makeup.browArch / 100 * 0.05 * f.eyeToMouth * arch
+                let tiltLift: Double = s.makeup.browTilt / 100 * 0.06 * f.eyeToMouth * (along - 0.5)
+                let sideways: Double = sign * eyeShift * 0.5
+                let target: SIMD2<Double> = point + f.right * sideways + f.up * (lift + archLift + tiltLift)
+                controls.append(WarpControl(source: point, target: target))
+            }
         }
 
         // Nose: length and tip move the lowest nose point; the rest of the nose anchors it.
