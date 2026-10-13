@@ -55,16 +55,10 @@ extension RenderPipeline {
             roiCallback: { _, r in r },
             arguments: [CIVector(x: 7, y: longSide * 0.05, z: max(1, longSide * 0.0008), w: 0)]
         ) ?? Self.white(rect)
-        // Base color plus a little texture. Built without a color-matrix bias: a bias also
-        // paints outside the image's edges, which showed up around frames on the canvas.
-        let fibers = texture.applyingFilter("CIColorMatrix", parameters: [
-            "inputRVector": CIVector(x: 0.12 * CGFloat(base.red), y: 0, z: 0, w: 0),
-            "inputGVector": CIVector(x: 0.12 * CGFloat(base.green), y: 0, z: 0, w: 0),
-            "inputBVector": CIVector(x: 0.12 * CGFloat(base.blue), y: 0, z: 0, w: 0),
-            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0),
-        ]).cropped(to: rect)
-        let paper = CIImage(color: CIColor(red: 0.94 * CGFloat(base.red), green: 0.94 * CGFloat(base.green), blue: 0.94 * CGFloat(base.blue))).cropped(to: rect)
-        return fibers.applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: paper]).cropped(to: rect)
+        // Base color with a faint texture multiplied in. Built without a color-matrix bias:
+        // a bias also paints outside the image's edges, which showed up around frames.
+        let paper = CIImage(color: CIColor(red: CGFloat(base.red), green: CGFloat(base.green), blue: CGFloat(base.blue))).cropped(to: rect)
+        return Kernels.multiplyBlend.apply(paper, texture, Float(0.12)).cropped(to: rect)
     }
 
     private func roundedRect(_ rect: CGRect, radius: CGFloat, color: CIColor) -> CIImage {
