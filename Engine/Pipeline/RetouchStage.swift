@@ -29,7 +29,7 @@ final class RetouchCache: @unchecked Sendable {
         defer { lock.unlock() }
         if entries[key] == nil { order.append(key) }
         entries[key] = patch
-        while order.count > 48 {
+        while order.count > 24 {
             entries[order.removeFirst()] = nil
         }
     }
@@ -110,8 +110,8 @@ extension RenderPipeline {
 
         // Work at up to 512 px (a fill is O(pixels)); the patch is scaled back up.
         let scale = min(1, 512 / max(region.width, region.height))
-        let width = max(8, Int((region.width * scale).rounded()))
-        let height = max(8, Int((region.height * scale).rounded()))
+        let width = max(8, Int(safe: (region.width * scale).rounded()))
+        let height = max(8, Int(safe: (region.height * scale).rounded()))
         let sx = CGFloat(width) / region.width, sy = CGFloat(height) / region.height
         let local = image.cropped(to: region)
             .transformed(by: CGAffineTransform(translationX: -region.minX, y: -region.minY))

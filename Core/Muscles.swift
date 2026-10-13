@@ -60,28 +60,35 @@ public enum MuscleRelief {
         case .abs(let style):
             switch style {
             case .sixPack, .eightPack:
-                let rows = style == .sixPack ? 3 : 4
+                // Real abdominals aren't a grid: the lowest belly is the tallest, the rows on the
+                // left and right are slightly offset, and the lines are faint at the outer ends.
+                let weights: [Double] = style == .sixPack ? [1.35, 1.0, 0.9] : [1.4, 1.0, 0.95, 0.85]
+                let rows = weights.count
                 let top = 0.96, bottom = 0.04
-                let rowHeight: Double = (top - bottom) / Double(rows)
+                let total = weights.reduce(0, +)
                 let side: Double = (u - 0.5) * 2
+                let offset: Double = u < 0.5 ? 0.012 : -0.012
                 var height = 0.0
                 var groove = 0.0
+                var rowStart = bottom
                 for row in 0..<rows {
-                    // Row 0 is the lowest; lower bellies are a little narrower.
+                    let rowHeight: Double = (top - bottom) * weights[row] / total
+                    // Lower bellies are a little narrower.
                     let inset: Double = 0.035 * Double(rows - 1 - row) / Double(max(rows - 1, 1))
-                    let centerV: Double = bottom + (Double(row) + 0.5) * rowHeight
+                    let centerV: Double = rowStart + rowHeight * 0.5
                     let half = SIMD2<Double>(0.2 - inset, rowHeight * 0.5)
-                    height = max(height, dome(u, v, center: SIMD2(0.29 + inset * 0.5, centerV), half: half))
-                    height = max(height, dome(u, v, center: SIMD2(0.71 - inset * 0.5, centerV), half: half))
+                    height = max(height, dome(u, v, center: SIMD2(0.29 + inset * 0.5, centerV + offset), half: half))
+                    height = max(height, dome(u, v, center: SIMD2(0.71 - inset * 0.5, centerV - offset), half: half))
                     if row > 0 {
-                        // Tendinous lines between rows curve up a little toward the sides.
-                        let lineV: Double = bottom + Double(row) * rowHeight + 0.03 * side * side
-                        let lateral: Double = smoothstep(0.06, 0.16, u) * (1 - smoothstep(0.84, 0.94, u))
-                        groove += gauss(v - lineV, 0.04) * lateral * 0.75
+                        // Tendinous lines curve up toward the sides and fade before the edges.
+                        let lineV: Double = rowStart + 0.035 * side * side + offset
+                        let lateral: Double = smoothstep(0.08, 0.22, u) * (1 - smoothstep(0.78, 0.92, u))
+                        groove += gauss(v - lineV, 0.045) * lateral * (0.75 - 0.15 * Double(row - 1))
                     }
+                    rowStart += rowHeight
                 }
                 // Linea alba down the middle and the curved outer edges.
-                groove += gauss(u - 0.5, 0.035) * fadeV
+                groove += 0.9 * gauss(u - 0.5, 0.04) * fadeV
                 let edgeOffset: Double = 0.07 + 0.03 * (1 - v)
                 groove += 0.4 * (gauss(u - edgeOffset, 0.05) + gauss(u - (1 - edgeOffset), 0.05)) * fadeV
                 let e = envelope(u, v, margin: 0.18)

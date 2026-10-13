@@ -15,11 +15,15 @@ enum Kernels {
         return data
     }()
 
+    /// Loads a color kernel. If one can't be loaded on some device, a pass-through kernel is
+    /// used instead (that effect does nothing) rather than crashing the app.
     static func colorKernel(_ name: String) -> CIColorKernel {
         do {
             return try CIColorKernel(functionName: name, fromMetalLibraryData: library)
         } catch {
-            preconditionFailure("LumoraEngine: cannot load color kernel \(name): \(error)")
+            NSLog("LumoraEngine: cannot load color kernel %@: %@", name, String(describing: error))
+            assertionFailure("cannot load color kernel \(name)")
+            return passthroughColor
         }
     }
 
@@ -27,9 +31,21 @@ enum Kernels {
         do {
             return try CIKernel(functionName: name, fromMetalLibraryData: library)
         } catch {
-            preconditionFailure("LumoraEngine: cannot load kernel \(name): \(error)")
+            NSLog("LumoraEngine: cannot load kernel %@: %@", name, String(describing: error))
+            assertionFailure("cannot load kernel \(name)")
+            return passthroughGeneral
         }
     }
+
+    private static let passthroughColor: CIColorKernel = {
+        // swiftlint:disable:next force_try
+        try! CIColorKernel(functionName: "lumora_passthrough", fromMetalLibraryData: library)
+    }()
+
+    private static let passthroughGeneral: CIKernel = {
+        // swiftlint:disable:next force_try
+        try! CIKernel(functionName: "lumora_passthroughSampler", fromMetalLibraryData: library)
+    }()
 
     static func warpKernel(_ name: String) -> CIWarpKernel {
         do {

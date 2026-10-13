@@ -51,7 +51,7 @@ final class CollageModel: ObservableObject {
             let data = try store.originalData(for: id)
             guard let source = ImageSource(data: data) else { throw LibraryError.unreadablePhoto }
             let document = (try? store.document(for: id)) ?? EditDocument()
-            let proxy = source.makeProxy(maxDimension: 2400)
+            let proxy = source.makeProxy(maxDimension: 1800)
             return RenderPipeline().apply(document, to: proxy, scale: proxy.extent.width / max(source.pixelSize.width, 1))
         }
     }
@@ -60,7 +60,7 @@ final class CollageModel: ObservableObject {
     func use(photoData data: Data, in index: Int) {
         load(into: index) {
             guard let source = ImageSource(data: data) else { throw LibraryError.unreadablePhoto }
-            return source.makeProxy(maxDimension: 2400)
+            return source.makeProxy(maxDimension: 1800)
         }
     }
 

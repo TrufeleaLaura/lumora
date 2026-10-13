@@ -177,8 +177,8 @@ enum FaceMasks {
         let regionWidthPx = CGFloat(region.width) * imageSize.width
         let regionHeightPx = CGFloat(region.height) * imageSize.height
         let scale = min(1, maxSize / max(regionWidthPx, regionHeightPx, 1))
-        let width = max(8, Int((regionWidthPx * scale).rounded()))
-        let height = max(8, Int((regionHeightPx * scale).rounded()))
+        let width = max(8, Int(safe: (regionWidthPx * scale).rounded()))
+        let height = max(8, Int(safe: (regionHeightPx * scale).rounded()))
 
         // Normalized image point -> mask pixel (y up, like Core Graphics).
         func px(_ p: SIMD2<Double>) -> CGPoint {

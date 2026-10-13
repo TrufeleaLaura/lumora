@@ -166,8 +166,8 @@ extension RenderPipeline {
         }
         if o.dust > 0 || o.scratches > 0 {
             let factor = min(1, 1600 / longSide)
-            let width = max(8, Int((extent.width * factor).rounded()))
-            let height = max(8, Int((extent.height * factor).rounded()))
+            let width = max(8, Int(safe: (extent.width * factor).rounded()))
+            let height = max(8, Int(safe: (extent.height * factor).rounded()))
             for (kind, amount) in [("dust", o.dust), ("scratches", o.scratches)] where amount > 0 {
                 let layer = ParticleLayers.layer(kind, style: Int(o.dustStyle.rounded()), width: width, height: height)
                 let placed = Self.stretch(layer, over: extent)

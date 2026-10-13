@@ -91,7 +91,16 @@ extension RenderPipeline {
             let absShift: Double = s.absPosition / 100 * 0.1 * torso
             let absOffset: Double = absShift - 0.62 * torso
             let absCenter: SIMD2<Double> = frame.shoulders + up * absOffset
-            place(.abs(s.absStyle), key: "abs-\(s.absStyle.rawValue)", amount: s.abs / 100, center: absCenter, across: right, along: up, width: 0.44 * sw, height: 0.5 * torso)
+            // Width from the measured waist when available (abs span about 60 % of it).
+            var absWidth = 0.44 * sw
+            if let waist = body.outline[.waist] {
+                let a = SIMD2(waist.first.x, waist.first.y * aspect), b = SIMD2(waist.second.x, waist.second.y * aspect)
+                let waistWidth = BodyReshape.length(b - a)
+                if waistWidth > 0.2 * sw { absWidth = min(0.6 * waistWidth, 0.5 * sw) }
+            }
+            // A softer response: the first half of the slider is subtle definition.
+            let absAmount = pow(s.abs / 100, 1.3)
+            place(.abs(s.absStyle), key: "abs-\(s.absStyle.rawValue)", amount: absAmount, center: absCenter, across: right, along: up, width: absWidth, height: 0.46 * torso)
             let chestCenter: SIMD2<Double> = frame.shoulders - up * (0.2 * torso)
             place(.pecs, key: "pecs", amount: s.pecs / 100, center: chestCenter, across: right, along: up, width: 0.95 * sw, height: 0.32 * torso)
             let vCenter: SIMD2<Double> = frame.hips + up * (0.02 * torso)

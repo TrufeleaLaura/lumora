@@ -24,8 +24,8 @@ enum MakeupMasks {
         let regionWidthPx = CGFloat(region.width) * imageSize.width
         let regionHeightPx = CGFloat(region.height) * imageSize.height
         let scale = min(1, maxSize / max(regionWidthPx, regionHeightPx, 1))
-        let width = max(8, Int((regionWidthPx * scale).rounded()))
-        let height = max(8, Int((regionHeightPx * scale).rounded()))
+        let width = max(8, Int(safe: (regionWidthPx * scale).rounded()))
+        let height = max(8, Int(safe: (regionHeightPx * scale).rounded()))
         // Mask pixels per isotropic unit (same in x and y).
         let k = CGFloat(width) / CGFloat(region.width)
         let fw = frame.faceWidth
@@ -236,8 +236,8 @@ enum MakeupMasks {
         let headWidthPx = CGFloat(headRegion.width) * imageSize.width
         let headHeightPx = CGFloat(headRegion.height) * imageSize.height
         let headScale = min(1, maxSize / max(headWidthPx, headHeightPx, 1))
-        let hw = max(8, Int((headWidthPx * headScale).rounded()))
-        let hh = max(8, Int((headHeightPx * headScale).rounded()))
+        let hw = max(8, Int(safe: (headWidthPx * headScale).rounded()))
+        let hh = max(8, Int(safe: (headHeightPx * headScale).rounded()))
         let hk = CGFloat(hw) / CGFloat(headRegion.width)
         let headCenterIso = move(frame.eyeMid, right: 0, up: 0.25 * em)
         let headCenter = CGPoint(

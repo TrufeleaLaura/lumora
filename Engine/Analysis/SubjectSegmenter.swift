@@ -52,8 +52,8 @@ public final class SubjectAnalysis: @unchecked Sendable {
         var result = IndexSet()
         guard labelWidth > 0, labelHeight > 0 else { return result }
         for point in points {
-            let cx = Int(point.x * Double(labelWidth))
-            let cy = Int((1 - point.y) * Double(labelHeight))
+            let cx = Int(safe: point.x * Double(labelWidth))
+            let cy = Int(safe: (1 - point.y) * Double(labelHeight))
             var found: UInt8 = 0
             search: for radius in 0...3 {
                 for dy in -radius...radius {
@@ -84,21 +84,23 @@ public final class SubjectAnalysis: @unchecked Sendable {
         lock.unlock()
         guard let buffer = try? observation.generateScaledMaskForImage(forInstances: instances, from: handler) else { return nil }
         let raw = CIImage(cvPixelBuffer: buffer, options: [.colorSpace: NSNull()])
-        let scaled = raw
-            .transformed(by: CGAffineTransform(scaleX: extent.width / max(raw.extent.width, 1), y: extent.height / max(raw.extent.height, 1)))
-            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
-            .cropped(to: extent)
         // Single-channel buffers read as (v, 0, 0): spread to gray so every channel holds the mask.
-        let gray = scaled.applyingFilter("CIColorMatrix", parameters: [
+        let reduced = ImageSource.scaled(raw, maxDimension: 1024)
+        let gray = reduced.applyingFilter("CIColorMatrix", parameters: [
             "inputRVector": CIVector(x: 1, y: 0, z: 0, w: 0),
             "inputGVector": CIVector(x: 1, y: 0, z: 0, w: 0),
             "inputBVector": CIVector(x: 1, y: 0, z: 0, w: 0),
             "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0),
             "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: 1),
-        ])
-        let result = RenderContext.materialize(gray, context: context)
+        ]).cropped(to: reduced.extent)
+        // Stored small (≤ 1024 px) and stretched over the photo lazily.
+        let small = RenderContext.materialize(gray, context: context)
+        let result = small
+            .transformed(by: CGAffineTransform(scaleX: extent.width / max(small.extent.width, 1), y: extent.height / max(small.extent.height, 1)))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+            .cropped(to: extent)
         lock.lock()
-        if cache.count > 16 { cache.removeAll() }
+        if cache.count > 6 { cache.removeAll() }
         cache[instances] = result
         lock.unlock()
         return result

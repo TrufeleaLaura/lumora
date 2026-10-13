@@ -53,7 +53,7 @@ public enum LiquifyMath {
     public static func field(_ strokes: [LiquifyStroke], aspect: Double, columns: Int = 160) -> DisplacementField? {
         guard strokes.contains(where: { !$0.points.isEmpty }), aspect > 0 else { return nil }
         let cols = max(columns, 8)
-        let rows = max(8, Int((Double(cols) * aspect).rounded()))
+        let rows = max(8, Int(safe: (Double(cols) * aspect).rounded()))
         let stepX = 1.0 / Double(cols - 1)
         let stepY = aspect / Double(rows - 1)
 
@@ -89,7 +89,7 @@ public enum LiquifyMath {
                     let from = points[index - 1], to = points[index]
                     let segment: SIMD2<Double> = to - from
                     let length = (segment.x * segment.x + segment.y * segment.y).squareRoot()
-                    let steps = max(1, Int((length / (radius * 0.25)).rounded(.up)))
+                    let steps = max(1, Int(safe: (length / (radius * 0.25)).rounded(.up)))
                     let delta: SIMD2<Double> = segment / Double(steps)
                     for step in 1...steps {
                         let center: SIMD2<Double> = from + delta * Double(step)
@@ -99,10 +99,10 @@ public enum LiquifyMath {
             }
 
             for dab in dabs {
-                let x0 = max(0, Int(((dab.center.x - radius) / stepX).rounded(.down)))
-                let x1 = min(cols - 1, Int(((dab.center.x + radius) / stepX).rounded(.up)))
-                let y0 = max(0, Int(((dab.center.y - radius) / stepY).rounded(.down)))
-                let y1 = min(rows - 1, Int(((dab.center.y + radius) / stepY).rounded(.up)))
+                let x0 = max(0, Int(safe: ((dab.center.x - radius) / stepX).rounded(.down)))
+                let x1 = min(cols - 1, Int(safe: ((dab.center.x + radius) / stepX).rounded(.up)))
+                let y0 = max(0, Int(safe: ((dab.center.y - radius) / stepY).rounded(.down)))
+                let y1 = min(rows - 1, Int(safe: ((dab.center.y + radius) / stepY).rounded(.up)))
                 guard x0 <= x1, y0 <= y1 else { continue }
                 var updates: [(Int, SIMD2<Double>)] = []
                 for row in y0...y1 {

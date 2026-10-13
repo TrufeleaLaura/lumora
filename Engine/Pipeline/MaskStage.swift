@@ -23,14 +23,9 @@ enum BrushMaskCache {
         }
         lock.unlock()
         let coverage = BrushRasterizer.rasterize(strokes, width: width, height: height)
-        var floats = [Float](repeating: 1, count: width * height * 4)
-        for i in 0..<(width * height) {
-            floats[i * 4] = coverage[i]
-            floats[i * 4 + 1] = coverage[i]
-            floats[i * 4 + 2] = coverage[i]
-        }
-        let data = floats.withUnsafeBufferPointer { Data(buffer: $0) }
-        let image = CIImage(bitmapData: data, bytesPerRow: width * 16, size: CGSize(width: width, height: height), format: .RGBAf, colorSpace: nil)
+        // One byte per pixel (gray) keeps cached brush masks small.
+        let bytes = coverage.map { UInt8(min(max($0, 0), 1) * 255 + 0.5) }
+        let image = CIImage(bitmapData: Data(bytes), bytesPerRow: width, size: CGSize(width: width, height: height), format: .L8, colorSpace: nil)
         lock.lock()
         entries.append((key, image))
         if entries.count > 6 { entries.removeFirst() }
@@ -234,8 +229,8 @@ extension RenderPipeline {
         let longSide = max(extent.width, extent.height)
         let rasterLong: CGFloat = longSide > 2048 ? 2048 : min(longSide, 1024)
         let factor = rasterLong / longSide
-        let width = max(8, Int((extent.width * factor).rounded()))
-        let height = max(8, Int((extent.height * factor).rounded()))
+        let width = max(8, Int(safe: (extent.width * factor).rounded()))
+        let height = max(8, Int(safe: (extent.height * factor).rounded()))
         let raster = BrushMaskCache.image(c.strokes, width: width, height: height)
         let mask = Self.stretch(raster, over: extent)
         guard c.autoEdge else { return mask }
@@ -294,7 +289,12 @@ extension RenderPipeline {
             result = Self.maximum(result, body)
         }
 
-        let faceParts = parts.intersection([.faceSkin, .eyes, .iris, .brows, .lips, .teeth, .hair])
+        var faceParts = parts.intersection([.faceSkin, .eyes, .iris, .brows, .lips, .teeth, .hair])
+        // A full hair mask (photo matte or grown) follows the whole hairstyle.
+        if faceParts.contains(.hair), let hairMask = analysis.hairMask {
+            result = Self.maximum(result, Self.stretch(hairMask, over: extent))
+            faceParts.remove(.hair)
+        }
         if !faceParts.isEmpty {
             for face in chosenFaces {
                 guard let makeup = face.makeup else { continue }

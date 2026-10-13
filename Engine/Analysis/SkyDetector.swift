@@ -1,6 +1,7 @@
 import CoreImage
 import Foundation
 import LumoraCore
+import Vision
 
 /// Finds the sky: smooth, sky-colored areas connected to the top of the photo (plus matching
 /// patches seen through trees). The result is guided-filter coefficients (a, b) at medium
@@ -202,8 +203,38 @@ enum SkyDetector {
         return (sky, w, h)
     }
 
+    /// How likely the photo shows sky, from Vision's scene classifier (0...1), or nil when the
+    /// classifier isn't available. Indoor photos with bright walls score near 0.
+    static func skyLikelihood(_ image: CIImage) -> Double? {
+        let request = VNClassifyImageRequest()
+        let handler = VNImageRequestHandler(ciImage: ImageSource.scaled(image, maxDimension: 512), options: [:])
+        guard (try? handler.perform([request])) != nil, let results = request.results, !results.isEmpty else { return nil }
+        let skyWords = ["sky", "cloud", "sunset", "sunrise", "horizon", "outdoor", "beach", "mountain", "landscape", "ocean", "sea", "field"]
+        var best: Float = 0
+        for observation in results where skyWords.contains(where: { observation.identifier.lowercased().contains($0) }) {
+            best = max(best, observation.confidence)
+        }
+        return Double(best)
+    }
+
+    /// Edge-refined coefficients from a sky matte stored in the photo file.
+    static func coefficients(fromMatte matte: CIImage, image: CIImage, context: CIContext) -> CIImage? {
+        let medium = ImageSource.scaled(image, maxDimension: 768)
+        let target = medium.extent
+        let mask = ImageAnalysis.stretch(matte, over: target)
+        let guide = Kernels.perceptualLuma.apply(medium)
+        let coefficients = GuidedFilter.coefficients(guide: guide, target: mask, radius: max(2, max(target.width, target.height) * 0.004), eps: 0.001)
+        let materialized = RenderContext.materialize(coefficients, context: context, format: .RGBAf)
+        let extent = image.extent
+        return materialized
+            .transformed(by: CGAffineTransform(scaleX: extent.width / target.width, y: extent.height / target.height))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+    }
+
     /// Guided coefficients (a, b) over the image's extent for the sky mask, or nil.
     static func coefficients(_ image: CIImage, person: CIImage?, context: CIContext) -> CIImage? {
+        // Indoors (bright walls, ceilings) there is no sky to find.
+        if let likelihood = skyLikelihood(image), likelihood < 0.08 { return nil }
         guard let grid = probability(image, person: person, context: context) else { return nil }
         var floats = [Float](repeating: 1, count: grid.width * grid.height * 4)
         for i in 0..<(grid.width * grid.height) {
@@ -222,7 +253,7 @@ enum SkyDetector {
         let guide = Kernels.perceptualLuma.apply(medium)
         let longSide = max(target.width, target.height)
         let coefficients = GuidedFilter.coefficients(guide: guide, target: mask, radius: max(2, longSide * 0.008), eps: 0.002)
-        let materialized = RenderContext.materialize(coefficients, context: context)
+        let materialized = RenderContext.materialize(coefficients, context: context, format: .RGBAf)
         // Stretch over the analyzed image's extent.
         let extent = image.extent
         return materialized

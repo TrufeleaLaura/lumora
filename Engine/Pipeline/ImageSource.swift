@@ -12,6 +12,8 @@ public final class ImageSource: @unchecked Sendable {
     /// Uniform type of the file, e.g. "public.heic" or "com.adobe.raw-image".
     public let typeIdentifier: String?
     public let isRAW: Bool
+    /// Hair/skin/teeth/sky mattes embedded by the iPhone camera, when present.
+    public let mattes: SemanticMattes
 
     public init?(data: Data) {
         let type = ImageSource.typeIdentifier(of: data)
@@ -33,6 +35,7 @@ public final class ImageSource: @unchecked Sendable {
         self.properties = ImageSource.fileProperties(of: data) ?? image.properties
         self.typeIdentifier = type
         self.isRAW = developedAsRAW
+        self.mattes = developedAsRAW ? SemanticMattes() : SemanticMattes.load(from: data)
     }
 
     public init(image: CIImage, properties: [String: Any] = [:]) {
@@ -40,6 +43,7 @@ public final class ImageSource: @unchecked Sendable {
         self.properties = properties.isEmpty ? image.properties : properties
         self.typeIdentifier = nil
         self.isRAW = false
+        self.mattes = SemanticMattes()
     }
 
     public var pixelSize: CGSize { original.extent.size }

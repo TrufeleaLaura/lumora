@@ -18,10 +18,12 @@ public enum PersonSegmenter {
         }
         guard let buffer = request.results?.first?.pixelBuffer else { return nil }
         let raw = CIImage(cvPixelBuffer: buffer, options: [.colorSpace: NSNull()])
+        // Keep the mask small in memory (≤ 1024 px); it's stretched over the photo lazily.
+        let small = RenderContext.materialize(ImageSource.scaled(raw, maxDimension: 1024), context: context)
         let extent = image.extent
-        let scaled = raw.transformed(by: CGAffineTransform(scaleX: extent.width / raw.extent.width, y: extent.height / raw.extent.height))
+        return small
+            .transformed(by: CGAffineTransform(scaleX: extent.width / small.extent.width, y: extent.height / small.extent.height))
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
             .cropped(to: extent)
-        return RenderContext.materialize(scaled, context: context)
     }
 }

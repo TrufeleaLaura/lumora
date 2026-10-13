@@ -14,10 +14,14 @@ struct EditorView: View {
         VStack(spacing: 0) {
             topBar
             canvas
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(-1)
             toolPanel
             toolBar
         }
         .background(Theme.background.ignoresSafeArea())
+        // Panels are dense; very large text sizes would push the photo off screen.
+        .dynamicTypeSize(...DynamicTypeSize.large)
         .overlay(alignment: .top) {
             if let toast = session.toast {
                 Text(toast)
@@ -114,9 +118,9 @@ struct EditorView: View {
             }
             .disabled(session.isExporting)
         }
-        .font(.system(size: 18, weight: .medium))
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .font(.system(size: 17, weight: .medium))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Canvas
@@ -254,7 +258,7 @@ struct EditorView: View {
                     .frame(maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(height: 290)
+        .frame(height: 262)
         .background(Theme.panel)
     }
 
@@ -288,15 +292,15 @@ struct EditorView: View {
                             session.activeTool = tool
                             withAnimation { proxy.scrollTo(tool.id, anchor: .center) }
                         } label: {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 3) {
                                 Image(systemName: tool.symbol)
-                                    .font(.system(size: 19))
+                                    .font(.system(size: 17))
                                 Text(tool.title)
-                                    .font(.caption2.weight(.medium))
+                                    .font(.system(size: 10, weight: .medium))
                                     .lineLimit(1)
                             }
                             .foregroundStyle(session.activeTool == tool ? Theme.accent : Color.secondary)
-                            .frame(width: 64)
+                            .frame(width: 58)
                         }
                         .buttonStyle(.plain)
                         .id(tool.id)
@@ -307,8 +311,8 @@ struct EditorView: View {
                 .padding(.horizontal, 6)
             }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
         .background(Theme.panel.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {
             Divider().overlay(Color.white.opacity(0.06))

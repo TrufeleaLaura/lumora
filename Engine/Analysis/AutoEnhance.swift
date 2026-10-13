@@ -35,7 +35,9 @@ public enum AutoEnhance {
         }
     }
 
-    public static func propose(for image: CIImage, context: CIContext = RenderContext.analysis) -> Proposal {
+    /// - Parameter faceLightness: OKLab lightness of the main face's skin, when there is a face:
+    ///   portraits are exposed for the face, not for the background.
+    public static func propose(for image: CIImage, faceLightness: Double? = nil, context: CIContext = RenderContext.analysis) -> Proposal {
         let small = ImageSource.scaled(image, maxDimension: 256)
         let data = RenderContext.readFloats(small, context: context)
         let count = data.width * data.height
@@ -72,14 +74,22 @@ public enum AutoEnhance {
         let evHigh = 2.2 * log2(0.9 / p98)
         let evMid = 2.2 * log2(0.5 / median)
         var exposure = 0.0
-        if p98 < 0.82 {
+        if let face = faceLightness, face > 0.05 {
+            // Portraits: a well-lit face matters more than the background; highlights are
+            // recovered below instead of darkening the whole photo.
+            if face < 0.62 {
+                exposure = min(2.2 * log2(0.67 / face) * 0.75, max(evHigh, 0) + 0.6)
+            } else if face > 0.82 {
+                exposure = 2.2 * log2(0.78 / face) * 0.6
+            }
+        } else if p98 < 0.82 {
             exposure = min(evHigh, evMid + 0.5) * 0.8
         } else if median < 0.36 {
             exposure = min(evMid * 0.6, max(evHigh, 0))
         } else if median > 0.72, p02 > 0.25 {
             exposure = evMid * 0.5
         }
-        exposure = min(max(exposure, -1.0), 1.5)
+        exposure = min(max(exposure, -0.8), 1.5)
         proposal.light.exposure = (exposure * 20).rounded() / 20
         let gain = pow(2, proposal.light.exposure)
         func adjusted(_ p: Double) -> Double { min(pow(pow(p, 2.2) * gain, 1 / 2.2), 1.2) }
@@ -90,19 +100,19 @@ public enum AutoEnhance {
         let deepShadow = Double(perceptual.filter { adjusted($0) < 0.18 }.count) / Double(count)
 
         if clipped > 0.02 {
-            proposal.light.highlights = -min(60, (clipped * 700).rounded())
+            proposal.light.highlights = -min(40, (clipped * 400).rounded())
         } else if high < 0.92 {
             proposal.light.whites = min(40, ((0.95 - high) * 220).rounded())
         }
         if deepShadow > 0.2 {
-            proposal.light.shadows = min(50, (deepShadow * 90).rounded())
+            proposal.light.shadows = min(40, (deepShadow * 80).rounded())
         }
         if low > 0.06 {
             proposal.light.blacks = -min(40, ((low - 0.03) * 260).rounded())
         }
         let spread = p90 - p10
-        if spread < 0.55 {
-            proposal.light.contrast = min(30, ((0.55 - spread) * 90).rounded())
+        if spread < 0.5 {
+            proposal.light.contrast = min(15, ((0.5 - spread) * 60).rounded())
         }
 
         // White balance from near-neutral midtones. Only warm (yellow/orange) casts and
@@ -120,8 +130,9 @@ public enum AutoEnhance {
         }
 
         let meanChroma = chromaSum / Double(count)
-        proposal.vibrance = meanChroma < 0.04 ? 25 : (meanChroma < 0.08 ? 15 : 5)
-        proposal.clarity = 10
+        proposal.vibrance = meanChroma < 0.04 ? 20 : (meanChroma < 0.08 ? 12 : 4)
+        // Clarity is unflattering on skin; landscapes get a little.
+        proposal.clarity = faceLightness == nil ? 10 : 0
         let haze = darkChannel.sorted()[count / 2]
         if haze > 0.3 {
             proposal.dehaze = min(30, ((haze - 0.3) * 120).rounded())

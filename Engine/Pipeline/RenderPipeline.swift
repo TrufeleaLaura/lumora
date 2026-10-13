@@ -140,7 +140,8 @@ public struct RenderPipeline {
             Float(light.highlights / 100),
             Float(light.shadows / 100),
             Float(light.whites / 100),
-            Float(light.blacks / 100)
+            Float(light.blacks / 100),
+            analysis.tonalPivot
         )
     }
 

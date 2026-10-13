@@ -24,8 +24,8 @@ enum BlemishDetector {
 
         // Work at ~384 px across the face region.
         let scale = min(1, 384 / max(rect.width, rect.height))
-        let width = max(16, Int((rect.width * scale).rounded()))
-        let height = max(16, Int((rect.height * scale).rounded()))
+        let width = max(16, Int(safe: (rect.width * scale).rounded()))
+        let height = max(16, Int(safe: (rect.height * scale).rounded()))
         func local(_ input: CIImage) -> CIImage {
             input.cropped(to: rect)
                 .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))

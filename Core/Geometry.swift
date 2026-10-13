@@ -177,3 +177,19 @@ public enum GeometryMath {
         quarterTurns % 2 == 0 ? (width, height) : (height, width)
     }
 }
+
+public extension Int {
+    /// Like `Int(_:)`, but never traps: NaN becomes 0 and values are clamped to ±1e9.
+    /// Used where values come from photo analysis, which can be degenerate on odd photos.
+    init(safe value: Double) {
+        if value.isNaN {
+            self = 0
+        } else {
+            self = Int(Swift.min(Swift.max(value, -1e9), 1e9))
+        }
+    }
+
+    init(safe value: CGFloat) {
+        self.init(safe: Double(value))
+    }
+}

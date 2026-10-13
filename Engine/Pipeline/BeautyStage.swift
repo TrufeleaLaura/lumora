@@ -57,8 +57,12 @@ extension RenderPipeline {
             if settings.hasMakeup, let masks = face.makeup {
                 image = makeup(face, masks: masks, settings: settings.makeup, image: image)
             }
-            if settings.hasHairColor, let masks = face.makeup, let person = analysis.personMask {
-                image = hair(face, masks: masks, person: person, analysisSize: analysis.imageSize, settings: settings.makeup, image: image)
+            if settings.hasHairColor, let masks = face.makeup {
+                if let hairMask = analysis.hairMask {
+                    image = hair(face, masks: masks, hairMask: hairMask, settings: settings.makeup, image: image)
+                } else if let person = analysis.personMask {
+                    image = hair(face, masks: masks, person: person, analysisSize: analysis.imageSize, settings: settings.makeup, image: image)
+                }
             }
         }
         return image
@@ -106,6 +110,29 @@ extension RenderPipeline {
         return result.composited(over: image)
     }
 
+    /// Hair color with a full hair mask (photo matte or grown from the face): follows the whole
+    /// hairstyle, ponytails included.
+    private func hair(_ face: FaceInfo, masks: MakeupMaskSet, hairMask: CIImage, settings m: MakeupSettings, image: CIImage) -> CIImage {
+        let extent = image.extent
+        let mask = Self.stretch(hairMask, over: extent)
+        let faceArea = Self.place(masks.d, region: face.maskRegion, in: extent)
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0, y: 0, z: 1, w: 0),
+                "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
+            ])
+            .composited(over: Self.black(extent))
+            .cropped(to: extent)
+        return Kernels.hairColor.apply(
+            image, mask, Self.white(extent), faceArea,
+            Self.vector(m.hairColorAmount, m.hairColor),
+            Self.tone(face.hairTone),
+            Self.tone(face.skinTone),
+            Float(1)
+        )
+    }
+
     private func hair(_ face: FaceInfo, masks: MakeupMaskSet, person: CIImage, analysisSize: CGSize, settings m: MakeupSettings, image: CIImage) -> CIImage {
         let extent = image.extent
         let rect = Self.pixelRect(masks.headRegion, in: extent).integral.intersection(extent)
@@ -131,7 +158,8 @@ extension RenderPipeline {
             crop, personScaled, head, faceArea,
             Self.vector(m.hairColorAmount, m.hairColor),
             Self.tone(face.hairTone),
-            Self.tone(face.skinTone)
+            Self.tone(face.skinTone),
+            Float(0)
         )
         return result.composited(over: image)
     }

@@ -313,7 +313,7 @@ public enum BrushRasterizer {
                 let a = pixels[index - 1], b = pixels[index]
                 let delta: SIMD2<Double> = b - a
                 let distance = (delta.x * delta.x + delta.y * delta.y).squareRoot()
-                let steps = Int((distance / spacing).rounded(.up))
+                let steps = Int(safe: (distance / spacing).rounded(.up))
                 if steps > 0 {
                     for step in 1...steps {
                         let t = Double(step) / Double(steps)
@@ -326,10 +326,10 @@ public enum BrushRasterizer {
             // Stroke coverage = max over dabs, so one stroke has an even opacity.
             var minX = width, minY = height, maxX = -1, maxY = -1
             for dab in dabs {
-                let x0 = max(0, Int((dab.x - radius).rounded(.down)))
-                let x1 = min(width - 1, Int((dab.x + radius).rounded(.up)))
-                let y0 = max(0, Int((dab.y - radius).rounded(.down)))
-                let y1 = min(height - 1, Int((dab.y + radius).rounded(.up)))
+                let x0 = max(0, Int(safe: (dab.x - radius).rounded(.down)))
+                let x1 = min(width - 1, Int(safe: (dab.x + radius).rounded(.up)))
+                let y0 = max(0, Int(safe: (dab.y - radius).rounded(.down)))
+                let y1 = min(height - 1, Int(safe: (dab.y + radius).rounded(.up)))
                 guard x0 <= x1, y0 <= y1 else { continue }
                 minX = min(minX, x0); maxX = max(maxX, x1)
                 minY = min(minY, y0); maxY = max(maxY, y1)

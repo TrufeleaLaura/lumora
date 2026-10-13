@@ -173,7 +173,7 @@ final class EditorSession: ObservableObject, Identifiable {
         self.document = document
         self.store = store
         self.proxyScale = proxy.extent.width / max(source.pixelSize.width, 1)
-        let analysis = ImageAnalysis(image: proxy)
+        let analysis = ImageAnalysis(image: proxy, mattes: source.mattes)
         self.analysis = analysis
         Task.detached(priority: .utility) {
             analysis.prewarm()

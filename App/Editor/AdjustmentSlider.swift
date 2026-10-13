@@ -13,7 +13,7 @@ struct AdjustmentSlider: View {
     private var isChanged: Bool { abs(value - spec.defaultValue) > 0.0001 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 if let swatch {
                     Circle()
@@ -21,10 +21,10 @@ struct AdjustmentSlider: View {
                         .frame(width: 10, height: 10)
                 }
                 Text(spec.title)
-                    .font(.subheadline)
+                    .font(.footnote)
                 Spacer()
                 Text(spec.formatted(value))
-                    .font(.subheadline.monospacedDigit())
+                    .font(.footnote.monospacedDigit())
                     .foregroundStyle(isChanged ? Theme.accent : Color.secondary)
             }
             .contentShape(Rectangle())
@@ -52,7 +52,7 @@ struct SliderList: View {
     var gradients: [String: Gradient] = [:]
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 8) {
             ForEach(specs) { spec in
                 AdjustmentSlider(
                     spec: spec,

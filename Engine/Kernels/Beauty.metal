@@ -168,7 +168,8 @@ float4 lumora_makeup(sample_t s, sample_t masksA, sample_t masksB, sample_t mask
 // Hair recolor around one head. person: person segmentation (r); head: head area (r);
 // faceArea: solid face mask (r) to keep the face, eyes and lips untouched.
 // target: (amount, L, a, b); hairTone/tone: average hair and skin (L, a, b).
-float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t faceArea, float4 target, float4 hairTone, float4 tone) {
+// trust = 1: `person` is already a hair mask (photo matte or grown mask); use it as is.
+float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t faceArea, float4 target, float4 hairTone, float4 tone, float trust) {
     float3 c = max(s.rgb, float3(0.0f));
     float3 lab = lumoraBToOklab(c);
     float skinLike = (1.0f - smoothstep(0.04f, 0.09f, length(lab.yz - tone.yz))) * smoothstep(tone.x - 0.3f, tone.x - 0.15f, lab.x);
@@ -176,7 +177,9 @@ float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t fac
     float3 diff = lab - hairTone.xyz;
     float hairDistance = length(float3(diff.x * 0.5f, diff.yz));
     float hairLike = 1.0f - smoothstep(0.1f, 0.2f, hairDistance);
-    float hair = person.r * head.r * hairLike * (1.0f - skinLike * 0.9f) * (1.0f - faceArea.r);
+    float hair = trust > 0.5f
+        ? person.r * (1.0f - faceArea.r)
+        : person.r * head.r * hairLike * (1.0f - skinLike * 0.9f) * (1.0f - faceArea.r);
     float weight = hair * target.x;
     if (weight <= 0.0f) { return s; }
     // Shift lightness toward the target, keep strand-level variation.
@@ -210,12 +213,18 @@ float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t b
     float p2 = p - smooth * mid * 0.9f - skinParams.x * skin * high * 0.3f;
 
     // Muscle relief: lift the lit edges, deepen the grooves (multiplicative, keeps skin texture).
-    p2 *= 1.0f + (shading.r * 0.1f - shading.g * 0.32f) * skin;
+    // Shadows on skin turn a little warmer and redder rather than grey, like real skin.
+    float shade = shading.g * skin;
+    float light = shading.r * skin;
+    p2 *= 1.0f + light * 0.08f - shade * 0.26f;
 
     float y2 = lumoraBToLinear(max(p2, 0.0f));
     c = y > 1.0e-6f ? c * (y2 / y) : float3(y2);
 
     float3 lab = lumoraBToOklab(c);
+    lab.y += shade * 0.012f;
+    lab.z += shade * 0.006f;
+    lab.yz *= 1.0f - light * 0.08f;
     float tan = skinParams.y * skin;
     lab.x *= 1.0f - tan * 0.16f;
     lab.yz += float2(0.02f, 0.045f) * tan;

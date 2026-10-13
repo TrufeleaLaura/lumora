@@ -138,6 +138,26 @@ public enum BodyReshape {
             }
         }
 
+        // Bust lift and push-up (front views): the chest moves up and toward the middle, the
+        // shoulders and the waist stay put.
+        if (s.bustLift != 0 || s.cleavage != 0), !body.pose.isBackView {
+            for side in [-1.0, 1.0] {
+                let below: SIMD2<Double> = f.up * (0.3 * f.torso)
+                let across: SIMD2<Double> = f.right * (side * 0.22 * f.shoulderWidth)
+                let chest: SIMD2<Double> = f.shoulders - below + across
+                let lift: SIMD2<Double> = f.up * (0.05 * f.torso * s.bustLift / 100)
+                let inward: SIMD2<Double> = f.right * (-side * 0.05 * f.shoulderWidth * s.cleavage / 100)
+                let lowerCurve: SIMD2<Double> = chest - f.up * (0.12 * f.torso)
+                controls.append(WarpControl(source: chest, target: chest + lift + inward))
+                controls.append(WarpControl(source: lowerCurve, target: lowerCurve + lift * 1.2 + inward * 0.8))
+                // Keep the shoulder and the waist on this side where they are.
+                let shoulder: SIMD2<Double> = f.shoulders + f.right * (side * 0.5 * f.shoulderWidth)
+                let belowChest: SIMD2<Double> = f.shoulders - f.up * (0.62 * f.torso) + f.right * (side * 0.2 * f.shoulderWidth)
+                controls.append(.anchor(shoulder))
+                controls.append(.anchor(belowChest))
+            }
+        }
+
         // Bust/chest (front views): scale around each side of the chest.
         if s.bust != 0, !body.pose.isBackView {
             for side in [-1.0, 1.0] {
@@ -150,19 +170,30 @@ public enum BodyReshape {
             }
         }
 
-        // Head size around the head center.
+        // Head size: the whole head with its hair, scaled around the middle of the skull (a bit
+        // above the eyes) so the crown and hair grow too, not just the face.
+        var region = body.region
         if s.headSize != 0 {
             let headPoints = [BodyJoint.nose, .leftEye, .rightEye, .leftEar, .rightEar].compactMap { body.pose[$0] }.map { iso($0, aspect) }
             if !headPoints.isEmpty {
-                let center = headPoints.reduce(SIMD2(0, 0), +) / Double(headPoints.count)
-                let radius = f.shoulderWidth * 0.42
+                let eyes = headPoints.reduce(SIMD2(0, 0), +) / Double(headPoints.count)
+                let headWidth = f.shoulderWidth * 0.45
+                let center: SIMD2<Double> = eyes + f.up * (headWidth * 0.3)
+                let radius = SIMD2(headWidth * 1.15, headWidth * 1.5)
                 let factor = 1 + 0.15 * s.headSize / 100
-                scales.append(LocalScale(center: center, radius: SIMD2(radius, radius * 1.2), axis: f.right, scale: SIMD2(factor, factor)))
+                scales.append(LocalScale(center: center, radius: radius, axis: f.right, scale: SIMD2(factor, factor)))
+                // The warp area must reach well above the head (it fades out at its edges).
+                let reach = max(radius.x, radius.y) * 1.6
+                let top = min(1, (center.y + reach) / aspect)
+                let left = max(0, center.x - reach), right = min(1, center.x + reach)
+                let minX = min(region.x, left), maxX = max(region.x + region.width, right)
+                let maxY = max(region.y + region.height, top)
+                region = CGRectValue(x: minX, y: region.y, width: maxX - minX, height: maxY - region.y)
             }
         }
 
         guard !controls.isEmpty || !scales.isEmpty else { return nil }
-        return DisplacementField.build(controls: controls, scales: scales, region: body.region, aspect: aspect, columns: resolution, rows: resolution)
+        return DisplacementField.build(controls: controls, scales: scales, region: region, aspect: aspect, columns: resolution, rows: resolution)
     }
 
     static func halfWidth(_ pair: EdgePair?, _ aspect: Double) -> Double? {

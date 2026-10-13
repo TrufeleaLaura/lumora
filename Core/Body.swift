@@ -85,6 +85,10 @@ public struct BodySettings: Codable, Hashable, Sendable {
     public var butt: Double = 0
     public var buttLift: Double = 0
     public var bust: Double = 0
+    /// Lifts the bust (0...100).
+    public var bustLift: Double = 0
+    /// Pushes the bust together toward the center (0...100).
+    public var cleavage: Double = 0
     public var thighs: Double = 0
     public var legs: Double = 0
     public var height: Double = 0
@@ -114,7 +118,7 @@ public struct BodySettings: Codable, Hashable, Sendable {
     public var isIdentity: Bool { self == BodySettings() }
 
     public var hasReshape: Bool {
-        waist != 0 || hips != 0 || butt != 0 || buttLift != 0 || bust != 0 || thighs != 0 || arms != 0
+        waist != 0 || hips != 0 || butt != 0 || buttLift != 0 || bust != 0 || bustLift != 0 || cleavage != 0 || thighs != 0 || arms != 0
             || shoulders != 0 || headSize != 0
     }
 
@@ -148,13 +152,14 @@ public struct BodyEditSettings: Codable, Equatable, Sendable {
 
 public enum BodyCatalog {
     public enum Section: String, CaseIterable, Identifiable {
-        case shape, length, upper, muscles, skin
+        case shape, bust, length, upper, muscles, skin
 
         public var id: String { rawValue }
 
         public var title: String {
             switch self {
             case .shape: return "Shape"
+            case .bust: return "Bust"
             case .length: return "Length"
             case .upper: return "Upper body"
             case .muscles: return "Muscles"
@@ -165,6 +170,7 @@ public enum BodyCatalog {
         public var symbol: String {
             switch self {
             case .shape: return "figure.stand"
+            case .bust: return "heart"
             case .length: return "arrow.up.and.down"
             case .upper: return "figure.arms.open"
             case .muscles: return "figure.strengthtraining.traditional"
@@ -187,8 +193,13 @@ public enum BodyCatalog {
                 spec("hips", "Hips", \.hips),
                 spec("butt", "Butt", \.butt),
                 spec("buttLift", "Butt lift", \.buttLift),
-                spec("bust", "Bust / chest", \.bust),
                 spec("thighs", "Slim thighs", \.thighs),
+            ]
+        case .bust:
+            return [
+                spec("bust", "Size", \.bust),
+                unipolar("bustLift", "Lift", \.bustLift),
+                unipolar("cleavage", "Push together", \.cleavage),
             ]
         case .length:
             return [

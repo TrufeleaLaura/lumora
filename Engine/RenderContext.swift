@@ -22,6 +22,8 @@ public enum RenderContext {
         let options: [CIContextOption: Any] = [
             .workingColorSpace: workingColorSpace,
             .workingFormat: NSNumber(value: format.rawValue),
+            // Every edit builds a new graph; caching old intermediates only costs memory.
+            .cacheIntermediates: false,
         ]
         if let device {
             return CIContext(mtlDevice: device, options: options)
@@ -29,10 +31,11 @@ public enum RenderContext {
         return CIContext(options: options)
     }
 
-    /// Renders a data image (not a picture) into a float bitmap-backed image, without color management.
-    public static func materialize(_ image: CIImage, context: CIContext = analysis) -> CIImage {
+    /// Renders a data image (not a picture) into a bitmap-backed image, without color management.
+    /// Half floats by default (masks, patches); pass `.RGBAf` where full precision matters.
+    public static func materialize(_ image: CIImage, context: CIContext = analysis, format: CIFormat = .RGBAh) -> CIImage {
         let extent = image.extent.integral
-        guard let cgImage = context.createCGImage(image, from: extent, format: .RGBAf, colorSpace: nil) else {
+        guard let cgImage = context.createCGImage(image, from: extent, format: format, colorSpace: nil) else {
             return image
         }
         return CIImage(cgImage: cgImage, options: [.colorSpace: NSNull()])
@@ -42,6 +45,9 @@ public enum RenderContext {
     /// Reads a data image into a float array (RGBA per pixel, rows top-down), without color management.
     public static func readFloats(_ image: CIImage, context: CIContext = analysis) -> (pixels: [Float], width: Int, height: Int) {
         let extent = image.extent.integral
+        // Guard against infinite or absurd extents (would trap or exhaust memory).
+        guard !extent.isInfinite, !extent.isNull, extent.width > 0, extent.height > 0,
+              extent.width * extent.height < 80_000_000 else { return ([], 0, 0) }
         let width = Int(extent.width)
         let height = Int(extent.height)
         var pixels = [Float](repeating: 0, count: width * height * 4)

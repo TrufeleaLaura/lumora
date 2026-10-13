@@ -6,10 +6,13 @@ extension EditorSession {
     /// One-tap enhancement (optionally tuned for dark, noisy photos), as ordinary edits.
     func autoEnhance(lowLight: Bool) {
         let proxy = self.proxy
+        let analysis = self.analysis
         preparingMask = lowLight ? "Brightening…" : "Enhancing…"
         Task {
-            let proposal = await Task.detached(priority: .userInitiated) {
-                AutoEnhance.propose(for: proxy)
+            let proposal = await Task.detached(priority: .userInitiated) { () -> AutoEnhance.Proposal in
+                // Portraits are exposed for the largest face.
+                let face = analysis.faces.max { $0.landmarks.bounds.width < $1.landmarks.bounds.width }
+                return AutoEnhance.propose(for: proxy, faceLightness: face.map { Double($0.skinTone.x) })
             }.value
             preparingMask = nil
             perform(lowLight ? "Low light" : "Auto enhance") { document in

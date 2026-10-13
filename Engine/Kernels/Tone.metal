@@ -33,6 +33,19 @@ static inline float lumoraContrast(float p, float c) {
     }
 }
 
+// Contrast around a pivot (the photo's typical brightness) so the overall brightness stays put:
+// 0, pivot and 1 are fixed, the S-curve acts on either side.
+static inline float lumoraPivotContrast(float p, float c, float pivot) {
+    if (fabs(c) < 1.0e-4f) { return p; }
+    float over = max(p - 1.0f, 0.0f);
+    float x = clamp(p, 0.0f, 1.0f);
+    float pv = clamp(pivot, 0.25f, 0.75f);
+    float t = x < pv ? 0.5f * x / pv : 0.5f + 0.5f * (x - pv) / (1.0f - pv);
+    float t2 = clamp(lumoraContrast(t, c), 0.0f, 1.0f);
+    float y = t2 < 0.5f ? t2 * 2.0f * pv : pv + (t2 - 0.5f) * 2.0f * (1.0f - pv);
+    return y + over;
+}
+
 // Whites move the bright end, blacks the dark end (perceptual space).
 static inline float lumoraWhitesBlacks(float p, float whites, float blacks) {
     float pw = min(p, 1.2f);
@@ -76,6 +89,15 @@ float4 lumora_perceptualLumaPair(sample_t s) {
     return float4(p, p * p, 0.0f, 1.0f);
 }
 
+// Returns its input (stand-in if a kernel can't be loaded).
+float4 lumora_passthrough(sample_t s) {
+    return s;
+}
+
+float4 lumora_passthroughSampler(sampler src, destination dest) {
+    return src.sample(src.transform(dest.coord()));
+}
+
 // (value, its square, 0) of a single-channel image (in .r).
 float4 lumora_lumaPair(sample_t s) {
     return float4(s.r, s.r * s.r, 0.0f, 1.0f);
@@ -117,7 +139,7 @@ float4 lumora_guidedCoefficients(sample_t means, sample_t meanSquares, float eps
 
 // base: upsampled guided-filter coefficients (a, b) of log luminance (local average brightness).
 // exposure in EV; the rest -1...+1.
-float4 lumora_tone(sample_t s, sample_t base, float exposure, float contrast, float highlights, float shadows, float whites, float blacks) {
+float4 lumora_tone(sample_t s, sample_t base, float exposure, float contrast, float highlights, float shadows, float whites, float blacks, float pivot) {
     float3 c = max(s.rgb, float3(0.0f));
     float y = lumoraLuma(c);
     float logY = clamp(log2(max(y, 1.0e-4f)), -10.0f, 4.0f);
@@ -138,12 +160,26 @@ float4 lumora_tone(sample_t s, sample_t base, float exposure, float contrast, fl
 
     float p = lumoraToPerceptual(y2);
     p = lumoraWhitesBlacks(p, whites, blacks);
-    p = lumoraContrast(p, contrast);
+    p = lumoraPivotContrast(p, contrast, pivot);
     p = lumoraRolloff(p);
     float y3 = lumoraToLinear(p);
 
-    c = y > 1.0e-6f ? c * (y3 / y) : float3(y3);
-    return float4(max(c, float3(0.0f)), s.a);
+    float3 byLuma = y > 1.0e-6f ? c * (y3 / y) : float3(y3);
+    if (fabs(contrast) < 1.0e-4f) {
+        return float4(max(byLuma, float3(0.0f)), s.a);
+    }
+    // Contrast also on each channel, like a film curve: colors gain a little richness with
+    // more contrast (and soften with less) instead of only getting darker or lighter.
+    float3 scaled = y > 1.0e-6f ? c * (y2 / y) : float3(y2);
+    float3 pc = pow(max(scaled, float3(0.0f)), float3(1.0f / 2.2f));
+    pc.r = lumoraRolloff(lumoraPivotContrast(lumoraWhitesBlacks(pc.r, whites, blacks), contrast, pivot));
+    pc.g = lumoraRolloff(lumoraPivotContrast(lumoraWhitesBlacks(pc.g, whites, blacks), contrast, pivot));
+    pc.b = lumoraRolloff(lumoraPivotContrast(lumoraWhitesBlacks(pc.b, whites, blacks), contrast, pivot));
+    float3 byChannel = pow(max(pc, float3(0.0f)), float3(2.2f));
+    // Keep the luminance of the luma path, take part of the color from the channel path.
+    float yc = lumoraLuma(byChannel);
+    float3 matched = yc > 1.0e-6f ? byChannel * (y3 / yc) : byLuma;
+    return float4(max(mix(byLuma, matched, 0.5f), float3(0.0f)), s.a);
 }
 
 // Texture (fine detail) and clarity (mid-scale local contrast).
