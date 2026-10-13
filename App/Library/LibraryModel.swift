@@ -85,6 +85,13 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    /// Starts an edit of the bundled sample photo (for trying the app, and for UI tests).
+    func openSample() async -> EditorSession? {
+        guard let url = Bundle.main.url(forResource: "SamplePhoto", withExtension: "jpg"),
+              let data = try? Data(contentsOf: url) else { return nil }
+        return await importPhoto(data: data)
+    }
+
     /// Re-opens a saved project with its edits.
     func open(_ project: ProjectMetadata) async -> EditorSession? {
         let store = self.store

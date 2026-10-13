@@ -106,6 +106,19 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: app.lumora.engine-tests
 
+  # Scripted walkthrough of the app that saves a screenshot of every tool.
+  LumoraUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/UITests]
+    dependencies:
+      - target: Lumora
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.lumora.ui-tests
+        TEST_TARGET_NAME: Lumora
+
 schemes:
   Lumora:
     build:
@@ -113,6 +126,7 @@ schemes:
         Lumora: all
         LumoraCoreTests: [test]
         LumoraEngineTests: [test]
+        LumoraUITests: [test]
     run:
       config: Debug
     test:
@@ -121,5 +135,6 @@ schemes:
       targets:
         - LumoraCoreTests
         - LumoraEngineTests
+        - LumoraUITests
     archive:
       config: Release

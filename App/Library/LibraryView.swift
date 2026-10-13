@@ -141,7 +141,16 @@ struct LibraryView: View {
                 }
             }
         }
-        .onAppear { library.reload() }
+        .onAppear {
+            library.reload()
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-skipOnboarding") {
+                hasSeenOnboarding = true
+            }
+            if arguments.contains("-demo"), session == nil {
+                Task { session = await library.openSample() }
+            }
+        }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             importPhoto(item)
@@ -319,6 +328,11 @@ struct LibraryView: View {
             Text("Your edits will appear here.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            Button("Try a sample photo") {
+                Task { session = await library.openSample() }
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)

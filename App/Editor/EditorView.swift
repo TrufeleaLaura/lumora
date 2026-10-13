@@ -287,6 +287,8 @@ struct EditorView: View {
                         }
                         .buttonStyle(.plain)
                         .id(tool.id)
+                        .accessibilityLabel(tool.title)
+                        .accessibilityIdentifier("tool.\(tool.rawValue)")
                     }
                 }
                 .padding(.horizontal, 6)

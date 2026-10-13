@@ -21,7 +21,12 @@ final class EnhanceTests: XCTestCase {
     func testAutoEnhanceFixesExposureAndColorCast() {
         let proposal = AutoEnhance.propose(for: Self.dullScene)
         XCTAssertGreaterThan(proposal.light.exposure, 0.3, "brightens the dark photo")
-        XCTAssertLessThan(proposal.temperature, -5, "cools the warm cast")
+        // A warm cast on a photo with real neutrals (white studio backdrop) is cooled.
+        var warm = EditDocument()
+        warm.color.temperature = 45
+        let warmBody = pipeline.apply(warm, to: Self.body)
+        XCTAssertLessThan(AutoEnhance.propose(for: warmBody).temperature, -5, "cools the warm cast")
+        XCTAssertGreaterThanOrEqual(AutoEnhance.propose(for: Self.body).temperature, -8, "a neutral photo stays")
         // Applying it brings the photo closer to the original.
         var document = EditDocument()
         proposal.apply(to: &document)

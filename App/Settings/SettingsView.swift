@@ -60,7 +60,7 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Everything in Lumora runs on your iPhone: no account, no uploads, no tracking.")
+                    Text("Everything in Lumora runs on your iPhone: no account, no uploads, no tracking. Sample photo by Tan Duong on Unsplash.")
                 }
             }
             .navigationTitle("Settings")
