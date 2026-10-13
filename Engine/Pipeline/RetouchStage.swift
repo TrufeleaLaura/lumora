@@ -162,9 +162,12 @@ extension RenderPipeline {
         }
 
         let opacity = Float(min(max(operation.opacity / 100, 0), 1))
+        // Heal and remove replace the whole painted area (only its outermost edge blends, so
+        // nothing of the removed thing shows through); clone keeps the brush's soft edge.
+        let edgeGain: Float = operation.tool == .clone ? 1.15 : 3
         var rgba = [Float](repeating: 0, count: width * height * 4)
         for i in 0..<(width * height) {
-            let alpha = min(1, coverage[i] * 1.15) * opacity
+            let alpha = min(1, coverage[i] * edgeGain) * opacity
             rgba[i * 4] = filled[i].x * alpha
             rgba[i * 4 + 1] = filled[i].y * alpha
             rgba[i * 4 + 2] = filled[i].z * alpha

@@ -62,7 +62,8 @@ float4 lumora_skyLayer(float4 zenith, float4 horizon, float4 cloudLight, float4 
 // Puts the new sky in, and tints the landscape toward the sky's light.
 // params = (amount, relight, 0, 0); tint = sky light relative to neutral (linear rgb).
 float4 lumora_skyBlend(sample_t s, sample_t sky, sample_t mask, float4 params, float4 tint) {
-    float m = clamp(mask.r, 0.0f, 1.0f) * params.x;
+    // A firmer edge than the soft selection mask: no halo of the old sky along the horizon.
+    float m = smoothstep(0.2f, 0.72f, mask.r) * params.x;
     float3 relit = s.rgb * mix(float3(1.0f), tint.rgb, params.y * (1.0f - m) * 0.35f);
     return float4(mix(relit, sky.rgb, m), s.a);
 }

@@ -15,6 +15,8 @@ struct LibraryView: View {
     @State private var mode: Mode = .edits
     @State private var isMakingCollage = false
     @State private var dragged: UUID?
+    @State private var isShowingSettings = false
+    @AppStorage("onboarding.seen") private var hasSeenOnboarding = false
 
     enum Mode: String, CaseIterable, Identifiable {
         case edits, feed
@@ -144,6 +146,14 @@ struct LibraryView: View {
             guard let item else { return }
             importPhoto(item)
         }
+        .sheet(isPresented: $isShowingSettings, onDismiss: { library.reload() }) {
+            SettingsView(store: library.store) {
+                library.delete(library.projects.map(\.id))
+            }
+        }
+        .fullScreenCover(isPresented: Binding(get: { !hasSeenOnboarding }, set: { if !$0 { hasSeenOnboarding = true } })) {
+            OnboardingView { hasSeenOnboarding = true }
+        }
         .fullScreenCover(isPresented: $isMakingCollage) {
             CollageView(store: library.store, projects: library.projects, thumbnail: { library.thumbnail(for: $0) }) {
                 isMakingCollage = false
@@ -202,9 +212,19 @@ struct LibraryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Lumora")
-                .font(.system(size: 40, weight: .semibold, design: .serif))
-                .foregroundStyle(Theme.gradient)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Lumora")
+                    .font(.system(size: 40, weight: .semibold, design: .serif))
+                    .foregroundStyle(Theme.gradient)
+                Spacer()
+                Button {
+                    isShowingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 20))
+                }
+                .accessibilityLabel("Settings")
+            }
             Text("Edit, retouch and reshape — beautifully.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

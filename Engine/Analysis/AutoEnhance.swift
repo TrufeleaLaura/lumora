@@ -54,7 +54,7 @@ public enum AutoEnhance {
             let lab = ColorMath.linearSRGBToOklab(r, g, b)
             let chroma = (lab.1 * lab.1 + lab.2 * lab.2).squareRoot()
             chromaSum += chroma
-            if p > 0.25, p < 0.9, chroma < 0.09 {
+            if p > 0.25, p < 0.9, chroma < 0.05 {
                 neutralA += lab.1
                 neutralB += lab.2
                 neutralCount += 1
@@ -64,16 +64,24 @@ public enum AutoEnhance {
         let sorted = perceptual.sorted()
         func percentile(_ q: Double) -> Double { sorted[min(count - 1, max(0, Int(q * Double(count - 1))))] }
 
-        // Exposure: bring the median toward a pleasant midtone, partially.
+        // Exposure: driven by the highlights (a dull photo's brightest areas sit too low),
+        // limited so midtones don't wash out; very dark or very bright photos also use the median.
         let median = max(percentile(0.5), 0.02)
-        let target = 0.47
+        let p98 = max(percentile(0.98), 0.02)
+        let p02 = percentile(0.02)
+        let evHigh = 2.2 * log2(0.9 / p98)
+        let evMid = 2.2 * log2(0.5 / median)
         var exposure = 0.0
-        if median < target - 0.04 || median > target + 0.14 {
-            exposure = log2(pow(target, 2.2) / pow(median, 2.2)) * 0.6
-            exposure = min(max(exposure, -1.0), 1.5)
+        if p98 < 0.82 {
+            exposure = min(evHigh, evMid + 0.5) * 0.8
+        } else if median < 0.36 {
+            exposure = min(evMid * 0.6, max(evHigh, 0))
+        } else if median > 0.72, p02 > 0.25 {
+            exposure = evMid * 0.5
         }
+        exposure = min(max(exposure, -1.0), 1.5)
         proposal.light.exposure = (exposure * 20).rounded() / 20
-        let gain = pow(2, exposure)
+        let gain = pow(2, proposal.light.exposure)
         func adjusted(_ p: Double) -> Double { min(pow(pow(p, 2.2) * gain, 1 / 2.2), 1.2) }
 
         let low = adjusted(percentile(0.01)), high = adjusted(percentile(0.99))
@@ -97,12 +105,18 @@ public enum AutoEnhance {
             proposal.light.contrast = min(30, ((0.55 - spread) * 90).rounded())
         }
 
-        // White balance from near-neutral midtones (gray world, only with enough evidence).
+        // White balance from near-neutral midtones. Only warm (yellow/orange) casts and
+        // green/magenta tints are corrected: bluish greys are usually sky or shade.
         if neutralCount > Double(count) * 0.04 {
             let a = neutralA / neutralCount, b = neutralB / neutralCount
             let confidence = min(1, neutralCount / (Double(count) * 0.15))
-            proposal.temperature = (min(max(-b * 900, -40), 40) * confidence).rounded()
-            proposal.tint = (min(max(-a * 900, -30), 30) * confidence).rounded()
+            if b > 0.005 {
+                proposal.temperature = (-min((b - 0.005) * 1400, 40) * confidence).rounded()
+            }
+            if abs(a) > 0.008 {
+                let excess = a > 0 ? a - 0.008 : a + 0.008
+                proposal.tint = (min(max(-excess * 1200, -30), 30) * confidence).rounded()
+            }
         }
 
         let meanChroma = chromaSum / Double(count)
