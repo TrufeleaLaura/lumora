@@ -12,6 +12,8 @@ public enum SliderValueStyle: Sendable {
     case decimal
     /// "120°"
     case degrees
+    /// "45%" for 0...1 values.
+    case percent
 }
 
 /// Data description of one adjustment slider. The UI is generated from these specs,
@@ -57,6 +59,8 @@ public struct SliderSpec: Identifiable {
             return String(format: "%.1f", value)
         case .degrees:
             return "\(Int(value.rounded()))°"
+        case .percent:
+            return "\(Int((value * 100).rounded()))%"
         }
     }
 }

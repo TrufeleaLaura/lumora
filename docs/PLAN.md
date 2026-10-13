@@ -25,8 +25,9 @@ _Created: 2026-10-12 · Companion to [RESEARCH.md](RESEARCH.md)_
 | 4 · Face beauty | ✅ Done — skin, eyes, teeth, iris, face reshape (MLS warps), all/per-face |
 | 5 · Brows, makeup, hair | ✅ Done — brows, lipstick finishes, blush/contour/highlight, eye makeup, hair recolor |
 | 6 · Body editor | ✅ Done — waist, hips, butt/lift, bust, thighs, legs, height, arms, shoulders, neck, head |
-| 7 · Muscles & body skin | 🔨 In review — abs (6/8/11), chest, arms, V-line, body smooth, tan, cellulite |
-| 8–13 | ⏳ Planned |
+| 7 · Muscles & body skin | ✅ Done — abs (6/8/11), chest, arms, V-line, body smooth, tan, cellulite |
+| 8 · Masking | 🔨 In review — subject, background, sky, objects (tap), people parts, brush + auto edge, linear/radial, color/luminance range, control points, add/subtract/intersect, local adjustments |
+| 9–13 | ⏳ Planned |
 
 Testing note: the iOS simulator's Vision returns scrambled face landmarks, so CI runs
 `scripts/reference_analysis.swift` on macOS (real Vision) and the tests use those

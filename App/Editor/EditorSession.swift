@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, face, body, crop
+    case looks, adjust, masks, face, body, crop
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .looks: return "Looks"
         case .adjust: return "Adjust"
+        case .masks: return "Masks"
         case .face: return "Face"
         case .body: return "Body"
         case .crop: return "Crop"
@@ -23,6 +24,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .looks: return "camera.filters"
         case .adjust: return "slider.horizontal.3"
+        case .masks: return "circle.dashed"
         case .face: return "face.smiling"
         case .body: return "figure.stand"
         case .crop: return "crop.rotate"
@@ -30,7 +32,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     }
 
     /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
-    var showsSourceGeometry: Bool { self == .face || self == .body }
+    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -68,14 +70,41 @@ final class EditorSession: ObservableObject, Identifiable {
             if activeTool == .body {
                 prepareBodies()
             }
+            if activeTool == .masks {
+                prepareFaces()
+            }
+            updateMaskInteraction()
         }
     }
+    // Masks tool
+    @Published var selectedMaskID: UUID? {
+        didSet { maskSelectionChanged() }
+    }
+    @Published var selectedComponentID: UUID? {
+        didSet { maskSelectionChanged() }
+    }
+    @Published var maskPanel: MaskPanelMode = .mask {
+        didSet { maskSelectionChanged() }
+    }
+    @Published var showsMaskOverlay = true {
+        didSet { updateRenderer() }
+    }
+    @Published var brush = BrushToolSettings()
+    /// Brush: true = one finger paints; false = one finger pans (zoomed in).
+    @Published var brushPaints = true {
+        didSet { updateMaskInteraction() }
+    }
+    /// Last painted point (normalized), for the brush cursor.
+    @Published var brushCursor: CGPoint?
+    /// Set while a mask's automatic analysis (sky, subject, people) runs.
+    @Published var preparingMask: String?
+
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false
     @Published var toast: String?
 
     private let store: ProjectStore
-    private let pipeline = RenderPipeline()
+    let pipeline = RenderPipeline()
     private let proxyScale: CGFloat
     /// Per-photo analysis shared by preview, zoom refinement and export.
     let analysis: ImageAnalysis
@@ -115,15 +144,25 @@ final class EditorSession: ObservableObject, Identifiable {
         scheduleAutosave()
     }
 
-    private func updateRenderer() {
+    func updateRenderer() {
         let document = self.document
         let original = source.original
         let analysis = self.analysis
         let includeCrop = activeTool != .crop
         let includeGeometry = !activeTool.showsSourceGeometry
-        renderer.previewImage = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
+        let preview = pipeline.apply(document, to: proxy, scale: proxyScale, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
+        // Masks tool: tint the selected mask's area.
+        let overlayMask = activeTool == .masks && showsMaskOverlay && maskPanel == .mask ? selectedMask : nil
+        if let overlayMask {
+            renderer.previewImage = pipeline.maskOverlay(overlayMask, on: preview, reference: proxy, analysis: analysis)
+        } else {
+            renderer.previewImage = preview
+        }
         renderer.fullResolutionImage = {
-            RenderPipeline().apply(document, to: original, scale: 1, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
+            let pipeline = RenderPipeline()
+            let full = pipeline.apply(document, to: original, scale: 1, analysis: analysis, includeCrop: includeCrop, includeGeometry: includeGeometry)
+            guard let overlayMask else { return full }
+            return pipeline.maskOverlay(overlayMask, on: full, reference: original, analysis: analysis)
         }
     }
 

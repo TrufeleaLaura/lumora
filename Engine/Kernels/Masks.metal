@@ -123,7 +123,8 @@ float4 lumora_peopleBody(sample_t s, sample_t person, sample_t faceArea, sample_
         * (1.0f - smoothstep(tone.x + 0.25f, tone.x + 0.4f, lab.x));
     float p = person.r;
     float w = parts.x * p;
-    w = max(w, parts.y * p * skinLike * (1.0f - faceArea.r));
+    // Body skin leaves out the face and the head (skin-colored hair).
+    w = max(w, parts.y * p * skinLike * (1.0f - faceArea.r) * (1.0f - head.r));
     w = max(w, parts.z * p * (1.0f - skinLike) * (1.0f - head.r) * (1.0f - faceArea.r));
     return lumoraMGray(w);
 }

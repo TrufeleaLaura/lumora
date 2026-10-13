@@ -131,6 +131,8 @@ struct EditorView: View {
                     FaceMarkersOverlay(renderer: session.renderer, session: session)
                 } else if session.activeTool == .body && session.compareMode == .none {
                     BodyMarkersOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .masks && session.compareMode == .none {
+                    MaskCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
@@ -186,6 +188,11 @@ struct EditorView: View {
                             .frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
+            case .masks:
+                MasksPanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .face:
                 FacePanel(session: session)
                     .padding(.horizontal, 18)

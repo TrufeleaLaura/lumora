@@ -56,6 +56,7 @@ public enum FaceReshape {
         // Face contour: slim, jaw, cheekbones, chin, length.
         let fw = f.faceWidth
         let em = f.eyeToMouth
+        var contourMoves: [(point: SIMD2<Double>, move: SIMD2<Double>)] = []
         for point in face.contour.map(iso) {
             let side: Double = f.side(point)
             let height: Double = f.height(point)
@@ -81,8 +82,34 @@ public enum FaceReshape {
 
             let sideways: Double = sign * (cheekAmount - slimAmount - jawAmount)
             let vertical: Double = -(chinAmount + lengthAmount)
-            let target: SIMD2<Double> = point + f.right * sideways + f.up * vertical
-            controls.append(WarpControl(source: point, target: target))
+            let move: SIMD2<Double> = f.right * sideways + f.up * vertical
+            contourMoves.append((point, move))
+        }
+        // Denser outline (midpoints) plus inner and outer rings that carry part of each move,
+        // so the change fades smoothly into the cheeks and the background instead of being
+        // pinned by the nearby eye, nose and lip anchors (which caused dents along the jaw).
+        var denseMoves: [(point: SIMD2<Double>, move: SIMD2<Double>)] = []
+        for (index, item) in contourMoves.enumerated() {
+            denseMoves.append(item)
+            if index + 1 < contourMoves.count {
+                let next = contourMoves[index + 1]
+                let midPoint: SIMD2<Double> = (item.point + next.point) / 2
+                let midMove: SIMD2<Double> = (item.move + next.move) / 2
+                denseMoves.append((midPoint, midMove))
+            }
+        }
+        let faceCenter: SIMD2<Double> = (f.eyeMid + f.mouth) / 2
+        for item in denseMoves {
+            controls.append(WarpControl(source: item.point, target: item.point + item.move))
+            let moveLength: Double = (item.move.x * item.move.x + item.move.y * item.move.y).squareRoot()
+            guard moveLength > 1e-9 else { continue }
+            let fromCenter: SIMD2<Double> = item.point - faceCenter
+            let inner: SIMD2<Double> = faceCenter + fromCenter * 0.72
+            let outer: SIMD2<Double> = faceCenter + fromCenter * 1.18
+            let innerTarget: SIMD2<Double> = inner + item.move * 0.45
+            let outerTarget: SIMD2<Double> = outer + item.move * 0.6
+            controls.append(WarpControl(source: inner, target: innerTarget))
+            controls.append(WarpControl(source: outer, target: outerTarget))
         }
 
         // Forehead: synthetic points above the brows.

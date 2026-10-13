@@ -3,6 +3,10 @@ import LumoraEngine
 import MetalKit
 import UIKit
 
+enum PaintPhase {
+    case began, moved, ended
+}
+
 enum CompareMode: Equatable {
     case none
     /// Press-and-hold: show the unedited photo.
@@ -49,6 +53,14 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
 
     /// Called with true/false when the user presses and holds the photo.
     var onHoldChanged: ((Bool) -> Void)?
+    /// When set, one-finger drags paint (normalized image point, y up) and two fingers pan/zoom.
+    var onPaint: ((PaintPhase, CGPoint) -> Void)? {
+        didSet { configureInteraction() }
+    }
+    /// When set, single taps report the tapped normalized image point (y up).
+    var onTap: ((CGPoint) -> Void)? {
+        didSet { configureInteraction() }
+    }
 
     // MARK: State
 
@@ -62,6 +74,10 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
     private var refined: (image: CIImage, generation: Int)?
     private var refineDebounce: Task<Void, Never>?
     private var refineTask: Task<Void, Never>?
+    private var panRecognizer: UIPanGestureRecognizer?
+    private var paintRecognizer: UIPanGestureRecognizer?
+    private var tapRecognizer: UITapGestureRecognizer?
+    private var holdRecognizer: UILongPressGestureRecognizer?
 
     // MARK: View setup
 
@@ -98,8 +114,39 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
         hold.delegate = self
         view.addGestureRecognizer(hold)
 
+        let paint = UIPanGestureRecognizer(target: self, action: #selector(handlePaint(_:)))
+        paint.maximumNumberOfTouches = 1
+        paint.delegate = self
+        view.addGestureRecognizer(paint)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tap.require(toFail: doubleTap)
+        view.addGestureRecognizer(tap)
+
+        panRecognizer = pan
+        paintRecognizer = paint
+        tapRecognizer = tap
+        holdRecognizer = hold
         self.view = view
+        configureInteraction()
         return view
+    }
+
+    /// Paint mode: one finger paints, panning needs two fingers, hold-to-compare is off.
+    private func configureInteraction() {
+        let painting = onPaint != nil
+        paintRecognizer?.isEnabled = painting
+        panRecognizer?.minimumNumberOfTouches = painting ? 2 : 1
+        holdRecognizer?.isEnabled = !painting
+        tapRecognizer?.isEnabled = onTap != nil
+    }
+
+    /// Normalized image coordinates (0...1, y up) of a point in the view.
+    private func normalizedPoint(_ location: CGPoint) -> CGPoint {
+        let extent = imageExtent
+        guard extent.width > 0, extent.height > 0 else { return .zero }
+        let p = imagePoint(fromViewPoint: location)
+        return CGPoint(x: (p.x - extent.minX) / extent.width, y: (p.y - extent.minY) / extent.height)
     }
 
     func requestDraw() {
@@ -227,6 +274,26 @@ final class CanvasRenderer: NSObject, ObservableObject, MTKViewDelegate, UIGestu
             setZoom(min(3, maxZoom), anchor: viewPoint(recognizer.location(in: recognizer.view)))
         }
         settle()
+    }
+
+    @objc private func handlePaint(_ recognizer: UIPanGestureRecognizer) {
+        guard let onPaint else { return }
+        let point = normalizedPoint(recognizer.location(in: recognizer.view))
+        switch recognizer.state {
+        case .began:
+            onPaint(.began, point)
+        case .changed:
+            onPaint(.moved, point)
+        case .ended, .cancelled, .failed:
+            onPaint(.ended, point)
+        default:
+            break
+        }
+    }
+
+    @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
+        guard let onTap, recognizer.state == .ended else { return }
+        onTap(normalizedPoint(recognizer.location(in: recognizer.view)))
     }
 
     @objc private func handleHold(_ recognizer: UILongPressGestureRecognizer) {

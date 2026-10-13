@@ -77,17 +77,17 @@ public enum MuscleRelief {
                         // Tendinous lines between rows curve up a little toward the sides.
                         let lineV: Double = bottom + Double(row) * rowHeight + 0.03 * side * side
                         let lateral: Double = smoothstep(0.06, 0.16, u) * (1 - smoothstep(0.84, 0.94, u))
-                        groove += gauss(v - lineV, 0.022) * lateral * 0.8
+                        groove += gauss(v - lineV, 0.04) * lateral * 0.75
                     }
                 }
                 // Linea alba down the middle and the curved outer edges.
-                groove += gauss(u - 0.5, 0.022) * fadeV
+                groove += gauss(u - 0.5, 0.035) * fadeV
                 let edgeOffset: Double = 0.07 + 0.03 * (1 - v)
-                groove += 0.45 * (gauss(u - edgeOffset, 0.03) + gauss(u - (1 - edgeOffset), 0.03)) * fadeV
+                groove += 0.4 * (gauss(u - edgeOffset, 0.05) + gauss(u - (1 - edgeOffset), 0.05)) * fadeV
                 let e = envelope(u, v)
                 return (height * e, min(1, groove) * e)
             case .elevenLine:
-                let grooves: Double = gauss(u - 0.33, 0.035) + gauss(u - 0.67, 0.035) + 0.35 * gauss(u - 0.5, 0.025)
+                let grooves: Double = 0.8 * (gauss(u - 0.33, 0.055) + gauss(u - 0.67, 0.055)) + 0.3 * gauss(u - 0.5, 0.035)
                 let fade: Double = smoothstep(0.0, 0.2, v) * (1 - smoothstep(0.85, 1.0, v))
                 return (0, min(1, grooves) * fade * envelope(u, v, margin: 0.05))
             }
@@ -135,10 +135,10 @@ public enum MuscleRelief {
                 let below = relief(pattern, u: u, v: v - step).height
                 // Height change per unit of v: negative = surface facing up.
                 let slope: Double = (above - below) / (2 * step)
-                let light: Double = max(0, -slope) * 0.045
-                let shade: Double = max(0, slope) * 0.045
+                let light: Double = max(0, -slope) * 0.07
+                let shade: Double = max(0, slope) * 0.05
                 let highlight = min(1, light)
-                let shadow = min(1, shade * 0.8 + center.groove * 0.85)
+                let shadow = min(1, shade * 0.8 + center.groove * 0.6)
                 result[row * width + column] = SIMD2(Float(highlight), Float(shadow))
             }
         }

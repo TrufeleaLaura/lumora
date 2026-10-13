@@ -115,6 +115,24 @@ enum SkyDetector {
         }
         guard queue.count > count / 200 else { return nil }
 
+        // Bright, smooth areas touching the sky (the sun, white clouds) belong to it even
+        // across a sharp edge.
+        var brightQueue = queue
+        var brightHead = 0
+        while brightHead < brightQueue.count {
+            let i = brightQueue[brightHead]
+            brightHead += 1
+            let x = i % w, y = i / w
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let nx = x + dx, ny = y + dy
+                guard nx >= 0, ny >= 0, nx < w, ny < h else { continue }
+                let j = ny * w + nx
+                guard sky[j] == 0, lightness[j] > 0.82, probability[j] > 0.4 else { continue }
+                sky[j] = 1
+                brightQueue.append(j)
+            }
+        }
+
         // Patches of the same sky seen through branches or between buildings: they must match
         // the sky's color at the same height (skies are vertical gradients).
         var rowSums = [SIMD4<Float>](repeating: .zero, count: h)
