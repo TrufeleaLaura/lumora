@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, face, crop
+    case looks, adjust, face, body, crop
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .looks: return "Looks"
         case .adjust: return "Adjust"
         case .face: return "Face"
+        case .body: return "Body"
         case .crop: return "Crop"
         }
     }
@@ -23,12 +24,13 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .looks: return "camera.filters"
         case .adjust: return "slider.horizontal.3"
         case .face: return "face.smiling"
+        case .body: return "figure.stand"
         case .crop: return "crop.rotate"
         }
     }
 
     /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
-    var showsSourceGeometry: Bool { self == .face }
+    var showsSourceGeometry: Bool { self == .face || self == .body }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -62,6 +64,9 @@ final class EditorSession: ObservableObject, Identifiable {
             updateRenderer()
             if activeTool == .face {
                 prepareFaces()
+            }
+            if activeTool == .body {
+                prepareBodies()
             }
         }
     }
@@ -260,6 +265,46 @@ final class EditorSession: ObservableObject, Identifiable {
     func resetFace() {
         let target = faceTarget
         perform("Reset face") { $0[keyPath: target] = FaceRetouchSettings() }
+    }
+
+    // MARK: - Body
+
+    /// People found in the photo (nil while detection hasn't finished).
+    @Published private(set) var bodies: [BodyShape]?
+    /// nil = edit all people together.
+    @Published private(set) var selectedBodyIndex: Int?
+
+    func prepareBodies() {
+        guard bodies == nil else { return }
+        let analysis = self.analysis
+        Task {
+            let found = await Task.detached(priority: .userInitiated) {
+                analysis.bodies
+            }.value
+            bodies = found
+            updateRenderer()
+        }
+    }
+
+    var bodyTarget: WritableKeyPath<EditDocument, BodySettings> {
+        guard let index = selectedBodyIndex, let bodies, index < bodies.count, let anchor = bodies[index].pose.anchor,
+              let editIndex = document.body.bodies.firstIndex(where: { $0.anchor.matches(anchor) }) else {
+            return \EditDocument.body.allBodies
+        }
+        return \EditDocument.body.bodies[editIndex].settings
+    }
+
+    func selectBody(_ index: Int?) {
+        selectedBodyIndex = index
+        guard let index, let bodies, index < bodies.count, let anchor = bodies[index].pose.anchor else { return }
+        if !document.body.bodies.contains(where: { $0.anchor.matches(anchor) }) {
+            document.body.bodies.append(BodyEdit(anchor: anchor, settings: document.body.allBodies))
+        }
+    }
+
+    func resetBody() {
+        let target = bodyTarget
+        perform("Reset body") { $0[keyPath: target] = BodySettings() }
     }
 
     // MARK: - Crop & rotate

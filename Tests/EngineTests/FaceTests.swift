@@ -40,6 +40,16 @@ final class FaceTests: XCTestCase {
         XCTAssertLessThan(bottom.x, 0.1)
     }
 
+    func testReadFloatsRowsAreTopDown() {
+        // White on top (y = 1), black at the bottom (y = 0).
+        let top = CIImage(color: CIColor(red: 1, green: 1, blue: 1)).cropped(to: CGRect(x: 0, y: 1, width: 1, height: 1))
+        let bottom = CIImage(color: CIColor(red: 0, green: 0, blue: 0)).cropped(to: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let data = RenderContext.readFloats(top.composited(over: bottom))
+        XCTAssertEqual(data.height, 2)
+        XCTAssertGreaterThan(data.pixels[0], 0.9, "row 0 should be the top")
+        XCTAssertLessThan(data.pixels[4], 0.1)
+    }
+
     func testDisplacementMovesContentTheRightWay() {
         // Shift everything inside a region 20 px to the right: output at x samples input at x - 20.
         let image = TestScene.image()
@@ -96,8 +106,11 @@ final class FaceTests: XCTestCase {
         // Cheek patch below the left eye.
         let eye = FaceLandmarks.centroid(face.leftEye)
         let mouth = FaceLandmarks.centroid(face.outerLips)
-        let cheekCenter = SIMD2(eye.x, eye.y - (eye.y - mouth.y) * 0.55)
-        let cheek = pixelRect([cheekCenter], in: Self.portrait, grow: face.bounds.width * 0.06)
+        let cheekCenter = SIMD2(eye.x, eye.y - (eye.y - mouth.y) * 0.5)
+        // A small square of plain cheek skin (no nose edge or hair).
+        let extent = Self.portrait.extent
+        let half = CGFloat(face.bounds.width) * extent.width * 0.035
+        let cheek = CGRect(x: CGFloat(cheekCenter.x) * extent.width - half, y: CGFloat(cheekCenter.y) * extent.height - half, width: half * 2, height: half * 2)
         let before = ImageStats.noiseLevel(of: Self.portrait.cropped(to: cheek))
         let after = ImageStats.noiseLevel(of: smoothed.cropped(to: cheek))
         XCTAssertLessThan(after, before * 0.75)

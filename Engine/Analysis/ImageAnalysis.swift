@@ -22,6 +22,8 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedHaze: HazeAnalysis?
     private var cachedFaces: [FaceInfo]?
     private var cachedPerson: CIImage??
+    private var cachedBodies: [BodyShape]?
+    private let knownPoses: [BodyPose]?
     private var warpCache: [String: DisplacementField] = [:]
 
     private let knownLandmarks: [FaceLandmarks]?
@@ -29,10 +31,11 @@ public final class ImageAnalysis: @unchecked Sendable {
     /// - Parameters:
     ///   - faceLandmarks: landmarks to use instead of Vision detection (reference data in tests).
     ///   - personMask: person mask to use instead of Vision segmentation (reference data in tests).
-    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil, personMask: CIImage? = nil) {
+    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil, personMask: CIImage? = nil, bodyPoses: [BodyPose]? = nil) {
         self.source = image
         self.context = context
         self.knownLandmarks = faceLandmarks
+        self.knownPoses = bodyPoses
         if let personMask {
             let extent = image.extent
             let mask = personMask
@@ -90,6 +93,19 @@ public final class ImageAnalysis: @unchecked Sendable {
         if let cachedPerson { return cachedPerson }
         let result = PersonSegmenter.mask(for: source, context: context)
         cachedPerson = .some(result)
+        return result
+    }
+
+    /// People in the photo with their measured outlines, left to right.
+    public var bodies: [BodyShape] {
+        let mask = personMask
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedBodies { return cachedBodies }
+        let poses = knownPoses ?? BodyAnalyzer.detect(in: source)
+        let size = source.extent.size
+        let result = poses.compactMap { BodyAnalyzer.shape(for: $0, personMask: mask, imageSize: size, context: context) }
+        cachedBodies = result
         return result
     }
 

@@ -96,9 +96,27 @@ enum Fixtures {
         return CIImage(contentsOf: url, options: [.colorSpace: NSNull()])
     }
 
-    /// Analysis of a fixture photo using the reference landmarks and person mask.
+    /// Reference body poses for a fixture photo.
+    static func poses(_ name: String) -> [BodyPose] {
+        bodies(name).map { joints in
+            var mapped: [BodyJoint: SIMD2<Double>] = [:]
+            for (name, point) in joints {
+                if let joint = BodyJoint(rawValue: name) { mapped[joint] = point }
+            }
+            return BodyPose(joints: mapped)
+        }
+        .filter { $0.hipCenter != nil && $0.shoulderCenter != nil }
+        .sorted { ($0.hipCenter?.x ?? 0) < ($1.hipCenter?.x ?? 0) }
+    }
+
+    /// Analysis of a fixture photo using the reference landmarks, poses and person mask.
     static func analysis(_ name: String, image: CIImage) -> ImageAnalysis {
-        ImageAnalysis(image: image, faceLandmarks: hasReference ? faces(name) : nil, personMask: personMask(name))
+        ImageAnalysis(
+            image: image,
+            faceLandmarks: hasReference ? faces(name) : nil,
+            personMask: personMask(name),
+            bodyPoses: hasReference ? poses(name) : nil
+        )
     }
 
     /// Crop around a normalized rect (y up), scaled so the long side is `size` pixels.

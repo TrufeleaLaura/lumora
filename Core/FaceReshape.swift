@@ -67,7 +67,7 @@ public enum FaceReshape {
             // moves as one smooth curve (no dents).
             let slimWeight: Double = smoothstep(0.15 * em, -0.3 * em, height) * min(1, absSide / (0.22 * fw))
             let slimAmount: Double = s.faceSlim / 100 * 0.055 * fw * slimWeight * (0.6 + 0.4 * lateral)
-            let jawWeight: Double = smoothstep(-0.5 * em, -1.1 * em, height)
+            let jawWeight: Double = smoothstep(-0.25 * em, -1.25 * em, height)
             let jawLateral: Double = min(1, absSide / (0.3 * fw))
             let jawAmount: Double = s.jaw / 100 * 0.05 * fw * jawWeight * jawLateral
             let cheekShape: Double = (height + 0.25 * em) / (0.55 * em)
