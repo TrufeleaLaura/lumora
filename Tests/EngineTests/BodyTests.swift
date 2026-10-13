@@ -62,6 +62,26 @@ final class BodyTests: XCTestCase {
         XCTAssertEqual(field.offset(atX: 0.5, y: nose.y).y, 0, accuracy: 1e-6)
     }
 
+    func testAbsAddDefinitionOnlyOnSkin() throws {
+        try XCTSkipUnless(Fixtures.hasReference, "reference.json is generated on CI")
+        let output = render(Self.front, Self.frontAnalysis) { $0.abs = 100 }
+        let shape = Self.frontAnalysis.bodies[0]
+        let frame = try XCTUnwrap(BodyReshape.frame(shape.pose, aspect: Double(Self.front.extent.height / Self.front.extent.width)))
+        let aspect = Double(Self.front.extent.height / Self.front.extent.width)
+        let belly: SIMD2<Double> = frame.shoulders - frame.up * (0.62 * frame.torso)
+        let center = SIMD2(belly.x, belly.y / aspect)
+        let stomach = pixelRect(center, size: 0.08, in: Self.front)
+        XCTAssertGreaterThan(difference(output, Self.front, stomach), 0.01, "abs shading should appear on the stomach")
+        XCTAssertLessThan(difference(output, Self.front, CGRect(x: 0, y: 0, width: 60, height: 60)), 0.001)
+    }
+
+    func testMuscleReliefShading() {
+        let shading = MuscleRelief.shading(.abs(.sixPack), width: 64, height: 64)
+        XCTAssertEqual(shading.count, 64 * 64)
+        XCTAssertGreaterThan(shading.map(\.x).max() ?? 0, 0.2)
+        XCTAssertGreaterThan(shading.map(\.y).max() ?? 0, 0.2)
+    }
+
     // MARK: - Contact sheets
 
     private func edit(_ image: CIImage, _ analysis: ImageAnalysis, _ change: (inout BodySettings) -> Void) -> CIImage {
@@ -114,5 +134,20 @@ final class BodyTests: XCTestCase {
             ("Man: outline", outlineOverlay(Self.man, Self.manAnalysis)),
             ("Man: shoulders +60, waist 50", edit(Self.man, Self.manAnalysis) { $0.shoulders = 60; $0.waist = 50 }),
         ], name: "31-body-back-man", columns: 4)
+
+        func torsoCrop(_ image: CIImage, _ analysis: ImageAnalysis) -> CIImage {
+            guard let region = analysis.bodies.first?.region else { return image }
+            return Fixtures.crop(image, normalized: (region.x, region.y + region.height * 0.35, region.width, region.height * 0.45))
+        }
+        try ContactSheet.write([
+            ("Original", torsoCrop(Self.front, Self.frontAnalysis)),
+            ("Six-pack 80", torsoCrop(edit(Self.front, Self.frontAnalysis) { $0.abs = 80 }, Self.frontAnalysis)),
+            ("11 abs 80", torsoCrop(edit(Self.front, Self.frontAnalysis) { $0.abs = 80; $0.absStyle = .elevenLine }, Self.frontAnalysis)),
+            ("Tan 60 + smooth 50", torsoCrop(edit(Self.front, Self.frontAnalysis) { $0.tan = 60; $0.skinSmooth = 50 }, Self.frontAnalysis)),
+            ("Man: original", torsoCrop(Self.man, Self.manAnalysis)),
+            ("Man: abs + chest + arms", torsoCrop(edit(Self.man, Self.manAnalysis) { $0.abs = 70; $0.pecs = 60; $0.armDefinition = 60 }, Self.manAnalysis)),
+            ("Man: eight-pack + V", torsoCrop(edit(Self.man, Self.manAnalysis) { $0.abs = 80; $0.absStyle = .eightPack; $0.vLine = 70 }, Self.manAnalysis)),
+            ("Man: tan 50", torsoCrop(edit(Self.man, Self.manAnalysis) { $0.tan = 50 }, Self.manAnalysis)),
+        ], name: "32-body-muscles", columns: 4)
     }
 }

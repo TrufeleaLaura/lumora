@@ -45,10 +45,12 @@ float4 lumora_faceRetouch(sample_t s, sample_t base, sample_t fine, sample_t chr
 
     // Skin probability: inside the face mask and close to the measured skin tone. Uses the
     // smoothed color so film grain / sensor noise doesn't break the match pixel by pixel.
+    // The face mask does the main work; color only refines it (strong side light can make one
+    // cheek much warmer than the face's average, so the match is a soft weight, not a gate).
     float chromaDistance = length(chroma.yz - tone.yz);
-    float colorMatch = 1.0f - smoothstep(0.05f, 0.11f, chromaDistance);
-    float lightMatch = smoothstep(tone.x - 0.38f, tone.x - 0.2f, chroma.x);
-    float skin = masksA.r * colorMatch * lightMatch;
+    float colorMatch = 1.0f - smoothstep(0.08f, 0.2f, chromaDistance);
+    float lightMatch = smoothstep(tone.x - 0.4f, tone.x - 0.22f, chroma.x);
+    float skin = masksA.r * mix(0.45f, 1.0f, colorMatch * lightMatch) * smoothstep(0.1f, 0.3f, lightMatch + colorMatch);
 
     // Frequency separation: low (edge-aware) + mid (blotches) + high (pores).
     float low = base.r * p + base.g;
@@ -183,6 +185,39 @@ float4 lumora_hairColor(sample_t s, sample_t person, sample_t head, sample_t fac
     float relative = clamp(lab.x / max(target.y, 0.05f), 0.3f, 1.6f);
     float3 recolored = float3(max(newL, 0.0f), direction * targetChroma * (0.55f + 0.45f * relative));
     lab = mix(lab, recolored, weight);
+    return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
+}
+
+// Body skin and muscle definition for one person (inputs pixel-aligned over the person's region).
+// person: person mask (r); shading: muscle lighting (r = highlight, g = shadow, already scaled);
+// base/fine/chroma: as in face retouch; lowerBody: 1 below the hips (cellulite area).
+// skinParams: (smooth, tan, cellulite, 0) 0...1; tone: torso skin (L, a, b).
+float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t base, sample_t fine, sample_t chroma, sample_t lowerBody,
+                       float4 skinParams, float4 tone) {
+    float3 c = max(s.rgb, float3(0.0f));
+    float y = lumoraBLuma(c);
+    float p = lumoraBToPerceptual(y);
+    float colorMatch = 1.0f - smoothstep(0.06f, 0.14f, length(chroma.yz - tone.yz));
+    float lightMatch = smoothstep(tone.x - 0.4f, tone.x - 0.22f, chroma.x) * (1.0f - smoothstep(tone.x + 0.22f, tone.x + 0.38f, chroma.x));
+    float skin = person.r * colorMatch * lightMatch;
+    if (skin <= 0.0f) { return s; }
+
+    float low = base.r * p + base.g;
+    float mid = fine.r - low;
+    float high = p - fine.r;
+    float smooth = skin * clamp(skinParams.x + skinParams.z * lowerBody.r, 0.0f, 1.0f);
+    float p2 = p - smooth * mid * 0.9f - skinParams.x * skin * high * 0.3f;
+
+    // Muscle relief: lift the lit edges, deepen the grooves (multiplicative, keeps skin texture).
+    p2 *= 1.0f + (shading.r * 0.22f - shading.g * 0.3f) * skin;
+
+    float y2 = lumoraBToLinear(max(p2, 0.0f));
+    c = y > 1.0e-6f ? c * (y2 / y) : float3(y2);
+
+    float3 lab = lumoraBToOklab(c);
+    float tan = skinParams.y * skin;
+    lab.x *= 1.0f - tan * 0.16f;
+    lab.yz += float2(0.02f, 0.045f) * tan;
     return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
 }
 

@@ -24,6 +24,21 @@ struct BodyPanel: View {
                     header(count: bodies.count)
                     sectionChips
                     ScrollView {
+                        if section == .muscles {
+                            Picker("Abs style", selection: Binding(
+                                get: { session.document[keyPath: session.bodyTarget].absStyle },
+                                set: { style in
+                                    let target = session.bodyTarget
+                                    session.perform("Abs \(style.title)") { $0[keyPath: target].absStyle = style }
+                                }
+                            )) {
+                                ForEach(AbsStyle.allCases) { style in
+                                    Text(style.title).tag(style)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.bottom, 6)
+                        }
                         SliderList(session: session, specs: BodyCatalog.sliders(section, target: session.bodyTarget))
                             .padding(.bottom, 8)
                     }

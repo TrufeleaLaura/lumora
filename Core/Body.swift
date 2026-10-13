@@ -93,7 +93,23 @@ public struct BodySettings: Codable, Hashable, Sendable {
     public var neck: Double = 0
     public var headSize: Double = 0
 
+    // Muscle definition (0...100) and abs placement (-100...100)
+    public var abs: Double = 0
+    public var absStyle = AbsStyle.sixPack
+    public var absPosition: Double = 0
+    public var pecs: Double = 0
+    public var armDefinition: Double = 0
+    public var vLine: Double = 0
+
+    // Body skin (0...100)
+    public var skinSmooth: Double = 0
+    public var tan: Double = 0
+    public var cellulite: Double = 0
+
     public init() {}
+
+    public var hasMuscles: Bool { abs != 0 || pecs != 0 || armDefinition != 0 || vLine != 0 }
+    public var hasSkin: Bool { skinSmooth != 0 || tan != 0 || cellulite != 0 }
 
     public var isIdentity: Bool { self == BodySettings() }
 
@@ -132,7 +148,7 @@ public struct BodyEditSettings: Codable, Equatable, Sendable {
 
 public enum BodyCatalog {
     public enum Section: String, CaseIterable, Identifiable {
-        case shape, length, upper
+        case shape, length, upper, muscles, skin
 
         public var id: String { rawValue }
 
@@ -141,6 +157,8 @@ public enum BodyCatalog {
             case .shape: return "Shape"
             case .length: return "Length"
             case .upper: return "Upper body"
+            case .muscles: return "Muscles"
+            case .skin: return "Skin"
             }
         }
 
@@ -149,6 +167,8 @@ public enum BodyCatalog {
             case .shape: return "figure.stand"
             case .length: return "arrow.up.and.down"
             case .upper: return "figure.arms.open"
+            case .muscles: return "figure.strengthtraining.traditional"
+            case .skin: return "sun.max"
             }
         }
     }
@@ -156,6 +176,9 @@ public enum BodyCatalog {
     public static func sliders(_ section: Section, target: WritableKeyPath<EditDocument, BodySettings>) -> [SliderSpec] {
         func spec(_ id: String, _ title: String, _ path: WritableKeyPath<BodySettings, Double>) -> SliderSpec {
             SliderSpec(id: "body.\(id)", title: title, range: -100...100, keyPath: target.appending(path: path))
+        }
+        func unipolar(_ id: String, _ title: String, _ path: WritableKeyPath<BodySettings, Double>) -> SliderSpec {
+            SliderSpec(id: "body.\(id)", title: title, range: 0...100, style: .integer, keyPath: target.appending(path: path))
         }
         switch section {
         case .shape:
@@ -178,6 +201,20 @@ public enum BodyCatalog {
                 spec("shoulders", "Shoulders", \.shoulders),
                 spec("arms", "Slim arms", \.arms),
                 spec("headSize", "Head size", \.headSize),
+            ]
+        case .muscles:
+            return [
+                unipolar("abs", "Abs", \.abs),
+                spec("absPosition", "Abs position", \.absPosition),
+                unipolar("pecs", "Chest muscles", \.pecs),
+                unipolar("armDefinition", "Arm definition", \.armDefinition),
+                unipolar("vLine", "V-line", \.vLine),
+            ]
+        case .skin:
+            return [
+                unipolar("skinSmooth", "Smooth skin", \.skinSmooth),
+                unipolar("tan", "Tan", \.tan),
+                unipolar("cellulite", "Smooth cellulite", \.cellulite),
             ]
         }
     }

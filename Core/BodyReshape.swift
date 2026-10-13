@@ -26,11 +26,14 @@ public struct BodyShape: Equatable, Sendable {
     public var outline: [BodyLevel: EdgePair]
     /// Region covering the person (normalized), grown a little.
     public var region: CGRectValue
+    /// Skin color sampled on the torso (OKLab L, a, b), if visible.
+    public var skinTone: SIMD3<Double>?
 
-    public init(pose: BodyPose, outline: [BodyLevel: EdgePair], region: CGRectValue) {
+    public init(pose: BodyPose, outline: [BodyLevel: EdgePair], region: CGRectValue, skinTone: SIMD3<Double>? = nil) {
         self.pose = pose
         self.outline = outline
         self.region = region
+        self.skinTone = skinTone
     }
 }
 

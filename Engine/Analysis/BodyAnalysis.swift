@@ -27,8 +27,9 @@ public enum BodyAnalyzer {
         return poses.sorted { ($0.hipCenter?.x ?? 0) < ($1.hipCenter?.x ?? 0) }
     }
 
-    /// Measures the person's outline at the body levels used for reshaping.
-    public static func shape(for pose: BodyPose, personMask: CIImage?, imageSize: CGSize, context: CIContext = RenderContext.analysis) -> BodyShape? {
+    /// Measures the person's outline at the body levels used for reshaping; samples torso skin
+    /// color from `image` when given.
+    public static func shape(for pose: BodyPose, personMask: CIImage?, imageSize: CGSize, image: CIImage? = nil, context: CIContext = RenderContext.analysis) -> BodyShape? {
         let aspect = Double(imageSize.height / max(imageSize.width, 1))
         guard let frame = BodyReshape.frame(pose, aspect: aspect) else { return nil }
         let mask = personMask.map { MaskSampler(mask: $0, imageSize: imageSize, context: context) }
@@ -112,7 +113,21 @@ public enum BodyAnalyzer {
         let minY: Double = Swift.max(0.0, lowY)
         let maxY: Double = Swift.min(1.0, highY)
         let region = CGRectValue(x: minX, y: minY, width: Swift.max(maxX - minX, 0.01), height: Swift.max(maxY - minY, 0.01))
-        return BodyShape(pose: pose, outline: outline, region: region)
+
+        // Torso skin tone (abdomen, then upper chest) for muscle shading and body skin tools.
+        var skinTone: SIMD3<Double>?
+        if let image {
+            for t in [0.68, 0.25] {
+                if let sample = MakeupMasks.tone(at: torsoPoint(t), size: sw * 0.12, in: image, aspect: aspect, context: context) {
+                    // Plausible skin: not too dark, warm-ish chroma.
+                    if sample.x > 0.3, sample.y > -0.02, sample.z > 0 {
+                        skinTone = SIMD3(Double(sample.x), Double(sample.y), Double(sample.z))
+                        break
+                    }
+                }
+            }
+        }
+        return BodyShape(pose: pose, outline: outline, region: region, skinTone: skinTone)
     }
 }
 

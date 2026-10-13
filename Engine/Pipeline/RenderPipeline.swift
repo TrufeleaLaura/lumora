@@ -29,6 +29,7 @@ public struct RenderPipeline {
         var image = input
         image = applyBeauty(document.beauty, to: image, analysis: analysis)
         image = applyMakeup(document.beauty, to: image, analysis: analysis)
+        image = applyBodySkin(document.body, to: image, analysis: analysis)
         image = applyFaceWarp(document.beauty, to: image, analysis: analysis)
         image = applyBodyWarp(document.body, to: image, analysis: analysis)
         image = applyOptics(document.optics, to: image, scale: scale)

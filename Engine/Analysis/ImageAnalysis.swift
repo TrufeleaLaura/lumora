@@ -104,7 +104,7 @@ public final class ImageAnalysis: @unchecked Sendable {
         if let cachedBodies { return cachedBodies }
         let poses = knownPoses ?? BodyAnalyzer.detect(in: source)
         let size = source.extent.size
-        let result = poses.compactMap { BodyAnalyzer.shape(for: $0, personMask: mask, imageSize: size, context: context) }
+        let result = poses.compactMap { BodyAnalyzer.shape(for: $0, personMask: mask, imageSize: size, image: source, context: context) }
         cachedBodies = result
         return result
     }

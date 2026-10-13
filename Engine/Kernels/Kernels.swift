@@ -75,6 +75,7 @@ enum Kernels {
     static let faceRetouch = colorKernel("lumora_faceRetouch")
     static let makeup = colorKernel("lumora_makeup")
     static let hairColor = colorKernel("lumora_hairColor")
+    static let bodySkin = colorKernel("lumora_bodySkin")
     static let displace = generalKernel("lumora_displace")
 }
 
