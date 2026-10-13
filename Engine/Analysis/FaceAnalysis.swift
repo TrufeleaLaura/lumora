@@ -137,32 +137,36 @@ public enum FaceAnalyzer {
         }
     }
 
-    /// Average skin color from two cheek patches (between eye and mouth corner, toward the outside).
+    /// Skin color (OKLab) as the median of five patches — both cheeks, nose bridge, chin and
+    /// forehead — so hair or shadow over one spot doesn't skew it.
     static func skinTone(of face: FaceLandmarks, in image: CIImage, context: CIContext) -> SIMD3<Float> {
         let extent = image.extent
         let aspect = Double(extent.height / max(extent.width, 1))
-        guard let frame = FaceReshape.frame(face, aspect: aspect) else { return SIMD3(0.7, 0.03, 0.04) }
-        var samples: [SIMD4<Float>] = []
-        for eye in [face.leftEye, face.rightEye] {
+        let fallback = SIMD3<Float>(0.7, 0.03, 0.04)
+        guard let frame = FaceReshape.frame(face, aspect: aspect) else { return fallback }
+        let fw = frame.faceWidth
+        let em = frame.eyeToMouth
+        var spots: [SIMD2<Double>] = []
+        for eye in [face.leftEye, face.rightEye] where !eye.isEmpty {
             let eyeCenter = FaceReshape.iso(FaceLandmarks.centroid(eye), aspect: aspect)
             let sign: Double = frame.side(eyeCenter) < 0 ? -1 : 1
-            let down: Double = frame.eyeToMouth * 0.55
-            let outward: Double = sign * frame.faceWidth * 0.05
-            let cheek: SIMD2<Double> = eyeCenter - frame.up * down + frame.right * outward
-            let size = frame.faceWidth * 0.1
-            let rect = CGRect(
-                x: CGFloat(cheek.x - size / 2) * extent.width,
-                y: CGFloat(cheek.y / aspect - size / 2 / aspect) * extent.height,
-                width: CGFloat(size) * extent.width,
-                height: CGFloat(size / aspect) * extent.height
-            ).intersection(extent)
-            guard !rect.isEmpty else { continue }
-            samples.append(ImageStats.averageColor(of: image.cropped(to: rect), context: context))
+            let down: SIMD2<Double> = frame.up * (-0.55 * em)
+            let outward: SIMD2<Double> = frame.right * (sign * 0.05 * fw)
+            spots.append(eyeCenter + down + outward)
         }
-        guard !samples.isEmpty else { return SIMD3(0.7, 0.03, 0.04) }
-        let average = samples.reduce(SIMD4<Float>(0, 0, 0, 0), +) / Float(samples.count)
-        let lab = ColorMath.linearSRGBToOklab(Double(average.x), Double(average.y), Double(average.z))
-        return SIMD3(Float(lab.0), Float(lab.1), Float(lab.2))
+        spots.append(frame.eyeMid + frame.up * (-0.25 * em))
+        if let chin = face.contour.map({ FaceReshape.iso($0, aspect: aspect) }).min(by: { frame.height($0) < frame.height($1) }) {
+            spots.append(chin + frame.up * (0.2 * em))
+        }
+        spots.append(frame.eyeMid + frame.up * (0.75 * em))
+
+        let samples = spots.compactMap { MakeupMasks.tone(at: $0, size: fw * 0.08, in: image, aspect: aspect, context: context) }
+        guard !samples.isEmpty else { return fallback }
+        func median(_ values: [Float]) -> Float {
+            let sorted = values.sorted()
+            return sorted[sorted.count / 2]
+        }
+        return SIMD3(median(samples.map(\.x)), median(samples.map(\.y)), median(samples.map(\.z)))
     }
 }
 
@@ -284,11 +288,14 @@ enum FaceMasks {
                 let center = FaceLandmarks.centroid(isoPoints)
                 let lower = isoPoints.filter { frame.height($0) <= frame.height(center) }.sorted { frame.side($0) < frame.side($1) }
                 guard lower.count >= 2 else { continue }
-                let drop: Double = frame.eyeToMouth * 0.32
+                // A thin crescent under the lower lid, deepest in the middle.
+                let drop: Double = frame.eyeToMouth * 0.2
+                let halfWidth: Double = max(frame.faceWidth * 0.1, 1e-6)
                 let bottom: [SIMD2<Double>] = lower.reversed().map { point in
-                    let distance: Double = abs(frame.side(point) - frame.side(center)) / max(frame.faceWidth * 0.12, 1e-6)
-                    let depth: Double = drop * (1 - 0.5 * distance * distance)
-                    return point - frame.up * depth
+                    let distance: Double = min(abs(frame.side(point) - frame.side(center)) / halfWidth, 1)
+                    let depth: Double = drop * (0.25 + 0.75 * (1 - distance * distance))
+                    let lowered: SIMD2<Double> = point - frame.up * depth
+                    return lowered
                 }
                 let outline = (lower + bottom).map { SIMD2($0.x, $0.y / aspect) }
                 ctx.addPath(polygon(outline))

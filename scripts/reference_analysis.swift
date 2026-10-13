@@ -2,8 +2,10 @@
 // over the test photos and writes reference face landmarks and body-pose keypoints as JSON.
 // Usage: swift scripts/reference_analysis.swift <photos folder> <output.json>
 import CoreGraphics
+import CoreImage
 import Foundation
 import ImageIO
+import UniformTypeIdentifiers
 import Vision
 
 struct FaceRecord: Codable {
@@ -45,6 +47,7 @@ let output = URL(fileURLWithPath: arguments[2])
 var records: [PhotoRecord] = []
 
 let files = (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?.filter { $0.lowercased().hasSuffix(".jpg") }.sorted() ?? []
+
 for file in files {
     let url = folder.appendingPathComponent(file)
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -58,9 +61,12 @@ for file in files {
     let faceRequest = VNDetectFaceLandmarksRequest()
     faceRequest.revision = VNDetectFaceLandmarksRequestRevision3
     let bodyRequest = VNDetectHumanBodyPoseRequest()
+    let personRequest = VNGeneratePersonSegmentationRequest()
+    personRequest.qualityLevel = .accurate
+    personRequest.outputPixelFormat = kCVPixelFormatType_OneComponent8
     let handler = VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:])
     do {
-        try handler.perform([faceRequest, bodyRequest])
+        try handler.perform([faceRequest, bodyRequest, personRequest])
     } catch {
         FileHandle.standardError.write("Vision failed on \(file): \(error)\n".data(using: .utf8)!)
         continue
@@ -97,6 +103,19 @@ for file in files {
             }
         }
         return BodyRecord(joints: joints)
+    }
+    // Person mask as a grayscale PNG next to the photo: <name>-person.png
+    if let buffer = personRequest.results?.first?.pixelBuffer {
+        let mask = CIImage(cvPixelBuffer: buffer)
+        let context = CIContext()
+        if let cgMask = context.createCGImage(mask, from: mask.extent, format: .L8, colorSpace: CGColorSpaceCreateDeviceGray()) {
+            let name = (file as NSString).deletingPathExtension + "-person.png"
+            let maskURL = folder.appendingPathComponent(name)
+            if let destination = CGImageDestinationCreateWithURL(maskURL as CFURL, UTType.png.identifier as CFString, 1, nil) {
+                CGImageDestinationAddImage(destination, cgMask, nil)
+                CGImageDestinationFinalize(destination)
+            }
+        }
     }
     records.append(PhotoRecord(file: file, width: Int(size.width), height: Int(size.height), faces: faces, bodies: bodies))
     print("\(file): \(faces.count) face(s), \(bodies.count) body pose(s)")

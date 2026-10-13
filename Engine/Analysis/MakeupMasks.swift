@@ -154,22 +154,17 @@ enum MakeupMasks {
                 ctx.fillPath()
             }
         }
+        // Vision's brow points trace a line along the brow, so brows are drawn as strokes.
+        func browLine(_ brow: [SIMD2<Double>]) -> [SIMD2<Double>] {
+            brow.sorted { frame.side($0) < frame.side($1) }
+        }
         let browField = FaceMasks.rasterize(width: width, height: height) { ctx in
-            // Concentric strokes: 1 on the brow, falling to 0 about 0.045 face widths away.
+            // Concentric strokes: 1 on the brow line, falling to 0 about 0.035 face widths away.
             let steps = 8
             for step in 0..<steps {
                 let widthFactor = Double(steps - step) / Double(steps)
                 for brow in brows where brow.count > 1 {
-                    let path = CGMutablePath()
-                    path.move(to: px(brow[0]))
-                    for point in brow.dropFirst() { path.addLine(to: px(point)) }
-                    path.closeSubpath()
-                    ctx.setStrokeColor(gray: CGFloat(step + 1) / CGFloat(steps), alpha: 1)
-                    ctx.setFillColor(gray: CGFloat(step + 1) / CGFloat(steps), alpha: 1)
-                    ctx.setLineWidth(length(0.09 * fw * widthFactor))
-                    ctx.setLineJoin(.round)
-                    ctx.addPath(path)
-                    ctx.drawPath(using: .fillStroke)
+                    stroke(ctx, browLine(brow), width: 0.025 * fw + 0.045 * fw * widthFactor, gray: CGFloat(step + 1) / CGFloat(steps))
                 }
             }
         }
@@ -202,14 +197,8 @@ enum MakeupMasks {
             }
         }
         let browCore = FaceMasks.rasterize(width: width, height: height) { ctx in
-            ctx.setFillColor(gray: 1, alpha: 1)
-            for brow in brows where brow.count > 2 {
-                let path = CGMutablePath()
-                path.move(to: px(brow[0]))
-                for point in brow.dropFirst() { path.addLine(to: px(point)) }
-                path.closeSubpath()
-                ctx.addPath(path)
-                ctx.fillPath()
+            for brow in brows where brow.count > 1 {
+                stroke(ctx, browLine(brow), width: 0.03 * fw)
             }
         }
 

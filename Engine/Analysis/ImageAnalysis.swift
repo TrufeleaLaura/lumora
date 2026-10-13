@@ -26,11 +26,21 @@ public final class ImageAnalysis: @unchecked Sendable {
 
     private let knownLandmarks: [FaceLandmarks]?
 
-    /// - Parameter faceLandmarks: landmarks to use instead of Vision detection (reference data in tests).
-    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil) {
+    /// - Parameters:
+    ///   - faceLandmarks: landmarks to use instead of Vision detection (reference data in tests).
+    ///   - personMask: person mask to use instead of Vision segmentation (reference data in tests).
+    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil, personMask: CIImage? = nil) {
         self.source = image
         self.context = context
         self.knownLandmarks = faceLandmarks
+        if let personMask {
+            let extent = image.extent
+            let mask = personMask
+                .transformed(by: CGAffineTransform(translationX: -personMask.extent.minX, y: -personMask.extent.minY))
+                .transformed(by: CGAffineTransform(scaleX: extent.width / max(personMask.extent.width, 1), y: extent.height / max(personMask.extent.height, 1)))
+                .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+            self.cachedPerson = .some(mask)
+        }
     }
 
     /// Local average brightness (guided-filter coefficients of log luminance, large radius).

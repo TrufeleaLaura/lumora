@@ -26,3 +26,4 @@ xcuserdata/
 
 # Generated on CI by scripts/reference_analysis.swift
 Fixtures/Photos/reference.json
+Fixtures/Photos/*-person.png

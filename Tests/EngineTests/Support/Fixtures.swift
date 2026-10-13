@@ -88,9 +88,17 @@ enum Fixtures {
 
     static var hasReference: Bool { !reference.isEmpty }
 
-    /// Analysis of a fixture photo using the reference landmarks.
+    /// Reference person mask (from macOS Vision) for a fixture photo, if generated.
+    static func personMask(_ name: String) -> CIImage? {
+        let bundle = Bundle(for: FixtureBundleMarker.self)
+        guard let url = bundle.url(forResource: "\(name)-person", withExtension: "png", subdirectory: "Photos")
+                ?? bundle.url(forResource: "\(name)-person", withExtension: "png") else { return nil }
+        return CIImage(contentsOf: url, options: [.colorSpace: NSNull()])
+    }
+
+    /// Analysis of a fixture photo using the reference landmarks and person mask.
     static func analysis(_ name: String, image: CIImage) -> ImageAnalysis {
-        ImageAnalysis(image: image, faceLandmarks: hasReference ? faces(name) : nil)
+        ImageAnalysis(image: image, faceLandmarks: hasReference ? faces(name) : nil, personMask: personMask(name))
     }
 
     /// Crop around a normalized rect (y up), scaled so the long side is `size` pixels.

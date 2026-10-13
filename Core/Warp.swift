@@ -157,7 +157,7 @@ public struct DisplacementField: Equatable, Sendable {
                 let x = region.x + fx * region.width
                 let y = region.y + fy * region.height
                 let v = SIMD2(x, y * aspect)
-                var offset = hasMoves ? MovingLeastSquares.rigid(v, from: from, to: to) - v : SIMD2(0, 0)
+                var offset = hasMoves ? MovingLeastSquares.rigid(v, from: from, to: to, alpha: 0.9) - v : SIMD2(0, 0)
                 for scale in scales {
                     offset += scale.backwardOffset(at: v + offset)
                 }

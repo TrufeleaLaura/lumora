@@ -45,7 +45,7 @@ float4 lumora_faceRetouch(sample_t s, sample_t base, sample_t fine, sample_t chr
 
     // Skin probability: inside the face mask and close to the measured skin tone.
     float chromaDistance = length(lab.yz - tone.yz);
-    float colorMatch = 1.0f - smoothstep(0.035f, 0.085f, chromaDistance);
+    float colorMatch = 1.0f - smoothstep(0.05f, 0.11f, chromaDistance);
     float lightMatch = smoothstep(tone.x - 0.38f, tone.x - 0.2f, lab.x);
     float skin = masksA.r * colorMatch * lightMatch;
 
@@ -108,17 +108,19 @@ float4 lumora_makeup(sample_t s, sample_t masksA, sample_t masksB, sample_t mask
     float originalL = lab.x;
     float skin = masksA.r;
 
-    // Lipstick: target color, original light/shadow kept as an offset from the lips' average.
+    // Lipstick: lightness follows the photo's lighting (shift relative to the lips' average),
+    // chroma follows the local shading, and the lips' own texture is kept.
     float lips = masksA.g * lip.x;
     if (lips > 0.0f) {
-        float3 painted = float3(lip.y + (originalL - lipTone.x) * 0.9f, lip.zw + (lab.yz - lipTone.yz) * 0.25f);
-        float matte = lipFinish.z;
-        painted.x = mix(painted.x, lip.y, matte * 0.35f);
-        lab = mix(lab, painted, lips * 0.88f);
-        float shine = smoothstep(lipTone.x + 0.03f, lipTone.x + 0.15f, originalL);
+        float shade = clamp(originalL / max(lipTone.x, 0.05f), 0.55f, 1.35f);
+        float paintedL = originalL + (lip.y - lipTone.x) * 0.6f;
+        paintedL = mix(paintedL, lipTone.x + (lip.y - lipTone.x) * 0.6f, lipFinish.z * 0.3f);
+        float2 paintedAB = lip.zw * 0.85f * shade + (lab.yz - lipTone.yz) * 0.3f;
+        lab = mix(lab, float3(paintedL, paintedAB), lips * 0.8f);
+        float shine = smoothstep(lipTone.x + 0.04f, lipTone.x + 0.16f, originalL);
         float gloss = (lipFinish.x + lipFinish.y * 0.6f) * lips * shine;
-        lab.x += gloss * 0.2f * max(1.0f - lab.x, 0.0f);
-        lab.yz *= 1.0f - gloss * 0.35f;
+        lab.x += gloss * 0.12f * max(1.0f - lab.x, 0.0f);
+        lab.yz *= 1.0f - gloss * 0.25f;
     }
 
     // Blush: tint the cheek apples toward the blush color.
@@ -144,16 +146,17 @@ float4 lumora_makeup(sample_t s, sample_t masksA, sample_t masksB, sample_t mask
     lab.x = mix(lab.x, 0.1f, lineWeight * 0.9f);
     lab.yz *= 1.0f - lineWeight * 0.85f;
 
-    // Brows: thicken by filling around the existing brow (distance field), keeping
-    // the skin's fine variation as a hint of strands; then optionally recolor the whole brow.
+    // Brows: thicken by darkening a thin band around the brow toward the brow's color, keeping
+    // the skin's own fine variation as texture; then tint only the darker (hair) pixels.
     float field = masksD.g;
-    float threshold = 1.0f - brow.x * 0.55f;
-    float fill = smoothstep(threshold, threshold + 0.12f, field) * (1.0f - masksE.b) * step(0.001f, brow.x);
-    float3 filled = float3(browTone.x + (originalL - tone.x) * 0.35f, browTone.yz);
-    lab = mix(lab, filled, fill * 0.7f);
-    float browArea = clamp(masksE.b + fill, 0.0f, 1.0f) * brow.y;
-    float3 tinted = float3(min(lab.x, browColor.x + (lab.x - browTone.x) * 0.8f), browColor.yz);
-    lab = mix(lab, tinted, browArea * 0.8f);
+    float threshold = 1.0f - brow.x * 0.4f;
+    float fill = smoothstep(threshold, threshold + 0.15f, field) * (1.0f - masksE.b) * step(0.001f, brow.x);
+    float3 filled = float3(browTone.x + (originalL - tone.x) * 0.5f, browTone.yz);
+    lab = mix(lab, filled, fill * 0.5f);
+    float hairness = smoothstep(tone.x - 0.04f, tone.x - 0.22f, lab.x);
+    float browArea = clamp(masksE.b * hairness + fill * 0.6f, 0.0f, 1.0f) * brow.y;
+    float3 tinted = float3(lab.x + (browColor.x - browTone.x) * 0.7f, browColor.yz + (lab.yz - browTone.yz) * 0.4f);
+    lab = mix(lab, tinted, browArea * 0.65f);
 
     return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
 }
