@@ -34,45 +34,74 @@ public enum FaceAnalyzer {
         } catch {
             return []
         }
+        let size = image.extent.size
         return (request.results ?? [])
-            .compactMap(convert)
+            .compactMap { convert($0, imageSize: size) }
             .sorted { $0.bounds.midX < $1.bounds.midX }
     }
 
-    static func convert(_ observation: VNFaceObservation) -> FaceLandmarks? {
-        guard let landmarks = observation.landmarks else { return nil }
+    static func convert(_ observation: VNFaceObservation, imageSize: CGSize) -> FaceLandmarks? {
+        guard let landmarks = observation.landmarks, imageSize.width > 0, imageSize.height > 0 else { return nil }
         let box = observation.boundingBox
-        func points(_ region: VNFaceLandmarkRegion2D?) -> [SIMD2<Double>] {
+        // Apple's conversion knows which reference box the points use (it differs across OS versions).
+        func pixels(_ region: VNFaceLandmarkRegion2D?) -> [SIMD2<Double>] {
             guard let region else { return [] }
-            return region.normalizedPoints.map {
-                SIMD2(Double(box.minX + $0.x * box.width), Double(box.minY + $0.y * box.height))
-            }
+            return region.pointsInImage(imageSize: imageSize).map { SIMD2(Double($0.x), Double($0.y)) }
+        }
+        var regions: [[SIMD2<Double>]] = [
+            pixels(landmarks.faceContour), pixels(landmarks.leftEye), pixels(landmarks.rightEye),
+            pixels(landmarks.leftEyebrow), pixels(landmarks.rightEyebrow), pixels(landmarks.nose),
+            pixels(landmarks.noseCrest), pixels(landmarks.outerLips), pixels(landmarks.innerLips),
+            pixels(landmarks.leftPupil), pixels(landmarks.rightPupil),
+        ]
+        guard !regions[1].isEmpty, !regions[2].isEmpty else { return nil }
+
+        // Some iOS simulator runtimes return landmarks shrunk toward the nose. If the
+        // eyes are implausibly close for the face box, scale the constellation back up.
+        let boxWidthPx = Double(box.width * imageSize.width)
+        let eyeDistance = simdDistance(FaceLandmarks.centroid(regions[1]), FaceLandmarks.centroid(regions[2]))
+        if boxWidthPx > 0, eyeDistance < boxWidthPx * 0.12 {
+            let all = regions.flatMap { $0 }
+            let center = FaceLandmarks.centroid(all)
+            let contour = regions[0].isEmpty ? all : regions[0]
+            let xs = contour.map(\.x)
+            let width = max((xs.max() ?? 0) - (xs.min() ?? 0), 1e-6)
+            let factor = boxWidthPx * 0.88 / width
+            regions = regions.map { region in region.map { center + ($0 - center) * factor } }
+        }
+
+        func normalized(_ points: [SIMD2<Double>]) -> [SIMD2<Double>] {
+            points.map { SIMD2($0.x / Double(imageSize.width), $0.y / Double(imageSize.height)) }
         }
         // Order features by position in the photo (Vision's left/right is the subject's).
-        var eyes = [points(landmarks.leftEye), points(landmarks.rightEye)]
-        var brows = [points(landmarks.leftEyebrow), points(landmarks.rightEyebrow)]
-        var pupils = [points(landmarks.leftPupil).first, points(landmarks.rightPupil).first]
+        var eyes = [normalized(regions[1]), normalized(regions[2])]
+        var brows = [normalized(regions[3]), normalized(regions[4])]
+        var pupils = [normalized(regions[9]).first, normalized(regions[10]).first]
         if FaceLandmarks.centroid(eyes[0]).x > FaceLandmarks.centroid(eyes[1]).x {
             eyes.swapAt(0, 1)
             brows.swapAt(0, 1)
             pupils.swapAt(0, 1)
         }
-        guard !eyes[0].isEmpty, !eyes[1].isEmpty else { return nil }
         return FaceLandmarks(
             bounds: CGRectValue(x: Double(box.minX), y: Double(box.minY), width: Double(box.width), height: Double(box.height)),
-            contour: points(landmarks.faceContour),
+            contour: normalized(regions[0]),
             leftEye: eyes[0],
             rightEye: eyes[1],
             leftBrow: brows[0],
             rightBrow: brows[1],
-            nose: points(landmarks.nose),
-            noseCrest: points(landmarks.noseCrest),
-            outerLips: points(landmarks.outerLips),
-            innerLips: points(landmarks.innerLips),
+            nose: normalized(regions[5]),
+            noseCrest: normalized(regions[6]),
+            outerLips: normalized(regions[7]),
+            innerLips: normalized(regions[8]),
             leftPupil: pupils[0],
             rightPupil: pupils[1],
             roll: observation.roll?.doubleValue ?? 0
         )
+    }
+
+    private static func simdDistance(_ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Double {
+        let d = a - b
+        return (d.x * d.x + d.y * d.y).squareRoot()
     }
 
     /// Full analysis of each face: landmarks, skin tone and masks.

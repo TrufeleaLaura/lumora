@@ -69,8 +69,11 @@ final class FaceTests: XCTestCase {
         XCTAssertFalse(face.contour.isEmpty)
         XCTAssertFalse(face.outerLips.isEmpty)
         XCTAssertLessThan(FaceLandmarks.centroid(face.leftEye).x, FaceLandmarks.centroid(face.rightEye).x)
-        // Eyes above the mouth (y up).
+        // Eyes above the mouth (y up), and spaced like real eyes relative to the face box.
         XCTAssertGreaterThan(FaceLandmarks.centroid(face.leftEye).y, FaceLandmarks.centroid(face.outerLips).y)
+        let eyeGap = FaceLandmarks.centroid(face.rightEye).x - FaceLandmarks.centroid(face.leftEye).x
+        XCTAssertGreaterThan(eyeGap, face.bounds.width * 0.25)
+        XCTAssertLessThan(eyeGap, face.bounds.width * 0.7)
         // Skin tone is a plausible skin color (OKLab: light, slightly red/yellow).
         let tone = Self.portraitAnalysis.faces[0].skinTone
         XCTAssertGreaterThan(tone.x, 0.4)
