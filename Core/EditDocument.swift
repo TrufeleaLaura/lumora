@@ -238,6 +238,8 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var body = BodyEditSettings()
     /// Local adjustments, applied in order.
     public var masks: [Mask] = []
+    /// Heal, clone, remove and red eye (applied first).
+    public var retouch = RetouchSettings()
 
     public init() {}
 
@@ -248,6 +250,7 @@ public struct EditDocument: Codable, Equatable, Sendable {
         // Per-face/per-person edits are tied to this photo; the "all" settings carry over.
         copy.beauty.faces = []
         copy.body.bodies = []
+        copy.retouch = RetouchSettings()
         // Automatic and shape masks carry over; painted strokes and tapped objects belong to this photo.
         copy.masks = masks.compactMap { mask in
             var mask = mask

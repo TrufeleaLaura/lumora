@@ -222,6 +222,18 @@ float4 lumora_bodySkin(sample_t s, sample_t person, sample_t shading, sample_t b
     return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
 }
 
+// Red-eye: inside the iris/pupil mask (masksB.g), strongly red pixels become dark and neutral.
+float4 lumora_redEye(sample_t s, sample_t masksB, float amount) {
+    float m = masksB.g;
+    if (m <= 0.0f) { return s; }
+    float3 lab = lumoraBToOklab(max(s.rgb, float3(0.0f)));
+    float redness = smoothstep(0.05f, 0.12f, lab.y) * smoothstep(0.0f, 0.04f, lab.y - fabs(lab.z) * 0.5f);
+    float w = clamp(m * redness * amount, 0.0f, 1.0f);
+    float3 fixedLab = float3(lab.x * 0.45f, lab.yz * 0.1f);
+    lab = mix(lab, fixedLab, w);
+    return float4(max(lumoraBFromOklab(lab), float3(0.0f)), s.a);
+}
+
 // Backward warp: each output pixel samples the input at its position plus the displacement
 // field (normalized offsets in .rg, multiplied by the image size).
 float4 lumora_displace(sampler src, sampler field, float2 imageSize, destination dest) {

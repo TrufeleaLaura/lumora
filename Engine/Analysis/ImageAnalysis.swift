@@ -137,7 +137,10 @@ public final class ImageAnalysis: @unchecked Sendable {
 
     /// Soft mask of the foreground objects under normalized points (y up).
     public func objectMask(at points: [SIMD2<Double>]) -> CIImage? {
-        guard !points.isEmpty, let subject else { return nil }
+        guard !points.isEmpty else { return nil }
+        // Injected (test) subject masks stand in for every object.
+        if let knownSubject { return knownSubject }
+        guard let subject else { return nil }
         return subject.mask(instances: subject.instances(at: points))
     }
 

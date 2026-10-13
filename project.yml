@@ -30,6 +30,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.lumora.core
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        # Pixel loops (fills, warps, brushes) are far too slow unoptimized, even in test builds.
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
 
   # Rendering + AI: Core Image graph, Metal Core Image kernels, Vision/Core ML services.
   LumoraEngine:
@@ -43,6 +45,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.lumora.engine
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
         # All .metal files in this target are Core Image kernels.
         MTL_COMPILER_FLAGS: "-fcikernel"
         MTLLINKER_FLAGS: "-cikernel"

@@ -66,6 +66,10 @@ extension EditorSession {
 
     /// Hooks canvas paint/tap gestures up to the selected component.
     func updateMaskInteraction() {
+        if activeTool == .retouch {
+            updateRetouchInteraction()
+            return
+        }
         guard activeTool == .masks, maskPanel == .mask, let component = selectedComponent else {
             renderer.onPaint = nil
             renderer.onTap = nil

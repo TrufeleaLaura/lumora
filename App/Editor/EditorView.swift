@@ -133,6 +133,8 @@ struct EditorView: View {
                     BodyMarkersOverlay(renderer: session.renderer, session: session)
                 } else if session.activeTool == .masks && session.compareMode == .none {
                     MaskCanvasOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .retouch && session.compareMode == .none {
+                    RetouchCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
                 }
@@ -190,6 +192,11 @@ struct EditorView: View {
                 }
             case .masks:
                 MasksPanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            case .retouch:
+                RetouchPanel(session: session)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)

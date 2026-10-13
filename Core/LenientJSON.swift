@@ -63,5 +63,7 @@ extension EditDocument {
         "masks": LenientJSON.object(Mask()),
         "masks.components": LenientJSON.object(MaskComponent()),
         "masks.components.strokes": LenientJSON.object(BrushStroke()),
+        "retouch.operations": LenientJSON.object(RetouchOperation()),
+        "retouch.operations.strokes": LenientJSON.object(BrushStroke()),
     ]
 }

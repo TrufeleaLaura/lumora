@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, masks, face, body, crop
+    case looks, adjust, masks, retouch, face, body, crop
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .looks: return "Looks"
         case .adjust: return "Adjust"
         case .masks: return "Masks"
+        case .retouch: return "Retouch"
         case .face: return "Face"
         case .body: return "Body"
         case .crop: return "Crop"
@@ -25,6 +26,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .looks: return "camera.filters"
         case .adjust: return "slider.horizontal.3"
         case .masks: return "circle.dashed"
+        case .retouch: return "bandage"
         case .face: return "face.smiling"
         case .body: return "figure.stand"
         case .crop: return "crop.rotate"
@@ -32,7 +34,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     }
 
     /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
-    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks }
+    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks || self == .retouch }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -70,7 +72,7 @@ final class EditorSession: ObservableObject, Identifiable {
             if activeTool == .body {
                 prepareBodies()
             }
-            if activeTool == .masks {
+            if activeTool == .masks || activeTool == .retouch {
                 prepareFaces()
             }
             updateMaskInteraction()
@@ -98,6 +100,23 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var brushCursor: CGPoint?
     /// Set while a mask's automatic analysis (sky, subject, people) runs.
     @Published var preparingMask: String?
+
+    // Retouch tool
+    @Published var retouchTool: RetouchTool = .heal {
+        didSet { updateMaskInteraction() }
+    }
+    /// Brush radius as a fraction of the photo width.
+    @Published var retouchSize: Double = 0.03
+    /// Remove: tap objects instead of painting.
+    @Published var removeByTapping = false {
+        didSet { updateMaskInteraction() }
+    }
+    /// The stroke being painted (drawn on the canvas until it's applied).
+    @Published var pendingRetouch: BrushStroke?
+    /// True while a fill is being computed.
+    @Published var isRetouching = false
+    /// The clone operation whose source can be dragged.
+    @Published var selectedRetouchID: UUID?
 
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false

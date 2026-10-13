@@ -6,7 +6,7 @@ import LumoraCore
 /// Turns a source image + `EditDocument` into the edited image (a lazy Core Image graph).
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
-/// Stage order: face retouch → makeup → body skin → face reshape → body reshape → optics → local contrast → white balance → dehaze → tone → curves → color
+/// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → optics → local contrast → white balance → dehaze → tone → curves → color
 /// → masks (local adjustments) → look
 /// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain).
 public struct RenderPipeline {
@@ -28,6 +28,7 @@ public struct RenderPipeline {
         guard !document.isIdentity else { return input }
         let analysis = analysis ?? ImageAnalysis(image: input)
         var image = input
+        image = applyRetouch(document.retouch, to: image, analysis: analysis)
         image = applyBeauty(document.beauty, to: image, analysis: analysis)
         image = applyMakeup(document.beauty, to: image, analysis: analysis)
         image = applyBodySkin(document.body, to: image, analysis: analysis)
