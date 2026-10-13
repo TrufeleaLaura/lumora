@@ -23,3 +23,6 @@ Thumbs.db
 .vscode/
 .idea/
 xcuserdata/
+
+# Generated on CI by scripts/reference_analysis.swift
+Fixtures/Photos/reference.json

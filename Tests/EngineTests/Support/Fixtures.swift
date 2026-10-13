@@ -1,5 +1,6 @@
 import CoreImage
 import Foundation
+import LumoraCore
 @testable import LumoraEngine
 
 private final class FixtureBundleMarker {}
@@ -15,6 +16,81 @@ enum Fixtures {
             fatalError("Missing fixture photo \(name)")
         }
         return source.original
+    }
+
+    private struct FaceRecord: Decodable {
+        var bounds: [Double]
+        var contour, leftEye, rightEye, leftBrow, rightBrow, nose, noseCrest, outerLips, innerLips: [[Double]]
+        var leftPupil: [Double]?
+        var rightPupil: [Double]?
+        var roll: Double
+    }
+
+    private struct BodyRecord: Decodable {
+        var joints: [String: [Double]]
+    }
+
+    private struct PhotoRecord: Decodable {
+        var file: String
+        var faces: [FaceRecord]
+        var bodies: [BodyRecord]
+    }
+
+    /// Reference analysis made with real Apple Vision on macOS (scripts/reference_analysis.swift).
+    private static let reference: [String: PhotoRecord] = {
+        let bundle = Bundle(for: FixtureBundleMarker.self)
+        guard let url = bundle.url(forResource: "reference", withExtension: "json", subdirectory: "Photos")
+                ?? bundle.url(forResource: "reference", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let records = try? JSONDecoder().decode([PhotoRecord].self, from: data) else {
+            return [:]
+        }
+        return Dictionary(uniqueKeysWithValues: records.map { ($0.file.replacingOccurrences(of: ".jpg", with: ""), $0) })
+    }()
+
+    /// Reference face landmarks for a fixture photo (left to right).
+    static func faces(_ name: String) -> [FaceLandmarks] {
+        guard let record = reference[name] else { return [] }
+        func points(_ list: [[Double]]) -> [SIMD2<Double>] { list.map { SIMD2($0[0], $0[1]) } }
+        let faces = record.faces.map { face -> FaceLandmarks in
+            var eyes = [points(face.leftEye), points(face.rightEye)]
+            var brows = [points(face.leftBrow), points(face.rightBrow)]
+            var pupils = [face.leftPupil.map { SIMD2($0[0], $0[1]) }, face.rightPupil.map { SIMD2($0[0], $0[1]) }]
+            if FaceLandmarks.centroid(eyes[0]).x > FaceLandmarks.centroid(eyes[1]).x {
+                eyes.swapAt(0, 1)
+                brows.swapAt(0, 1)
+                pupils.swapAt(0, 1)
+            }
+            return FaceLandmarks(
+                bounds: CGRectValue(x: face.bounds[0], y: face.bounds[1], width: face.bounds[2], height: face.bounds[3]),
+                contour: points(face.contour),
+                leftEye: eyes[0],
+                rightEye: eyes[1],
+                leftBrow: brows[0],
+                rightBrow: brows[1],
+                nose: points(face.nose),
+                noseCrest: points(face.noseCrest),
+                outerLips: points(face.outerLips),
+                innerLips: points(face.innerLips),
+                leftPupil: pupils[0],
+                rightPupil: pupils[1],
+                roll: face.roll
+            )
+        }
+        return faces.sorted { $0.bounds.midX < $1.bounds.midX }
+    }
+
+    /// Reference body-pose joints (name -> normalized point) for each person in a fixture photo.
+    static func bodies(_ name: String) -> [[String: SIMD2<Double>]] {
+        guard let record = reference[name] else { return [] }
+        return record.bodies.map { body in body.joints.mapValues { SIMD2($0[0], $0[1]) } }
+    }
+
+    static var hasReference: Bool { !reference.isEmpty }
+
+    /// Analysis of a fixture photo using the reference landmarks.
+    static func analysis(_ name: String, image: CIImage) -> ImageAnalysis {
+        ImageAnalysis(image: image, faceLandmarks: hasReference ? faces(name) : nil)
     }
 
     /// Crop around a normalized rect (y up), scaled so the long side is `size` pixels.

@@ -5,11 +5,11 @@ import XCTest
 
 final class FaceTests: XCTestCase {
     private static let portrait = Fixtures.photo("portrait-woman")
-    private static let portraitAnalysis = ImageAnalysis(image: portrait)
+    private static let portraitAnalysis = Fixtures.analysis("portrait-woman", image: portrait)
     private static let smile = Fixtures.photo("portrait-smile")
-    private static let smileAnalysis = ImageAnalysis(image: smile)
+    private static let smileAnalysis = Fixtures.analysis("portrait-smile", image: smile)
     private static let group = Fixtures.photo("group")
-    private static let groupAnalysis = ImageAnalysis(image: group)
+    private static let groupAnalysis = Fixtures.analysis("group", image: group)
 
     private func render(_ image: CIImage, _ analysis: ImageAnalysis, _ change: (inout FaceRetouchSettings) -> Void) -> CIImage {
         var document = EditDocument()
@@ -61,7 +61,14 @@ final class FaceTests: XCTestCase {
 
     // MARK: - Detection
 
-    func testDetectsFaces() {
+    func testVisionRunsInSimulator() {
+        // Landmark positions from the simulator are unreliable, but detection must run.
+        XCTAssertEqual(FaceAnalyzer.detect(in: Self.portrait).count, 1)
+        XCTAssertGreaterThanOrEqual(FaceAnalyzer.detect(in: Self.group).count, 3)
+    }
+
+    func testDetectsFaces() throws {
+        try XCTSkipUnless(Fixtures.hasReference, "reference.json is generated on CI")
         XCTAssertEqual(Self.portraitAnalysis.faces.count, 1)
         XCTAssertEqual(Self.smileAnalysis.faces.count, 1)
         XCTAssertGreaterThanOrEqual(Self.groupAnalysis.faces.count, 3)
@@ -143,6 +150,60 @@ final class FaceTests: XCTestCase {
         let first = pixelRect(faces[0].landmarks.leftEye, in: Self.group, grow: faces[0].landmarks.bounds.width * 0.05)
         let c = ImageStats.averageColor(of: output.cropped(to: first).applyingFilter("CIDifferenceBlendMode", parameters: [kCIInputBackgroundImageKey: Self.group.cropped(to: first)]))
         XCTAssertGreaterThan(c.x + c.y + c.z, 0.005)
+    }
+
+    // MARK: - Makeup
+
+    func testLipstickMovesLipsTowardTheColor() {
+        let face = Self.portraitAnalysis.faces[0].landmarks
+        let lips = pixelRect(face.outerLips, in: Self.portrait)
+        let red = MakeupPalette.lipstick.first { $0.0 == "Classic red" }!.1
+        let output = render(Self.portrait, Self.portraitAnalysis) {
+            $0.makeup.lipstickAmount = 100
+            $0.makeup.lipstickColor = red
+        }
+        func lab(_ image: CIImage) -> (Double, Double, Double) {
+            let c = ImageStats.averageColor(of: image.cropped(to: lips))
+            return ColorMath.linearSRGBToOklab(Double(c.x), Double(c.y), Double(c.z))
+        }
+        let target = red.oklab
+        let before = lab(Self.portrait)
+        let after = lab(output)
+        let distanceBefore = hypot(before.1 - target.1, before.2 - target.2)
+        let distanceAfter = hypot(after.1 - target.1, after.2 - target.2)
+        XCTAssertLessThan(distanceAfter, distanceBefore * 0.8)
+    }
+
+    func testFullerBrowsDarkenAroundTheBrow() {
+        let face = Self.portraitAnalysis.faces[0].landmarks
+        // Band just above the left brow.
+        let brow = pixelRect(face.leftBrow, in: Self.portrait)
+        let band = CGRect(x: brow.minX + brow.width * 0.2, y: brow.maxY, width: brow.width * 0.6, height: brow.height * 0.6)
+        let output = render(Self.portrait, Self.portraitAnalysis) { $0.makeup.browThickness = 100 }
+        XCTAssertLessThan(ImageStats.averageLuminance(of: output.cropped(to: band)), ImageStats.averageLuminance(of: Self.portrait.cropped(to: band)))
+    }
+
+    func testWriteMakeupSheet() throws {
+        let image = Self.portrait
+        let analysis = Self.portraitAnalysis
+        func edit(_ change: (inout MakeupSettings) -> Void) -> CIImage {
+            faceCrop(render(image, analysis) { change(&$0.makeup) }, analysis)
+        }
+        try ContactSheet.write([
+            ("Original", faceCrop(image, analysis)),
+            ("Red lipstick, gloss", edit { $0.lipstickAmount = 90; $0.lipstickColor = MakeupPalette.lipstick[3].1; $0.lipFinish = .gloss }),
+            ("Nude lipstick, matte", edit { $0.lipstickAmount = 80; $0.lipstickColor = MakeupPalette.lipstick[0].1; $0.lipFinish = .matte }),
+            ("Blush + contour + highlight", edit { $0.blushAmount = 70; $0.contour = 70; $0.highlight = 70 }),
+            ("Smoky eyes", edit { $0.eyeshadowAmount = 80; $0.eyeshadowColor = MakeupPalette.eyeshadow[2].1; $0.eyeliner = 80; $0.lashes = 70 }),
+            ("Fuller, darker brows", edit { $0.browThickness = 80; $0.browColorAmount = 60; $0.browColor = MakeupPalette.brows[0].1 }),
+            ("Brow lift + arch", edit { $0.browLift = 60; $0.browArch = 60 }),
+            ("Copper hair", edit { $0.hairColorAmount = 80; $0.hairColor = MakeupPalette.hair[3].1 }),
+            ("Full glam", edit {
+                $0.lipstickAmount = 80; $0.lipstickColor = MakeupPalette.lipstick[1].1
+                $0.blushAmount = 50; $0.contour = 50; $0.highlight = 60
+                $0.eyeshadowAmount = 60; $0.eyeliner = 70; $0.lashes = 70; $0.browThickness = 40
+            }),
+        ], name: "22-face-makeup", columns: 3)
     }
 
     // MARK: - Diagnostics

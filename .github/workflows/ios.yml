@@ -34,6 +34,13 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Reference analysis (macOS Vision)
+        # The iOS simulator's face landmark model is broken; tests use landmarks from real Vision.
+        run: |
+          swift scripts/reference_analysis.swift Fixtures/Photos Fixtures/Photos/reference.json
+          mkdir -p build/render-output
+          cp Fixtures/Photos/reference.json build/render-output/reference.json
+
       - name: Choose simulator
         id: sim
         run: echo "udid=$(xcrun simctl list devices available -j | python3 scripts/pick_simulator.py)" >> "$GITHUB_OUTPUT"

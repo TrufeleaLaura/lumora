@@ -48,27 +48,13 @@ public enum FaceAnalyzer {
             guard let region else { return [] }
             return region.pointsInImage(imageSize: imageSize).map { SIMD2(Double($0.x), Double($0.y)) }
         }
-        var regions: [[SIMD2<Double>]] = [
+        let regions: [[SIMD2<Double>]] = [
             pixels(landmarks.faceContour), pixels(landmarks.leftEye), pixels(landmarks.rightEye),
             pixels(landmarks.leftEyebrow), pixels(landmarks.rightEyebrow), pixels(landmarks.nose),
             pixels(landmarks.noseCrest), pixels(landmarks.outerLips), pixels(landmarks.innerLips),
             pixels(landmarks.leftPupil), pixels(landmarks.rightPupil),
         ]
         guard !regions[1].isEmpty, !regions[2].isEmpty else { return nil }
-
-        // Some iOS simulator runtimes return landmarks shrunk toward the nose. If the
-        // eyes are implausibly close for the face box, scale the constellation back up.
-        let boxWidthPx = Double(box.width * imageSize.width)
-        let eyeDistance = simdDistance(FaceLandmarks.centroid(regions[1]), FaceLandmarks.centroid(regions[2]))
-        if boxWidthPx > 0, eyeDistance < boxWidthPx * 0.12 {
-            let all = regions.flatMap { $0 }
-            let center = FaceLandmarks.centroid(all)
-            let contour = regions[0].isEmpty ? all : regions[0]
-            let xs = contour.map(\.x)
-            let width = max((xs.max() ?? 0) - (xs.min() ?? 0), 1e-6)
-            let factor = boxWidthPx * 0.88 / width
-            regions = regions.map { region in region.map { center + ($0 - center) * factor } }
-        }
 
         func normalized(_ points: [SIMD2<Double>]) -> [SIMD2<Double>] {
             points.map { SIMD2($0.x / Double(imageSize.width), $0.y / Double(imageSize.height)) }
@@ -99,16 +85,12 @@ public enum FaceAnalyzer {
         )
     }
 
-    private static func simdDistance(_ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Double {
-        let d = a - b
-        return (d.x * d.x + d.y * d.y).squareRoot()
-    }
-
     /// Full analysis of each face: landmarks, skin tone and masks.
-    public static func analyze(_ image: CIImage, context: CIContext = RenderContext.analysis) -> [FaceInfo] {
+    /// - Parameter landmarks: known landmarks to use instead of running Vision (tests).
+    public static func analyze(_ image: CIImage, landmarks: [FaceLandmarks]? = nil, context: CIContext = RenderContext.analysis) -> [FaceInfo] {
         let extent = image.extent
         let aspect = Double(extent.height / max(extent.width, 1))
-        return detect(in: image).map { face in
+        return (landmarks ?? detect(in: image)).map { face in
             let tone = skinTone(of: face, in: image, context: context)
             let masks = FaceMasks.render(face: face, imageSize: extent.size, context: context)
             let makeup = MakeupMasks.render(face: face, region: masks.region, imageSize: extent.size, context: context)

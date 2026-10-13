@@ -24,9 +24,13 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedPerson: CIImage??
     private var warpCache: [String: DisplacementField] = [:]
 
-    public init(image: CIImage, context: CIContext = RenderContext.analysis) {
+    private let knownLandmarks: [FaceLandmarks]?
+
+    /// - Parameter faceLandmarks: landmarks to use instead of Vision detection (reference data in tests).
+    public init(image: CIImage, context: CIContext = RenderContext.analysis, faceLandmarks: [FaceLandmarks]? = nil) {
         self.source = image
         self.context = context
+        self.knownLandmarks = faceLandmarks
     }
 
     /// Local average brightness (guided-filter coefficients of log luminance, large radius).
@@ -63,7 +67,7 @@ public final class ImageAnalysis: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         if let cachedFaces { return cachedFaces }
-        let result = FaceAnalyzer.analyze(source, context: context)
+        let result = FaceAnalyzer.analyze(source, landmarks: knownLandmarks, context: context)
         cachedFaces = result
         return result
     }
