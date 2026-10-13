@@ -29,6 +29,7 @@ public final class ImageAnalysis: @unchecked Sendable {
     private let knownSubject: CIImage?
     private var cachedSky: CIImage??
     private var cachedSkyRegion: CGRectValue??
+    private var cachedBlemishes: [Int: [BlemishDetector.Spot]] = [:]
 
     private let knownLandmarks: [FaceLandmarks]?
 
@@ -174,6 +175,23 @@ public final class ImageAnalysis: @unchecked Sendable {
         cachedSkyRegion = .some(result)
         lock.unlock()
         return result
+    }
+
+    /// Blemish spots on one face (cached).
+    func blemishSpots(faceIndex: Int) -> [BlemishDetector.Spot] {
+        let faces = self.faces
+        guard faceIndex < faces.count else { return [] }
+        lock.lock()
+        if let cached = cachedBlemishes[faceIndex] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+        let spots = BlemishDetector.spots(on: faces[faceIndex], image: source, context: context)
+        lock.lock()
+        cachedBlemishes[faceIndex] = spots
+        lock.unlock()
+        return spots
     }
 
     /// True once face detection has run (so the UI can show results without blocking).

@@ -79,6 +79,8 @@ public struct FaceAnchor: Codable, Equatable, Sendable {
 public struct FaceRetouchSettings: Codable, Hashable, Sendable {
     // Skin (0...100)
     public var smooth: Double = 0
+    /// Automatic spot and blemish healing, 0...100.
+    public var blemishes: Double = 0
     /// How much fine pore texture survives smoothing.
     public var texture: Double = 60
     public var evenTone: Double = 0
@@ -133,7 +135,7 @@ public struct FaceRetouchSettings: Codable, Hashable, Sendable {
     }
 
     public var hasRetouch: Bool {
-        smooth != 0 || evenTone != 0 || shine != 0 || darkCircles != 0 || eyeBrighten != 0 || eyeWhiten != 0
+        smooth != 0 || blemishes != 0 || evenTone != 0 || shine != 0 || darkCircles != 0 || eyeBrighten != 0 || eyeWhiten != 0
             || irisColor != 0 || teethWhiten != 0
     }
 }
@@ -229,6 +231,7 @@ public enum FaceCatalog {
         switch section {
         case .skin:
             return [
+                spec("blemishes", "Remove blemishes", \.blemishes, range: 0...100),
                 spec("smooth", "Smooth", \.smooth, range: 0...100),
                 spec("texture", "Keep texture", \.texture, range: 0...100, defaultValue: 60),
                 spec("evenTone", "Even tone", \.evenTone, range: 0...100),
@@ -295,6 +298,7 @@ public enum FaceCatalog {
     public static var autoBeauty: FaceRetouchSettings {
         var settings = FaceRetouchSettings()
         settings.smooth = 45
+        settings.blemishes = 80
         settings.evenTone = 25
         settings.shine = 30
         settings.darkCircles = 30

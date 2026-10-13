@@ -24,10 +24,14 @@ final class ScreenshotTests: XCTestCase {
     private func open(_ app: XCUIApplication, tool: String) {
         let button = app.buttons["tool.\(tool)"]
         guard button.waitForExistence(timeout: 5) else { return }
-        // Tools further right live in a scrolling bar.
+        // Tools live in a scrolling bar: swipe until the button is on screen.
+        let screen = app.windows.firstMatch.frame
+        let bar = app.scrollViews.containing(.button, identifier: "tool.looks").firstMatch
         var attempts = 0
-        while !button.isHittable && attempts < 4 {
-            app.scrollViews.containing(.button, identifier: "tool.looks").firstMatch.swipeLeft()
+        while attempts < 6 {
+            let frame = button.frame
+            if frame.minX >= screen.minX && frame.maxX <= screen.maxX && !frame.isEmpty { break }
+            if frame.maxX > screen.maxX { bar.swipeLeft() } else { bar.swipeRight() }
             attempts += 1
         }
         button.tap()
@@ -46,7 +50,7 @@ final class ScreenshotTests: XCTestCase {
         sleep(3)
         save("00-editor")
 
-        let tools = ["looks", "enhance", "adjust", "masks", "retouch", "styles", "overlays", "text", "face", "body", "crop"]
+        let tools = ["looks", "enhance", "adjust", "masks", "retouch", "styles", "overlays", "text", "face", "body", "reshape", "crop"]
         for (index, tool) in tools.enumerated() {
             open(app, tool: tool)
             save(String(format: "%02d-%@", index + 1, tool))

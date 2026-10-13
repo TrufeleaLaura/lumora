@@ -32,3 +32,15 @@ extension RenderPipeline {
         return image
     }
 }
+
+extension RenderPipeline {
+    /// Manual reshape strokes, as one warp over the whole photo.
+    func applyLiquify(_ strokes: [LiquifyStroke], to image: CIImage, analysis: ImageAnalysis) -> CIImage {
+        guard !strokes.isEmpty else { return image }
+        let extent = image.extent
+        let aspect = Double(extent.height / max(extent.width, 1))
+        let key = "liquify-\(strokes.hashValue)-\(Int(aspect * 10000))"
+        guard let field = analysis.cachedField(key: key, build: { LiquifyMath.field(strokes, aspect: aspect) }) else { return image }
+        return applyDisplacement(field, to: image)
+    }
+}

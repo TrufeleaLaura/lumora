@@ -66,5 +66,6 @@ extension EditDocument {
         "retouch.operations": LenientJSON.object(RetouchOperation()),
         "retouch.operations.strokes": LenientJSON.object(BrushStroke()),
         "texts": LenientJSON.object(TextLayer()),
+        "liquify": LenientJSON.object(LiquifyStroke()),
     ]
 }

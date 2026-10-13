@@ -23,18 +23,23 @@ struct LumoraSlider: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width
-            let thumbX = fraction(value) * width
-            let originX = fraction(origin) * width
+            // The track is inset by the thumb's radius so the thumb never sticks out (and gets
+            // clipped by a scroll view) at either end.
+            let inset: CGFloat = 11
+            let width = max(geometry.size.width - 2 * inset, 1)
+            let thumbX = inset + fraction(value) * width
+            let originX = inset + fraction(origin) * width
             ZStack(alignment: .leading) {
                 if let trackGradient {
                     Capsule()
                         .fill(LinearGradient(gradient: trackGradient, startPoint: .leading, endPoint: .trailing))
-                        .frame(height: 6)
+                        .frame(width: width, height: 6)
+                        .offset(x: inset)
                 } else {
                     Capsule()
                         .fill(Color.white.opacity(0.14))
-                        .frame(height: 3)
+                        .frame(width: width, height: 3)
+                        .offset(x: inset)
                     Capsule()
                         .fill(Theme.accent)
                         .frame(width: abs(thumbX - originX), height: 3)

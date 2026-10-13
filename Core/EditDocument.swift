@@ -252,6 +252,8 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var background = BackgroundSettings()
     /// Sky replacement.
     public var sky = SkySettings()
+    /// Manual reshape brush strokes (push, enlarge, shrink, restore).
+    public var liquify: [LiquifyStroke] = []
 
     public init() {}
 
@@ -264,6 +266,7 @@ public struct EditDocument: Codable, Equatable, Sendable {
         copy.body.bodies = []
         copy.retouch = RetouchSettings()
         copy.texts = []
+        copy.liquify = []
         // Automatic and shape masks carry over; painted strokes and tapped objects belong to this photo.
         copy.masks = masks.compactMap { mask in
             var mask = mask

@@ -6,7 +6,7 @@ import LumoraCore
 /// Turns a source image + `EditDocument` into the edited image (a lazy Core Image graph).
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
-/// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → sky replacement → optics → local contrast → white balance → dehaze → tone → curves → color
+/// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → manual reshape → sky replacement → optics → local contrast → white balance → dehaze → tone → curves → color
 /// → masks (local adjustments) → look → creative styles and lens blur
 /// → noise reduction → sharpening → background replacement → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain)
 /// → overlays → text & stickers → frame and date stamp.
@@ -35,6 +35,7 @@ public struct RenderPipeline {
         image = applyBodySkin(document.body, to: image, analysis: analysis)
         image = applyFaceWarp(document.beauty, to: image, analysis: analysis)
         image = applyBodyWarp(document.body, to: image, analysis: analysis)
+        image = applyLiquify(document.liquify, to: image, analysis: analysis)
         image = applySky(document.sky, to: image, analysis: analysis)
         image = applyOptics(document.optics, to: image, scale: scale)
         image = applyLocalContrast(document.effects, to: image, analysis: analysis)

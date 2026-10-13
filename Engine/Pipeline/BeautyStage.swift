@@ -10,7 +10,7 @@ extension RenderPipeline {
         guard !beauty.isIdentity else { return input }
         let faces = analysis.faces
         guard !faces.isEmpty else { return input }
-        var image = input
+        var image = applyBlemishes(beauty, to: input, analysis: analysis)
         for face in faces {
             let settings = beauty.settings(for: face.landmarks.anchor)
             guard settings.hasRetouch else { continue }

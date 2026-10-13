@@ -139,8 +139,16 @@ struct EditorView: View {
                     FocusOverlay(renderer: session.renderer, session: session)
                 } else if session.activeTool == .text && session.compareMode == .none {
                     TextCanvasOverlay(renderer: session.renderer, session: session)
+                } else if session.activeTool == .reshape && session.compareMode == .none {
+                    ReshapeCanvasOverlay(renderer: session.renderer, session: session)
                 } else if session.compareMode == .split {
                     SplitDivider(position: $session.splitPosition)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if session.activeTool == .adjust && session.compareMode == .none {
+                    HistogramView(session: session)
+                        .padding(10)
                 }
             }
             .overlay(alignment: .topLeading) {
@@ -234,6 +242,11 @@ struct EditorView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)
+            case .reshape:
+                ReshapePanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .crop:
                 CropPanel(session: session)
                     .padding(.horizontal, 22)
@@ -316,6 +329,14 @@ struct EditorView: View {
                     }
                 ))
                 .tint(Theme.accent)
+                Button {
+                    session.pickingWhiteBalance.toggle()
+                } label: {
+                    Label(session.pickingWhiteBalance ? "Tap something white or grey on the photo" : "White balance picker", systemImage: "eyedropper")
+                        .font(.footnote.weight(.medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .tint(session.pickingWhiteBalance ? Theme.accent : Color.primary)
                 SliderList(session: session, specs: AdjustmentCatalog.color.sliders)
             }
         case .mixer:

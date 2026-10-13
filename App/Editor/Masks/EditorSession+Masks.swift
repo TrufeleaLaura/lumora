@@ -70,6 +70,24 @@ extension EditorSession {
             updateRetouchInteraction()
             return
         }
+        if activeTool == .adjust {
+            renderer.onPaint = nil
+            if pickingWhiteBalance {
+                renderer.onTap = { [weak self] point in self?.pickWhiteBalance(at: point) }
+            } else {
+                renderer.onTap = nil
+            }
+            return
+        }
+        if activeTool == .reshape {
+            renderer.onTap = nil
+            if liquifyPaints {
+                renderer.onPaint = { [weak self] phase, point in self?.paintLiquify(phase, at: point) }
+            } else {
+                renderer.onPaint = nil
+            }
+            return
+        }
         guard activeTool == .masks, maskPanel == .mask, let component = selectedComponent else {
             renderer.onPaint = nil
             renderer.onTap = nil

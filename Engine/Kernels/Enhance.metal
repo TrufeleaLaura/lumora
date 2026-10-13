@@ -68,6 +68,14 @@ float4 lumora_skyBlend(sample_t s, sample_t sky, sample_t mask, float4 params, f
     return float4(mix(relit, sky.rgb, m), s.a);
 }
 
+// Clipping warning: blown highlights red, crushed shadows blue.
+float4 lumora_clipping(sample_t s) {
+    float top = max(s.r, max(s.g, s.b));
+    if (top >= 0.999f) { return float4(1.0f, 0.05f, 0.05f, s.a); }
+    if (top <= 0.0015f) { return float4(0.05f, 0.35f, 1.0f, s.a); }
+    return s;
+}
+
 // Background behind the subject: mode 1 = solid color (linear), 2 = transparent.
 float4 lumora_backgroundReplace(sample_t s, sample_t subject, float4 color, float mode) {
     float m = clamp(subject.r, 0.0f, 1.0f);

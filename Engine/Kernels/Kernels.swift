@@ -124,6 +124,7 @@ enum Kernels {
     static let skyLayer = generalKernel("lumora_skyLayer")
     static let skyBlend = colorKernel("lumora_skyBlend")
     static let backgroundReplace = colorKernel("lumora_backgroundReplace")
+    static let clipping = colorKernel("lumora_clipping")
 }
 
 extension CIColorKernel {

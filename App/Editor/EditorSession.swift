@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, enhance, adjust, masks, retouch, styles, overlays, text, face, body, crop
+    case looks, enhance, adjust, masks, retouch, styles, overlays, text, face, body, reshape, crop
 
     var id: String { rawValue }
 
@@ -21,6 +21,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .text: return "Text"
         case .face: return "Face"
         case .body: return "Body"
+        case .reshape: return "Reshape"
         case .crop: return "Crop"
         }
     }
@@ -37,12 +38,13 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .text: return "textformat"
         case .face: return "face.smiling"
         case .body: return "figure.stand"
+        case .reshape: return "hand.draw"
         case .crop: return "crop.rotate"
         }
     }
 
     /// Tools whose overlays are drawn in source-photo coordinates (preview skips crop/rotation).
-    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks || self == .retouch || self == .styles }
+    var showsSourceGeometry: Bool { self == .face || self == .body || self == .masks || self == .retouch || self == .styles || self == .reshape }
 }
 
 /// Edits copied with "Copy edits", shared between projects while the app runs.
@@ -133,6 +135,24 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var focusEditing = false
     /// Text tool: the layer being edited.
     @Published var selectedTextID: UUID?
+    // Adjust tool: histogram, clipping warning and white-balance picker
+    @Published var histogram: HistogramData?
+    @Published var showsClipping = false {
+        didSet { updateRenderer() }
+    }
+    @Published var pickingWhiteBalance = false {
+        didSet { updateMaskInteraction() }
+    }
+    var histogramTask: Task<Void, Never>?
+
+    // Reshape tool
+    @Published var liquifyTool: LiquifyTool = .push
+    @Published var liquifySize: Double = 0.08
+    @Published var liquifyStrength: Double = 60
+    /// Reshape: true = one finger reshapes; false = one finger moves the photo.
+    @Published var liquifyPaints = true {
+        didSet { updateMaskInteraction() }
+    }
 
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false
@@ -190,8 +210,13 @@ final class EditorSession: ObservableObject, Identifiable {
         let overlayMask = activeTool == .masks && showsMaskOverlay && maskPanel == .mask ? selectedMask : nil
         if let overlayMask {
             renderer.previewImage = pipeline.maskOverlay(overlayMask, on: preview, reference: proxy, analysis: analysis)
+        } else if activeTool == .adjust && showsClipping {
+            renderer.previewImage = Histogram.clippingOverlay(preview)
         } else {
             renderer.previewImage = preview
+        }
+        if activeTool == .adjust {
+            scheduleHistogram(preview)
         }
         renderer.fullResolutionImage = {
             let pipeline = RenderPipeline()
