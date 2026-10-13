@@ -209,6 +209,11 @@ struct EditorView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)
+            case .enhance:
+                EnhancePanel(session: session)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity, alignment: .top)
             case .overlays:
                 OverlaysPanel(session: session)
                     .padding(.horizontal, 18)

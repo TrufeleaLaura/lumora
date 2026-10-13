@@ -119,6 +119,11 @@ enum Kernels {
     static let prismLayer = generalKernel("lumora_prismLayer")
     static let vhs = generalKernel("lumora_vhs")
     static let roundedMask = generalKernel("lumora_roundedMask")
+
+    // Enhance
+    static let skyLayer = generalKernel("lumora_skyLayer")
+    static let skyBlend = colorKernel("lumora_skyBlend")
+    static let backgroundReplace = colorKernel("lumora_backgroundReplace")
 }
 
 extension CIColorKernel {

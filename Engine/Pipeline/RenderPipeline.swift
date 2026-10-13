@@ -6,9 +6,9 @@ import LumoraCore
 /// Turns a source image + `EditDocument` into the edited image (a lazy Core Image graph).
 /// The same pipeline renders the interactive preview proxy and the full-resolution export.
 ///
-/// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → optics → local contrast → white balance → dehaze → tone → curves → color
+/// Stage order: heal/clone/remove → face retouch → makeup → body skin → face reshape → body reshape → sky replacement → optics → local contrast → white balance → dehaze → tone → curves → color
 /// → masks (local adjustments) → look → creative styles and lens blur
-/// → noise reduction → sharpening → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain)
+/// → noise reduction → sharpening → background replacement → geometry (rotate, perspective, crop) → finishing (vignette, fade, grain)
 /// → overlays → text & stickers → frame and date stamp.
 public struct RenderPipeline {
     /// Looks up imported LUTs by id.
@@ -35,6 +35,7 @@ public struct RenderPipeline {
         image = applyBodySkin(document.body, to: image, analysis: analysis)
         image = applyFaceWarp(document.beauty, to: image, analysis: analysis)
         image = applyBodyWarp(document.body, to: image, analysis: analysis)
+        image = applySky(document.sky, to: image, analysis: analysis)
         image = applyOptics(document.optics, to: image, scale: scale)
         image = applyLocalContrast(document.effects, to: image, analysis: analysis)
         image = applyWhiteBalance(document.color, to: image)
@@ -47,6 +48,7 @@ public struct RenderPipeline {
         image = applyStyles(document.styles, to: image, reference: input, analysis: analysis, scale: scale)
         image = applyNoiseReduction(document.detail, to: image, scale: scale)
         image = applySharpening(document.detail, to: image, scale: scale)
+        image = applyBackground(document.background, to: image, analysis: analysis)
         if includeGeometry {
             image = applyGeometry(document.geometry, to: image, includeCrop: includeCrop)
         }

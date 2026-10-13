@@ -27,12 +27,29 @@ public enum Exporter {
         var output = image
         if let maxEdge = options.size.maxLongEdge {
             output = ImageSource.scaled(output, maxDimension: CGFloat(maxEdge))
+        } else if options.size == .enlarged {
+            output = enlarged(output)
         }
         output = ImageSource.normalized(output)
         let rect = CGRect(origin: .zero, size: CGSize(width: floor(output.extent.width), height: floor(output.extent.height)))
         output = output.cropped(to: rect)
         output = output.settingProperties(metadata(from: sourceProperties, policy: options.metadata))
         return try encode(output, format: options.format, quality: options.quality, context: context)
+    }
+
+    /// Doubles the size: Lanczos resampling, then edge-aware sharpening at the new scale so
+    /// edges stay crisp without halos (a classic, model-free upscaler).
+    public static func enlarged(_ image: CIImage) -> CIImage {
+        let normalized = ImageSource.normalized(image)
+        let extent = normalized.extent
+        let upscaled = normalized.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: 2.0, kCIInputAspectRatioKey: 1.0])
+        let target = CGRect(x: 0, y: 0, width: (extent.width * 2).rounded(.down), height: (extent.height * 2).rounded(.down))
+        var detail = DetailSettings()
+        detail.sharpening = 70
+        detail.sharpenRadius = 1.4
+        detail.sharpenDetail = 20
+        detail.sharpenMasking = 35
+        return RenderPipeline().applySharpening(detail, to: upscaled.cropped(to: target), scale: 1)
     }
 
     /// Encodes an image (Display P3) without resizing. Metadata comes from `image.properties`.

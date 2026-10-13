@@ -5,13 +5,14 @@ import SwiftUI
 
 /// Top-level editor tools (bottom bar).
 enum EditorTool: String, CaseIterable, Identifiable {
-    case looks, adjust, masks, retouch, styles, overlays, text, face, body, crop
+    case looks, enhance, adjust, masks, retouch, styles, overlays, text, face, body, crop
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .looks: return "Looks"
+        case .enhance: return "Enhance"
         case .adjust: return "Adjust"
         case .masks: return "Masks"
         case .retouch: return "Retouch"
@@ -27,6 +28,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .looks: return "camera.filters"
+        case .enhance: return "sparkles"
         case .adjust: return "slider.horizontal.3"
         case .masks: return "circle.dashed"
         case .retouch: return "bandage"

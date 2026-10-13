@@ -248,6 +248,10 @@ public struct EditDocument: Codable, Equatable, Sendable {
     public var texts: [TextLayer] = []
     /// Border or retro frame around everything, and the date stamp.
     public var frame = FrameSettings()
+    /// Background replacement behind the subject.
+    public var background = BackgroundSettings()
+    /// Sky replacement.
+    public var sky = SkySettings()
 
     public init() {}
 

@@ -24,6 +24,8 @@ struct ExportSheet: View {
         var scale: CGFloat = 1
         if let maxEdge = size.maxLongEdge {
             scale = min(1, CGFloat(maxEdge) / max(pixels.width, pixels.height))
+        } else if size == .enlarged {
+            scale = 2
         }
         return "\(Int((pixels.width * scale).rounded(.down))) × \(Int((pixels.height * scale).rounded(.down))) px"
     }

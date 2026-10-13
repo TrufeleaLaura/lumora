@@ -28,6 +28,7 @@ public final class ImageAnalysis: @unchecked Sendable {
     private var cachedSubject: SubjectAnalysis??
     private let knownSubject: CIImage?
     private var cachedSky: CIImage??
+    private var cachedSkyRegion: CGRectValue??
 
     private let knownLandmarks: [FaceLandmarks]?
 
@@ -152,6 +153,26 @@ public final class ImageAnalysis: @unchecked Sendable {
         if let cachedSky { return cachedSky }
         let result = SkyDetector.coefficients(source, person: person, context: context)
         cachedSky = .some(result)
+        return result
+    }
+
+    /// Normalized bounds of the sky (nil when there's no sky).
+    public var skyRegion: CGRectValue? {
+        let coefficients = skyCoefficients
+        lock.lock()
+        if let cachedSkyRegion {
+            lock.unlock()
+            return cachedSkyRegion
+        }
+        lock.unlock()
+        var result: CGRectValue?
+        if let coefficients {
+            let mask = Kernels.guidedMask.apply(source, GuidedFilter.upsample(coefficients, to: source.extent))
+            result = RenderPipeline.maskBounds(mask)
+        }
+        lock.lock()
+        cachedSkyRegion = .some(result)
+        lock.unlock()
         return result
     }
 

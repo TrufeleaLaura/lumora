@@ -33,6 +33,8 @@ public enum ExportFormat: String, CaseIterable, Codable, Sendable, Identifiable 
 
 public enum ExportSize: String, CaseIterable, Codable, Sendable, Identifiable {
     case original
+    /// Twice the original size (detail-preserving upscale).
+    case enlarged
     case large
     case medium
     case social
@@ -42,6 +44,7 @@ public enum ExportSize: String, CaseIterable, Codable, Sendable, Identifiable {
     public var displayName: String {
         switch self {
         case .original: return "Original"
+        case .enlarged: return "Enlarge 2×"
         case .large: return "4096 px"
         case .medium: return "2048 px"
         case .social: return "1080 px"
@@ -51,7 +54,7 @@ public enum ExportSize: String, CaseIterable, Codable, Sendable, Identifiable {
     /// Maximum length of the long edge in pixels, or nil for the original size.
     public var maxLongEdge: Double? {
         switch self {
-        case .original: return nil
+        case .original, .enlarged: return nil
         case .large: return 4096
         case .medium: return 2048
         case .social: return 1080
