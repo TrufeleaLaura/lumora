@@ -4,7 +4,7 @@ import SwiftUI
 /// Face retouch & reshape: pick all faces or one face, then Skin / Eyes / Shape / Nose & lips / Teeth.
 struct FacePanel: View {
     @ObservedObject var session: EditorSession
-    @State private var section: FaceCatalog.Section = .skin
+    @State private var section: FaceCatalog.Section = .looks
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -23,6 +23,23 @@ struct FacePanel: View {
                     header(faceCount: faces.count)
                     sectionChips
                     ScrollView {
+                        if section == .looks {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                                ForEach(MakeupLook.all) { look in
+                                    Button {
+                                        let target = session.faceTarget
+                                        session.perform(look.title) { look.apply(to: &$0[keyPath: target]) }
+                                    } label: {
+                                        Text(look.title)
+                                            .font(.caption.weight(.semibold))
+                                            .frame(maxWidth: .infinity, minHeight: 38)
+                                            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.bottom, 8)
+                        }
                         if let palette = section.palette {
                             paletteRow(palette.colors, keyPath: palette.keyPath)
                             if section == .hair {

@@ -89,6 +89,99 @@ public enum MakeupPalette {
     ]
 }
 
+/// One-tap complete makeup looks (they replace the makeup, keep hair and face shape).
+public struct MakeupLook: Identifiable, Sendable {
+    public let id: String
+    public let title: String
+    let build: @Sendable (inout MakeupSettings, inout SkinTouch) -> Void
+
+    /// Skin retouching that comes with a look.
+    public struct SkinTouch: Sendable {
+        public var smooth: Double = 0
+        public var evenTone: Double = 0
+    }
+
+    /// Applies the look to a face's settings.
+    public func apply(to settings: inout FaceRetouchSettings) {
+        var makeup = MakeupSettings()
+        // Hair and brow shape stay: they are not makeup.
+        let old = settings.makeup
+        makeup.hairColorAmount = old.hairColorAmount; makeup.hairColor = old.hairColor
+        makeup.hairOmbre = old.hairOmbre; makeup.hairOmbreColor = old.hairOmbreColor
+        makeup.hairShine = old.hairShine; makeup.hairVolume = old.hairVolume
+        makeup.browLift = old.browLift; makeup.browArch = old.browArch; makeup.browTilt = old.browTilt
+        var skin = SkinTouch(smooth: settings.smooth, evenTone: settings.evenTone)
+        build(&makeup, &skin)
+        settings.makeup = makeup
+        settings.smooth = max(settings.smooth, skin.smooth)
+        settings.evenTone = max(settings.evenTone, skin.evenTone)
+    }
+
+    private static func color(_ palette: [(String, MakeupColor)], _ name: String) -> MakeupColor {
+        palette.first { $0.0 == name }?.1 ?? palette[0].1
+    }
+
+    public static let all: [MakeupLook] = [
+        MakeupLook(id: "none", title: "No makeup") { _, _ in },
+        MakeupLook(id: "natural", title: "Natural") { m, _ in
+            m.lipstickAmount = 30; m.lipstickColor = color(MakeupPalette.lipstick, "Nude"); m.lipFinish = .satin
+            m.blushAmount = 20; m.blushColor = color(MakeupPalette.blush, "Peach")
+            m.highlight = 15; m.lashes = 20; m.browThickness = 15
+        },
+        MakeupLook(id: "cleanGirl", title: "Clean girl") { m, skin in
+            skin.smooth = 30; skin.evenTone = 25
+            m.lipstickAmount = 25; m.lipstickColor = color(MakeupPalette.lipstick, "Nude"); m.lipFinish = .gloss
+            m.blushAmount = 25; m.blushColor = color(MakeupPalette.blush, "Peach")
+            m.highlight = 30; m.browThickness = 25; m.lashes = 25
+        },
+        MakeupLook(id: "softGlam", title: "Soft glam") { m, skin in
+            skin.smooth = 35
+            m.lipstickAmount = 45; m.lipstickColor = color(MakeupPalette.lipstick, "Rose"); m.lipFinish = .satin
+            m.blushAmount = 30; m.blushColor = color(MakeupPalette.blush, "Rose")
+            m.contour = 30; m.highlight = 35
+            m.eyeshadowAmount = 35; m.eyeshadowColor = color(MakeupPalette.eyeshadow, "Champagne")
+            m.eyeliner = 30; m.lashes = 45; m.browThickness = 35; m.browColorAmount = 30
+        },
+        MakeupLook(id: "glassSkin", title: "Glass skin") { m, skin in
+            skin.smooth = 45; skin.evenTone = 40
+            m.lipstickAmount = 35; m.lipstickColor = color(MakeupPalette.lipstick, "Pink"); m.lipFinish = .gloss
+            m.blushAmount = 25; m.blushColor = color(MakeupPalette.blush, "Pink")
+            m.highlight = 45; m.lashes = 20; m.browThickness = 20
+        },
+        MakeupLook(id: "coquette", title: "Coquette") { m, skin in
+            skin.smooth = 30
+            m.lipstickAmount = 45; m.lipstickColor = color(MakeupPalette.lipstick, "Pink"); m.lipFinish = .gloss
+            m.blushAmount = 40; m.blushColor = color(MakeupPalette.blush, "Pink")
+            m.highlight = 30; m.eyeshadowAmount = 25; m.eyeshadowColor = color(MakeupPalette.eyeshadow, "Rose gold")
+            m.lashes = 40
+        },
+        MakeupLook(id: "bronzed", title: "Bronzed") { m, _ in
+            m.blushAmount = 35; m.blushColor = color(MakeupPalette.blush, "Bronze")
+            m.contour = 40; m.highlight = 35
+            m.eyeshadowAmount = 40; m.eyeshadowColor = color(MakeupPalette.eyeshadow, "Bronze")
+            m.lipstickAmount = 35; m.lipstickColor = color(MakeupPalette.lipstick, "Brick"); m.lipFinish = .satin
+            m.lashes = 35
+        },
+        MakeupLook(id: "boldRed", title: "Bold red") { m, skin in
+            skin.smooth = 30
+            m.lipstickAmount = 70; m.lipstickColor = color(MakeupPalette.lipstick, "Classic red"); m.lipFinish = .matte
+            m.eyeliner = 50; m.lashes = 50; m.contour = 20; m.highlight = 20; m.browThickness = 30
+        },
+        MakeupLook(id: "smoky", title: "Smoky night") { m, _ in
+            m.eyeshadowAmount = 60; m.eyeshadowColor = color(MakeupPalette.eyeshadow, "Smoky")
+            m.eyeliner = 60; m.lashes = 60
+            m.lipstickAmount = 35; m.lipstickColor = color(MakeupPalette.lipstick, "Nude"); m.lipFinish = .satin
+            m.contour = 35; m.highlight = 25
+        },
+        MakeupLook(id: "berry", title: "Berry") { m, _ in
+            m.lipstickAmount = 60; m.lipstickColor = color(MakeupPalette.lipstick, "Berry"); m.lipFinish = .matte
+            m.eyeshadowAmount = 30; m.eyeshadowColor = color(MakeupPalette.eyeshadow, "Plum")
+            m.blushAmount = 20; m.blushColor = color(MakeupPalette.blush, "Rose")
+            m.eyeliner = 30; m.lashes = 30
+        },
+    ]
+}
+
 /// Eyebrows, makeup and hair color for one face (0 = untouched).
 public struct MakeupSettings: Codable, Hashable, Sendable {
     // Eyebrows

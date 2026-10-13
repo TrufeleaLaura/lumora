@@ -169,12 +169,13 @@ public struct BeautySettings: Codable, Equatable, Sendable {
 /// Slider definitions for the Face tool.
 public enum FaceCatalog {
     public enum Section: String, CaseIterable, Identifiable {
-        case skin, eyes, shape, noseLips, teeth, brows, lipstick, cheeks, eyeMakeup, hair
+        case looks, skin, eyes, shape, noseLips, teeth, brows, lipstick, cheeks, eyeMakeup, hair
 
         public var id: String { rawValue }
 
         public var title: String {
             switch self {
+            case .looks: return "Makeup looks"
             case .skin: return "Skin"
             case .eyes: return "Eyes"
             case .shape: return "Shape"
@@ -190,6 +191,7 @@ public enum FaceCatalog {
 
         public var symbol: String {
             switch self {
+            case .looks: return "sparkles"
             case .skin: return "drop"
             case .eyes: return "eye"
             case .shape: return "face.dashed"
@@ -229,6 +231,8 @@ public enum FaceCatalog {
             )
         }
         switch section {
+        case .looks:
+            return []
         case .skin:
             return [
                 spec("blemishes", "Remove blemishes", \.blemishes, range: 0...100),
