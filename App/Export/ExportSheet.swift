@@ -111,7 +111,7 @@ struct ExportSheet: View {
                 .padding(.top, 10)
                 .padding(.bottom, 8)
             }
-            .navigationTitle("Export")
+            .navigationTitle("EXPORT")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

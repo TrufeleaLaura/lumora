@@ -92,6 +92,7 @@ struct CollageView: View {
             .disabled(model.isExporting || model.cells.allSatisfy { $0.image == nil })
             .opacity(model.cells.allSatisfy { $0.image == nil } ? 0.45 : 1)
             .accessibilityLabel("Save")
+            .accessibilityIdentifier("Save")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)

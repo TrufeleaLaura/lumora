@@ -79,7 +79,7 @@ struct SettingsView: View {
                 .listRowBackground(Color.clear)
             }
             .drFormStyle()
-            .navigationTitle("Settings")
+            .navigationTitle("SETTINGS")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

@@ -11,7 +11,7 @@ struct LumoraApp: App {
         WindowGroup {
             LibraryView()
                 .preferredColorScheme(.dark)
-                .tint(Darkroom.safelight)
+                .tint(Darkroom.cream)
         }
     }
 

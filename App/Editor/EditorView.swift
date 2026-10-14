@@ -124,6 +124,7 @@ struct EditorView: View {
             .buttonStyle(PrimaryButtonStyle(compact: true))
             .disabled(session.isExporting)
             .accessibilityLabel("Export")
+            .accessibilityIdentifier("Export")
         }
         .padding(.leading, 6)
         .padding(.trailing, 14)

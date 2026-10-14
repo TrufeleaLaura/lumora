@@ -19,7 +19,7 @@ struct HistorySheet: View {
             }
             .listStyle(.plain)
             .drFormStyle()
-            .navigationTitle("History")
+            .navigationTitle("HISTORY")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
