@@ -73,7 +73,7 @@ struct TextPanel: View {
     }
 
     private var layerChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(session.document.texts) { layer in
                     let selected = layer.id == session.selectedTextID
@@ -101,7 +101,7 @@ struct TextPanel: View {
 
     /// One-tap text styles, shown in their own font.
     private func styleChips(_ index: Int) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(TextStylePreset.all) { preset in
                     Button {
@@ -185,7 +185,7 @@ private struct LayerEditor: View {
             .font(.footnote)
 
             if !layer.isSticker {
-                ScrollView(.horizontal, showsIndicators: false) {
+                AuraHScroll {
                     HStack(spacing: 6) {
                         ForEach(TextFont.allCases) { font in
                             let selected = layer.font == font

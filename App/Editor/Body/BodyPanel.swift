@@ -53,7 +53,7 @@ struct BodyPanel: View {
     private func header(count: Int) -> some View {
         HStack(spacing: 8) {
             if count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
+                AuraHScroll {
                     HStack(spacing: 6) {
                         chip("Everyone", selected: session.selectedBodyIndex == nil) { session.selectBody(nil) }
                         ForEach(0..<count, id: \.self) { index in
@@ -78,7 +78,7 @@ struct BodyPanel: View {
     }
 
     private var sectionChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(BodyCatalog.Section.allCases) { item in
                     Button {

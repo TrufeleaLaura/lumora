@@ -21,7 +21,7 @@ struct LooksPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             packChips
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(alignment: .top, spacing: 10) {
                     if pack == .custom {
                         customCells
@@ -84,7 +84,7 @@ struct LooksPanel: View {
     // MARK: - Pieces
 
     private var packChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(LookPack.allCases) { item in
                     Button {

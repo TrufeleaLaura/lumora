@@ -91,7 +91,7 @@ struct MasksPanel: View {
 
     private var presetsGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     ForEach(MaskPreset.Category.allCases) { category in
                         Button {
@@ -156,7 +156,7 @@ struct MasksPanel: View {
 
     private var maskStrip: some View {
         HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     ForEach(session.document.masks) { mask in
                         let selected = mask.id == session.selectedMaskID
@@ -274,7 +274,7 @@ struct MaskComponentEditor: View {
 
     private var componentStrip: some View {
         HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     ForEach(mask.components) { component in
                         let selected = component.id == session.selectedComponentID
@@ -388,7 +388,7 @@ private struct PeopleControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     chip("Everyone", selected: component.person == nil) {
                         session.updateComponent("Everyone") { $0.person = nil }

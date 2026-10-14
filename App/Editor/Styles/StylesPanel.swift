@@ -9,7 +9,7 @@ struct StylesPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 8) {
                     ForEach(StyleCatalog.Effect.allCases) { item in
                         let active = item.isActive(session.document.styles)

@@ -192,7 +192,7 @@ struct CollageView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 8) {
                     ForEach(CollageLayout.allCases) { layout in
                         Button {

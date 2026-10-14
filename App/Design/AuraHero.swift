@@ -92,6 +92,8 @@ struct AuraHeroCard: View {
         }
         .frame(height: 172)
         .clipShape(shape)
+        // The drifting lights reach outside the card; only the card itself takes taps.
+        .contentShape(shape)
         .overlay(shape.strokeBorder(Color.white.opacity(0.4), lineWidth: 0.8))
         .shadow(color: Aura.rose.opacity(0.35), radius: 26, y: 12)
         .shadow(color: Aura.lavender.opacity(0.25), radius: 12, y: 2)

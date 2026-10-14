@@ -7,7 +7,7 @@ struct CropPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     ForEach(AspectRatioPreset.allCases) { preset in
                         Button {

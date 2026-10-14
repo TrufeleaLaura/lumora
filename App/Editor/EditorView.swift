@@ -310,7 +310,7 @@ struct EditorView: View {
 
     private var toolBar: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 0) {
                     ForEach(EditorTool.allCases) { tool in
                         let active = session.activeTool == tool

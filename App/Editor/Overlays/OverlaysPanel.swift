@@ -89,7 +89,7 @@ struct OverlaysPanel: View {
     }
 
     private var overlayChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(Overlay.allCases) { item in
                     let active = session.document.overlays[keyPath: item.amount] > 0
@@ -180,7 +180,7 @@ struct ColorRow: View {
     let action: (RGBColor) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 10) {
                 ForEach(RGBColor.palette, id: \.self) { color in
                     Button {

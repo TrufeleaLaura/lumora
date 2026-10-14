@@ -310,6 +310,25 @@ struct AuraSegmented<Value: Hashable>: View {
     }
 }
 
+// MARK: - Horizontal scroller
+
+/// A horizontal row that scrolls without clipping, so glows and halos of selected items
+/// spill softly past its edges instead of being cut into boxes.
+struct AuraHScroll<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            content
+        }
+        .scrollClipDisabled()
+    }
+}
+
 // MARK: - Chip bar
 
 /// A scrolling row of labelled chips with a gliding highlight (sections of a tool).
@@ -322,7 +341,7 @@ struct AuraChipBar<Item: Hashable & Identifiable>: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
+            AuraHScroll {
                 HStack(spacing: 6) {
                     ForEach(items) { item in
                         let selected = item == selection

@@ -86,7 +86,7 @@ struct FacePanel: View {
     private func header(faceCount: Int) -> some View {
         HStack(spacing: 8) {
             if faceCount > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
+                AuraHScroll {
                     HStack(spacing: 6) {
                         chip("All faces", selected: session.selectedFaceIndex == nil) { session.selectFace(nil) }
                         ForEach(0..<faceCount, id: \.self) { index in
@@ -121,7 +121,7 @@ struct FacePanel: View {
     }
 
     private var sectionChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        AuraHScroll {
             HStack(spacing: 6) {
                 ForEach(FaceCatalog.Section.allCases) { item in
                     Button {
@@ -141,7 +141,7 @@ struct FacePanel: View {
 
     private func paletteRow(_ colors: [(String, MakeupColor)], keyPath: WritableKeyPath<MakeupSettings, MakeupColor>) -> some View {
         let current = session.document[keyPath: session.faceTarget].makeup[keyPath: keyPath]
-        return ScrollView(.horizontal, showsIndicators: false) {
+        return AuraHScroll {
             HStack(spacing: 10) {
                 ForEach(Array(colors.enumerated()), id: \.offset) { _, item in
                     let name = item.0

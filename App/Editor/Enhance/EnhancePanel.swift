@@ -93,7 +93,7 @@ struct EnhancePanel: View {
 
                     Text("Sky")
                         .font(.subheadline.weight(.semibold))
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    AuraHScroll {
                         HStack(spacing: 6) {
                             ForEach(SkyStyle.allCases) { style in
                                 let selected = session.document.sky.style == style

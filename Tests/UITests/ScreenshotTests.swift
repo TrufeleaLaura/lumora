@@ -80,6 +80,10 @@ final class ScreenshotTests: XCTestCase {
         open(app, tool: "styles")
         sleep(1)
         save("22-styles")
+
+        app.buttons["Export"].tap()
+        sleep(2)
+        save("23-export")
     }
 
     func testLibraryAndSettings() throws {
@@ -92,6 +96,11 @@ final class ScreenshotTests: XCTestCase {
             app.buttons["Settings"].tap()
             sleep(2)
             save("31-settings")
+            if button(app, containing: "welcome tour").waitForExistence(timeout: 3) {
+                button(app, containing: "welcome tour").tap()
+                sleep(3)
+                save("32-onboarding")
+            }
         }
     }
 }
