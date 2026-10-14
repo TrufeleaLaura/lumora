@@ -16,6 +16,8 @@ struct LibraryView: View {
     @State private var isMakingCollage = false
     @State private var dragged: UUID?
     @State private var isShowingSettings = false
+    /// Tiles rise in one after another the first time the grid shows.
+    @State private var tilesAppeared = false
     @AppStorage("onboarding.seen") private var hasSeenOnboarding = false
 
     enum Mode: String, CaseIterable, Identifiable {
@@ -24,49 +26,76 @@ struct LibraryView: View {
         var title: String { self == .edits ? "Edits" : "Feed plan" }
     }
 
-    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 4)]
+    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 header
                 newEditButton
-                collageButton
+                HStack(spacing: 12) {
+                    collageButton
+                    sampleButton
+                }
 
                 if !library.projects.isEmpty {
-                    HStack {
-                        Picker("View", selection: $mode) {
-                            ForEach(Mode.allCases) { item in
-                                Text(item.title).tag(item)
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Your edits")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundStyle(Aura.textPrimary)
+                            Text("\(library.projects.count)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Aura.gradient)
+                            Spacer()
+                            if mode == .edits {
+                                Button(isSelecting ? "Done" : "Select") {
+                                    withAnimation(Aura.spring) {
+                                        isSelecting.toggle()
+                                        selection.removeAll()
+                                    }
+                                }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Aura.textPrimary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .auraGlass(Capsule(), tint: 0.5, rim: 0.5)
+                                .buttonStyle(AuraPressStyle())
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 220)
-                        Spacer()
-                        if mode == .edits {
-                            Button(isSelecting ? "Done" : "Select") {
-                                isSelecting.toggle()
-                                selection.removeAll()
-                            }
-                            .font(.subheadline.weight(.semibold))
-                        }
+                        AuraSegmented(selection: $mode, options: Mode.allCases) { $0.title }
+                            .frame(maxWidth: 260)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 6)
                     if mode == .feed {
                         feedGrid
+                            .transition(.opacity.combined(with: .offset(y: 12)))
                     } else {
-                    LazyVGrid(columns: columns, spacing: 4) {
-                        ForEach(library.projects) { project in
+                    LazyVGrid(columns: columns, spacing: 8) {
+                        ForEach(Array(library.projects.enumerated()), id: \.element.id) { index, project in
                             ProjectTile(image: library.thumbnail(for: project))
                                 .overlay(alignment: .topTrailing) {
                                     if isSelecting {
-                                        Image(systemName: selection.contains(project.id) ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 22))
-                                            .foregroundStyle(selection.contains(project.id) ? Theme.accent : Color.white)
-                                            .shadow(radius: 2)
-                                            .padding(6)
+                                        let chosen = selection.contains(project.id)
+                                        Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 22, weight: .semibold))
+                                            .foregroundStyle(chosen ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Color.white))
+                                            .shadow(color: chosen ? Aura.lavender.opacity(0.8) : .black.opacity(0.4), radius: 4)
+                                            .padding(7)
+                                            .transition(.scale.combined(with: .opacity))
                                     }
                                 }
+                                .overlay {
+                                    if isSelecting && selection.contains(project.id) {
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .strokeBorder(Aura.diagonal, lineWidth: 2.5)
+                                    }
+                                }
+                                .scaleEffect(isSelecting && selection.contains(project.id) ? 0.94 : 1)
+                                .animation(Aura.bouncy, value: selection)
+                                .opacity(tilesAppeared ? 1 : 0)
+                                .offset(y: tilesAppeared ? 0 : 18)
+                                .animation(Aura.spring.delay(Double(min(index, 14)) * 0.035), value: tilesAppeared)
                                 .onTapGesture {
                                     if isSelecting {
                                         if selection.contains(project.id) {
@@ -92,6 +121,8 @@ struct LibraryView: View {
                                 }
                         }
                     }
+                    .transition(.opacity.combined(with: .offset(y: 12)))
+                    .onAppear { tilesAppeared = true }
                     }
                 } else {
                     emptyState
@@ -103,16 +134,23 @@ struct LibraryView: View {
                         .foregroundStyle(.red)
                 }
 
-                Text("Version \(Bundle.main.appVersion)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
+                VStack(spacing: 4) {
+                    Image(systemName: "sparkle")
+                        .font(.caption2)
+                        .foregroundStyle(Aura.gradient)
+                    Text("Lumora \(Bundle.main.appVersion) · made on your iPhone, for you")
+                        .font(.caption2)
+                        .foregroundStyle(Aura.textSecondary.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 16)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 18)
             .padding(.bottom, 24)
+            .animation(Aura.spring, value: mode)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .scrollIndicators(.hidden)
+        .background(AuraBackground(paused: isCovered))
         .safeAreaInset(edge: .bottom) {
             if isSelecting {
                 selectionBar
@@ -134,11 +172,13 @@ struct LibraryView: View {
         .overlay {
             if library.isBusy {
                 ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    ProgressView("Opening…")
-                        .padding(24)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    Aura.plum.opacity(0.55).ignoresSafeArea()
+                    AuraLoader(caption: "Opening…")
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 24)
+                        .auraGlass(cornerRadius: 24)
                 }
+                .transition(.opacity)
             }
         }
         .onAppear {
@@ -155,10 +195,13 @@ struct LibraryView: View {
             guard let item else { return }
             importPhoto(item)
         }
+        .animation(Aura.soft, value: library.isBusy)
         .sheet(isPresented: $isShowingSettings, onDismiss: { library.reload() }) {
             SettingsView(store: library.store) {
                 library.delete(library.projects.map(\.id))
             }
+            .presentationBackground(Aura.plum)
+            .presentationCornerRadius(30)
         }
         .fullScreenCover(isPresented: Binding(get: { !hasSeenOnboarding }, set: { if !$0 { hasSeenOnboarding = true } })) {
             OnboardingView { hasSeenOnboarding = true }
@@ -192,7 +235,9 @@ struct LibraryView: View {
     private var selectionBar: some View {
         HStack(spacing: 18) {
             Text(selection.isEmpty ? "Select photos" : "\(selection.count) selected")
-                .font(.subheadline.weight(.medium))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Aura.textPrimary)
+                .contentTransition(.numericText())
             Spacer()
             Button {
                 guard let copied = EditClipboard.document else { return }
@@ -214,78 +259,80 @@ struct LibraryView: View {
             .disabled(selection.isEmpty)
             .accessibilityLabel("Delete selected")
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 22)
         .padding(.vertical, 14)
-        .background(.ultraThinMaterial)
+        .auraGlass(Capsule(), tint: 0.6)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    /// Another screen covers the library: its ambient motion pauses (the editor needs the GPU).
+    private var isCovered: Bool {
+        session != nil || isMakingCollage || !hasSeenOnboarding
+    }
+
+    private var greeting: String {
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        default: return "Good evening"
+        }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Lumora")
-                    .font(.system(size: 40, weight: .semibold, design: .serif))
-                    .foregroundStyle(Theme.gradient)
-                Spacer()
-                Button {
-                    isShowingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 20))
-                }
-                .accessibilityLabel("Settings")
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(greeting.uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(2.2)
+                    .foregroundStyle(Aura.textSecondary)
+                LumoraWordmark()
+                Text("Your photos, in their best light.")
+                    .font(.subheadline)
+                    .foregroundStyle(Aura.textSecondary)
             }
-            Text("Edit, retouch and reshape — beautifully.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Spacer()
+            AuraIconButton(symbol: "gearshape", size: 42) {
+                isShowingSettings = true
+            }
+            .accessibilityLabel("Settings")
         }
-        .padding(.top, 20)
+        .padding(.top, 14)
     }
 
     private var newEditButton: some View {
         PhotosPicker(selection: $pickerItem, matching: .images, preferredItemEncoding: .current) {
-            HStack(spacing: 14) {
-                Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .semibold))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("New edit")
-                        .font(.headline)
-                    Text("Choose a photo from your library")
-                        .font(.caption)
-                        .opacity(0.75)
-                }
-                Spacer()
-            }
-            .foregroundStyle(.black)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .background(Theme.gradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            AuraHeroCard(
+                eyebrow: "New edit",
+                title: "Make it glow",
+                subtitle: "Choose a photo from your library",
+                symbol: "plus",
+                paused: isCovered
+            )
         }
+        .buttonStyle(AuraPressStyle(scale: 0.97))
         .disabled(library.isBusy)
+        .accessibilityLabel("New edit")
     }
 
     private var collageButton: some View {
         Button {
             isMakingCollage = true
         } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 20, weight: .semibold))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Collage & story")
-                        .font(.headline)
-                    Text("Layouts, moodboards and 9:16 stories")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            AuraFeatureCard(symbol: "square.grid.2x2", title: "Collage & story", subtitle: "Layouts, moodboards, 9:16")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle(scale: 0.96))
+        .disabled(library.isBusy)
+    }
+
+    private var sampleButton: some View {
+        Button {
+            Task { session = await library.openSample() }
+        } label: {
+            AuraFeatureCard(symbol: "wand.and.stars", title: "Try a sample", subtitle: "Explore every tool")
+        }
+        .buttonStyle(AuraPressStyle(scale: 0.96))
         .disabled(library.isBusy)
     }
 
@@ -294,10 +341,10 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Drag photos to plan how your grid will look. Top-left is the newest post.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Aura.textSecondary)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                 ForEach(library.feed) { project in
-                    Theme.panelRaised
+                    Aura.surfaceRaised
                         .aspectRatio(3.0 / 4.0, contentMode: .fit)
                         .overlay {
                             if let image = library.thumbnail(for: project) {
@@ -317,25 +364,36 @@ struct LibraryView: View {
                         .onDrop(of: [.text], delegate: FeedDropDelegate(target: project.id, dragged: $dragged, library: library))
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Aura.rim, lineWidth: 0.8))
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "photo.stack")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-            Text("Your edits will appear here.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Button("Try a sample photo") {
-                Task { session = await library.openSample() }
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Aura.diagonal)
+                    .frame(width: 96, height: 96)
+                    .blur(radius: 28)
+                    .opacity(0.55)
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 30, weight: .medium))
+                    .foregroundStyle(Aura.gradient)
+                    .frame(width: 76, height: 76)
+                    .auraGlass(Circle(), tint: 0.4)
             }
-            .font(.subheadline.weight(.semibold))
-            .padding(.top, 4)
+            Text("Your edits will live here")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundStyle(Aura.textPrimary)
+            Text("Every photo keeps its original, so you can change your mind anytime.")
+                .font(.footnote)
+                .foregroundStyle(Aura.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 36)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        .padding(.vertical, 40)
     }
 
     private func importPhoto(_ item: PhotosPickerItem) {
@@ -364,17 +422,21 @@ struct ProjectTile: View {
     let image: UIImage?
 
     var body: some View {
-        Theme.panelRaised
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        Aura.surfaceRaised
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 if let image {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
+                        .transition(.opacity)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .contentShape(Rectangle())
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7))
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            .contentShape(shape)
     }
 }
 

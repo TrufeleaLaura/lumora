@@ -13,6 +13,7 @@ struct LumoraSlider: View {
     var onEditingChanged: (Bool) -> Void = { _ in }
 
     @State private var dragStartValue: Double?
+    @State private var isDragging = false
     private let feedback = UISelectionFeedbackGenerator()
 
     private var span: Double { range.upperBound - range.lowerBound }
@@ -34,22 +35,49 @@ struct LumoraSlider: View {
                     Capsule()
                         .fill(LinearGradient(gradient: trackGradient, startPoint: .leading, endPoint: .trailing))
                         .frame(width: width, height: 6)
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
                         .offset(x: inset)
                 } else {
                     Capsule()
-                        .fill(Color.white.opacity(0.14))
-                        .frame(width: width, height: 3)
+                        .fill(Aura.surfaceRaised)
+                        .overlay(Capsule().strokeBorder(Aura.hairline, lineWidth: 0.5))
+                        .frame(width: width, height: 4)
                         .offset(x: inset)
-                    Capsule()
-                        .fill(Theme.accent)
-                        .frame(width: abs(thumbX - originX), height: 3)
-                        .offset(x: min(thumbX, originX))
+                    // The origin: a small notch on ± sliders.
+                    if origin > range.lowerBound {
+                        Capsule()
+                            .fill(Aura.textSecondary.opacity(0.5))
+                            .frame(width: 2, height: 9)
+                            .offset(x: originX - 1)
+                    }
+                    // The fill: the aura gradient, revealed from the origin.
+                    Aura.gradient
+                        .frame(width: width, height: 4)
+                        .mask(alignment: .leading) {
+                            Capsule()
+                                .frame(width: max(abs(thumbX - originX), 0.01), height: 4)
+                                .offset(x: min(thumbX, originX) - inset)
+                        }
+                        .shadow(color: Aura.lavender.opacity(isDragging ? 0.8 : 0.45), radius: isDragging ? 6 : 3)
+                        .offset(x: inset)
                 }
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 22, height: 22)
-                    .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
-                    .offset(x: thumbX - 11)
+                // The orb.
+                ZStack {
+                    Circle()
+                        .fill(Aura.lavender.opacity(isDragging ? 0.35 : 0))
+                        .frame(width: 38, height: 38)
+                        .blur(radius: 6)
+                    Circle()
+                        .fill(Aura.orb)
+                        .frame(width: 20, height: 20)
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                        .shadow(color: Aura.lavender.opacity(0.75), radius: isDragging ? 10 : 5)
+                        .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                        .scaleEffect(isDragging ? 1.25 : 1)
+                }
+                .frame(width: 22, height: 22)
+                .offset(x: thumbX - 11)
+                .animation(Aura.bouncy, value: isDragging)
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
@@ -58,6 +86,7 @@ struct LumoraSlider: View {
                     .onChanged { drag in
                         if dragStartValue == nil {
                             dragStartValue = value
+                            isDragging = true
                             feedback.prepare()
                             onEditingChanged(true)
                         }
@@ -71,6 +100,7 @@ struct LumoraSlider: View {
                     }
                     .onEnded { _ in
                         dragStartValue = nil
+                        isDragging = false
                         onEditingChanged(false)
                     }
             )

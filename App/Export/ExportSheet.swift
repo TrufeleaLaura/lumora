@@ -47,13 +47,15 @@ struct ExportSheet: View {
                                 Text("Quality")
                                 Spacer()
                                 Text("\(Int((quality * 100).rounded()))%")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Aura.gradient)
+                                    .fontWeight(.semibold)
                                     .monospacedDigit()
                             }
                             Slider(value: $quality, in: 0.5...1.0, step: 0.01)
                         }
                     }
                 }
+                .auraRow()
 
                 Section {
                     Picker("Size", selection: $size) {
@@ -69,8 +71,11 @@ struct ExportSheet: View {
                 } footer: {
                     Text("Output: \(outputSize)")
                 }
-
-                Section {
+                .auraRow()
+            }
+            .auraFormStyle()
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 10) {
                     Button {
                         session.saveToPhotos(options: options)
                         dismiss()
@@ -78,6 +83,7 @@ struct ExportSheet: View {
                         Label("Save to Photos", systemImage: "square.and.arrow.down")
                             .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(AuraPrimaryButtonStyle())
                     .disabled(session.isExporting)
 
                     Button {
@@ -87,17 +93,27 @@ struct ExportSheet: View {
                             }
                         }
                     } label: {
-                        HStack {
-                            Label("Share…", systemImage: "square.and.arrow.up")
+                        HStack(spacing: 8) {
                             if session.isExporting {
-                                Spacer()
                                 ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
                             }
+                            Text("Share…")
                         }
+                        .font(.headline)
+                        .foregroundStyle(Aura.textPrimary)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .auraGlass(Capsule(), tint: 0.5)
                     }
+                    .buttonStyle(AuraPressStyle())
                     .disabled(session.isExporting)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
             }
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)

@@ -9,6 +9,9 @@ struct EditorView: View {
     @State private var section: AdjustSection = .light
     @State private var isShowingExport = false
     @State private var isShowingHistory = false
+    /// Per-tool tap counters (each tap bounces only that tool's symbol).
+    @State private var toolTaps: [EditorTool: Int] = [:]
+    @Namespace private var toolNamespace
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,118 +19,144 @@ struct EditorView: View {
             canvas
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(-1)
-            toolPanel
-            toolBar
+            dock
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(Aura.canvas.ignoresSafeArea())
         // Panels are dense; very large text sizes would push the photo off screen.
         .dynamicTypeSize(...DynamicTypeSize.large)
         .overlay(alignment: .top) {
             if let toast = session.toast {
-                Text(toast)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .padding(.top, 64)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkle")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Aura.gradient)
+                    Text(toast)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Aura.textPrimary)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .auraGlass(Capsule(), tint: 0.5)
+                .shadow(color: Aura.lavender.opacity(0.25), radius: 14)
+                .padding(.top, 64)
+                .transition(.move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: session.toast)
+        .animation(Aura.bouncy, value: session.toast)
         .sheet(isPresented: $isShowingExport) {
             ExportSheet(session: session)
                 .presentationDetents([.medium, .large])
+                .presentationBackground(Aura.plum)
+                .presentationCornerRadius(30)
         }
         .sheet(isPresented: $isShowingHistory) {
             HistorySheet(session: session)
                 .presentationDetents([.medium, .large])
+                .presentationBackground(Aura.plum)
+                .presentationCornerRadius(30)
         }
     }
 
     // MARK: - Top bar
 
     private var topBar: some View {
-        HStack(spacing: 18) {
-            Button {
+        HStack(spacing: 10) {
+            AuraIconButton(symbol: "chevron.left") {
                 session.finish()
                 onClose()
-            } label: {
-                Image(systemName: "chevron.left")
             }
             .accessibilityLabel("Back to library")
 
-            Spacer()
+            Spacer(minLength: 0)
 
-            Button { session.undo() } label: {
-                Image(systemName: "arrow.uturn.backward")
-            }
-            .disabled(!session.canUndo)
-            .accessibilityLabel("Undo")
-
-            Button { session.redo() } label: {
-                Image(systemName: "arrow.uturn.forward")
-            }
-            .disabled(!session.canRedo)
-            .accessibilityLabel("Redo")
-
-            Button {
-                session.compareMode = session.compareMode == .split ? .none : .split
-            } label: {
-                Image(systemName: "square.split.2x1")
-                    .foregroundStyle(session.compareMode == .split ? Theme.accent : Color.primary)
-            }
-            .accessibilityLabel("Before and after split view")
-
-            Menu {
-                Button {
-                    isShowingHistory = true
-                } label: {
-                    Label("History", systemImage: "clock.arrow.circlepath")
+            HStack(spacing: 0) {
+                barButton("arrow.uturn.backward", disabled: !session.canUndo) { session.undo() }
+                    .accessibilityLabel("Undo")
+                barButton("arrow.uturn.forward", disabled: !session.canRedo) { session.redo() }
+                    .accessibilityLabel("Redo")
+                barButton("square.split.2x1", active: session.compareMode == .split) {
+                    withAnimation(Aura.spring) {
+                        session.compareMode = session.compareMode == .split ? .none : .split
+                    }
                 }
-                Button {
-                    session.copyEdits()
-                } label: {
-                    Label("Copy edits", systemImage: "doc.on.doc")
-                }
-                Button {
-                    session.pasteEdits()
-                } label: {
-                    Label("Paste edits", systemImage: "doc.on.clipboard")
-                }
-                .disabled(!session.canPasteEdits)
-                Divider()
-                Button(role: .destructive) {
-                    session.resetAll()
-                } label: {
-                    Label("Reset all", systemImage: "arrow.counterclockwise")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
+                .accessibilityLabel("Before and after split view")
 
-            Spacer()
+                Menu {
+                    Button {
+                        isShowingHistory = true
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
+                    Button {
+                        session.copyEdits()
+                    } label: {
+                        Label("Copy edits", systemImage: "doc.on.doc")
+                    }
+                    Button {
+                        session.pasteEdits()
+                    } label: {
+                        Label("Paste edits", systemImage: "doc.on.clipboard")
+                    }
+                    .disabled(!session.canPasteEdits)
+                    Divider()
+                    Button(role: .destructive) {
+                        session.resetAll()
+                    } label: {
+                        Label("Reset all", systemImage: "arrow.counterclockwise")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Aura.textPrimary)
+                        .frame(width: 38, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("More")
+            }
+            .padding(.horizontal, 4)
+            .auraGlass(Capsule(), tint: 0.4, rim: 0.55)
+
+            Spacer(minLength: 0)
 
             Button {
                 isShowingExport = true
             } label: {
-                if session.isExporting {
-                    ProgressView()
-                } else {
-                    Text("Export").fontWeight(.semibold)
+                ZStack {
+                    Text("Export").opacity(session.isExporting ? 0 : 1)
+                    if session.isExporting {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(Aura.ink)
+                    }
                 }
             }
+            .buttonStyle(AuraPrimaryButtonStyle(compact: true))
             .disabled(session.isExporting)
+            .accessibilityLabel("Export")
         }
-        .font(.system(size: 17, weight: .medium))
-        .padding(.horizontal, 18)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+    }
+
+    private func barButton(_ symbol: String, active: Bool = false, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(active ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textPrimary))
+                .frame(width: 38, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(AuraPressStyle(scale: 0.85))
+        .disabled(disabled)
+        .opacity(disabled ? 0.32 : 1)
+        .animation(Aura.soft, value: disabled)
     }
 
     // MARK: - Canvas
 
     private var canvas: some View {
         CanvasView(renderer: session.renderer)
-            .background(Color.black)
+            .background(Aura.canvas)
             .overlay {
                 if session.activeTool == .crop {
                     CropOverlay(renderer: session.renderer, session: session)
@@ -153,6 +182,7 @@ struct EditorView: View {
                 if session.activeTool == .adjust && session.compareMode == .none {
                     HistogramView(session: session)
                         .padding(10)
+                        .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .topTrailing)))
                 }
             }
             .overlay(alignment: .topLeading) {
@@ -166,121 +196,116 @@ struct EditorView: View {
                     }
                 }
             }
+            .overlay {
+                SparkleBurst(trigger: session.celebration)
+            }
             .clipped()
     }
 
     private func badge(_ text: String) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
+            .foregroundStyle(Aura.textPrimary)
+            .padding(.horizontal, 11)
             .padding(.vertical, 5)
-            .background(.ultraThinMaterial, in: Capsule())
+            .auraGlass(Capsule(), tint: 0.45, rim: 0.6)
             .padding(12)
             .allowsHitTesting(false)
     }
 
-    // MARK: - Tools
+    // MARK: - Dock (tool panel + tool bar)
+
+    private var dock: some View {
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
+        return VStack(spacing: 0) {
+            toolPanel
+            toolBar
+        }
+        .background {
+            ZStack(alignment: .top) {
+                shape.fill(Aura.surface)
+                // A soft wash of aura light along the top edge.
+                shape.fill(
+                    LinearGradient(
+                        colors: [Aura.lavender.opacity(0.10), Aura.rose.opacity(0.03), .clear],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+                shape.stroke(Aura.rim, lineWidth: 0.8)
+                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.12)))
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .shadow(color: .black.opacity(0.45), radius: 18, y: -4)
+        }
+    }
 
     private var toolPanel: some View {
         VStack(spacing: 0) {
-            switch session.activeTool {
-            case .looks:
-                LooksPanel(session: session, thumbnails: session.lookThumbnails)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .adjust:
-                sectionChips
-                    .padding(.top, 10)
+            Capsule()
+                .fill(Aura.textSecondary.opacity(0.25))
+                .frame(width: 34, height: 4)
+                .padding(.top, 7)
+            // Panels cross-fade in place (a ZStack, so old and new never stack up).
+            ZStack(alignment: .top) {
                 Group {
-                    if section.scrolls {
-                        ScrollView {
-                            panelContent
-                                .padding(.horizontal, 22)
-                                .padding(.vertical, 12)
+                    switch session.activeTool {
+                    case .looks:
+                        LooksPanel(session: session, thumbnails: session.lookThumbnails)
+                            .panelPadding()
+                    case .adjust:
+                        VStack(spacing: 0) {
+                            AuraChipBar(items: AdjustSection.allCases, selection: $section, title: { $0.title }, symbol: { $0.symbol })
+                                .padding(.horizontal, 12)
+                                .padding(.top, 2)
+                            if section.scrolls {
+                                ScrollView {
+                                    panelContent
+                                        .padding(.horizontal, 22)
+                                        .padding(.vertical, 10)
+                                }
+                            } else {
+                                panelContent
+                                    .padding(.horizontal, 22)
+                                    .padding(.vertical, 10)
+                                    .frame(maxHeight: .infinity, alignment: .top)
+                            }
                         }
-                    } else {
-                        panelContent
-                            .padding(.horizontal, 22)
-                            .padding(.vertical, 12)
-                            .frame(maxHeight: .infinity, alignment: .top)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    case .masks:
+                        MasksPanel(session: session).panelPadding()
+                    case .retouch:
+                        RetouchPanel(session: session).panelPadding()
+                    case .styles:
+                        StylesPanel(session: session, thumbnails: session.lookThumbnails).panelPadding()
+                    case .enhance:
+                        EnhancePanel(session: session).panelPadding()
+                    case .overlays:
+                        OverlaysPanel(session: session).panelPadding()
+                    case .text:
+                        TextPanel(session: session).panelPadding()
+                    case .face:
+                        FacePanel(session: session).panelPadding()
+                    case .body:
+                        BodyPanel(session: session).panelPadding()
+                    case .reshape:
+                        ReshapePanel(session: session).panelPadding()
+                    case .crop:
+                        CropPanel(session: session).panelPadding(horizontal: 22)
                     }
                 }
-            case .masks:
-                MasksPanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .retouch:
-                RetouchPanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .styles:
-                StylesPanel(session: session, thumbnails: session.lookThumbnails)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .enhance:
-                EnhancePanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .overlays:
-                OverlaysPanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .text:
-                TextPanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .face:
-                FacePanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .body:
-                BodyPanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .reshape:
-                ReshapePanel(session: session)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
-            case .crop:
-                CropPanel(session: session)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                .id(session.activeTool)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 18)).combined(with: .scale(scale: 0.98, anchor: .top)),
+                        removal: .opacity
+                    )
+                )
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(height: 262)
-        .background(Theme.panel)
-    }
-
-    private var sectionChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(AdjustSection.allCases) { item in
-                    Button {
-                        section = item
-                    } label: {
-                        Label(item.title, systemImage: item.symbol)
-                            .font(.footnote.weight(.medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .foregroundStyle(section == item ? Color.black : Color.primary)
-                            .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 14)
-        }
+        .frame(height: 258)
+        .clipped()
     }
 
     private var toolBar: some View {
@@ -288,35 +313,48 @@ struct EditorView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
                     ForEach(EditorTool.allCases) { tool in
+                        let active = session.activeTool == tool
                         Button {
-                            session.activeTool = tool
-                            withAnimation { proxy.scrollTo(tool.id, anchor: .center) }
+                            toolTaps[tool, default: 0] += 1
+                            withAnimation(Aura.spring) {
+                                session.activeTool = tool
+                                proxy.scrollTo(tool.id, anchor: .center)
+                            }
                         } label: {
                             VStack(spacing: 3) {
-                                Image(systemName: tool.symbol)
-                                    .font(.system(size: 17))
+                                ZStack {
+                                    if active {
+                                        Circle()
+                                            .fill(Aura.diagonal)
+                                            .shadow(color: Aura.lavender.opacity(0.65), radius: 9)
+                                            .shadow(color: Aura.rose.opacity(0.3), radius: 16, y: 4)
+                                            .matchedGeometryEffect(id: "activeTool", in: toolNamespace)
+                                    }
+                                    Image(systemName: tool.symbol)
+                                        .font(.system(size: 15, weight: active ? .semibold : .regular))
+                                        .foregroundStyle(active ? Aura.ink : Aura.textSecondary)
+                                        .symbolEffect(.bounce, value: toolTaps[tool, default: 0])
+                                }
+                                .frame(width: 34, height: 34)
                                 Text(tool.title)
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(.system(size: 10, weight: active ? .semibold : .medium))
+                                    .foregroundStyle(active ? Aura.textPrimary : Aura.textSecondary.opacity(0.85))
                                     .lineLimit(1)
                             }
-                            .foregroundStyle(session.activeTool == tool ? Theme.accent : Color.secondary)
-                            .frame(width: 58)
+                            .frame(width: 60)
+                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle(scale: 0.88))
                         .id(tool.id)
                         .accessibilityLabel(tool.title)
                         .accessibilityIdentifier("tool.\(tool.rawValue)")
                     }
                 }
-                .padding(.horizontal, 6)
+                .padding(.horizontal, 8)
             }
         }
-        .padding(.top, 6)
+        .padding(.top, 4)
         .padding(.bottom, 2)
-        .background(Theme.panel.ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) {
-            Divider().overlay(Color.white.opacity(0.06))
-        }
     }
 
     @ViewBuilder
@@ -332,7 +370,8 @@ struct EditorView: View {
                         session.perform(enabled ? "Black & white" : "Color") { $0.blackWhite.isEnabled = enabled }
                     }
                 ))
-                .tint(Theme.accent)
+                .tint(Aura.lavender)
+                .font(.footnote.weight(.medium))
                 Button {
                     session.pickingWhiteBalance.toggle()
                 } label: {
@@ -340,7 +379,7 @@ struct EditorView: View {
                         .font(.footnote.weight(.medium))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .tint(session.pickingWhiteBalance ? Theme.accent : Color.primary)
+                .tint(session.pickingWhiteBalance ? Aura.lavender : Aura.textPrimary)
                 SliderList(session: session, specs: AdjustmentCatalog.color.sliders)
             }
         case .mixer:
@@ -406,18 +445,19 @@ struct SplitDivider: View {
             let x = proxy.size.width * position
             ZStack {
                 Rectangle()
-                    .fill(Color.white)
+                    .fill(LinearGradient(colors: Aura.gradientColors, startPoint: .top, endPoint: .bottom))
                     .frame(width: 2)
-                    .shadow(color: .black.opacity(0.4), radius: 2)
+                    .shadow(color: Aura.lavender.opacity(0.6), radius: 4)
                 Circle()
-                    .fill(Color.white)
-                    .frame(width: 34, height: 34)
+                    .fill(Aura.orb)
+                    .frame(width: 36, height: 36)
                     .overlay(
                         Image(systemName: "arrow.left.and.right")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Aura.ink)
                     )
-                    .shadow(color: .black.opacity(0.35), radius: 4)
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
+                    .shadow(color: Aura.lavender.opacity(0.7), radius: 10)
             }
             .frame(width: 44)
             .frame(maxHeight: .infinity)
@@ -430,5 +470,15 @@ struct SplitDivider: View {
                     }
             )
         }
+    }
+}
+
+private extension View {
+    /// Standard inset for a tool's panel.
+    func panelPadding(horizontal: CGFloat = 18) -> some View {
+        padding(.horizontal, horizontal)
+            .padding(.top, 6)
+            .padding(.bottom, 10)
+            .frame(maxHeight: .infinity, alignment: .top)
     }
 }

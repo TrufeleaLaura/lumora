@@ -18,6 +18,7 @@ struct HistorySheet: View {
                 }
             }
             .listStyle(.plain)
+            .auraFormStyle()
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -32,15 +33,26 @@ struct HistorySheet: View {
         Button {
             session.jumpToHistory(appliedCount: index)
         } label: {
-            HStack {
+            HStack(spacing: 12) {
+                // A timeline: a dot per step, the current one glowing.
+                Circle()
+                    .fill(isCurrent ? AnyShapeStyle(Aura.diagonal) : AnyShapeStyle(isUndone ? Aura.surfaceRaised : Aura.textSecondary.opacity(0.6)))
+                    .frame(width: isCurrent ? 12 : 8, height: isCurrent ? 12 : 8)
+                    .shadow(color: isCurrent ? Aura.lavender.opacity(0.8) : .clear, radius: 6)
+                    .frame(width: 14)
                 Text(title)
-                    .foregroundStyle(isUndone ? Color.secondary : Color.primary)
+                    .font(.subheadline.weight(isCurrent ? .semibold : .regular))
+                    .foregroundStyle(isUndone ? Aura.textSecondary.opacity(0.6) : Aura.textPrimary)
                 Spacer()
                 if isCurrent {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Theme.accent)
+                    Text("Now")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .auraChip(true, shape: Capsule())
                 }
             }
         }
+        .listRowBackground(isCurrent ? Aura.lavender.opacity(0.08) : Color.clear)
     }
 }

@@ -52,7 +52,7 @@ struct ReshapePanel: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(hint)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Aura.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                     ToolSlider(title: "Size", value: $session.liquifySize, range: 0.02...0.3, format: { "\(Int(($0 * 100).rounded()))%" })
                     ToolSlider(title: "Strength", value: $session.liquifyStrength, range: 5...100, format: { "\(Int($0.rounded()))" })

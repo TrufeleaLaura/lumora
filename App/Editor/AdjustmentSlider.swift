@@ -21,11 +21,13 @@ struct AdjustmentSlider: View {
                         .frame(width: 10, height: 10)
                 }
                 Text(spec.title)
-                    .font(.footnote)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(isChanged ? Aura.textPrimary : Aura.textSecondary)
                 Spacer()
                 Text(spec.formatted(value))
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(isChanged ? Theme.accent : Color.secondary)
+                    .font(.footnote.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(isChanged ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary.opacity(0.7)))
+                    .contentTransition(.numericText(value: value))
             }
             .contentShape(Rectangle())
             .onTapGesture(count: 2, perform: onReset)

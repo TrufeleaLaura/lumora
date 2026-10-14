@@ -131,6 +131,7 @@ extension EditorSession {
         let work = { [weak self] in
             guard let self else { return }
             self.perform(preset.title) { preset.apply(to: &$0) }
+            self.celebrate()
             if self.document.masks.count > before, let last = self.document.masks.last {
                 self.maskPanel = .adjust
                 self.selectedMaskID = last.id

@@ -17,30 +17,46 @@ struct StylesPanel: View {
                             effect = item
                             session.focusEditing = item == .lensBlur
                         } label: {
-                            VStack(spacing: 4) {
+                            let selected = effect == item
+                            VStack(spacing: 5) {
                                 ZStack(alignment: .topTrailing) {
                                     thumbnail(item)
                                         .frame(width: 62, height: 62)
-                                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 9)
-                                                .stroke(effect == item ? Theme.accent : Color.clear, lineWidth: 2.5)
+                                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                                .strokeBorder(Color.white.opacity(selected ? 0 : 0.08), lineWidth: 0.7)
                                         )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                .stroke(Aura.diagonal, lineWidth: 2)
+                                                .padding(-3.5)
+                                                .opacity(selected ? 1 : 0)
+                                                .scaleEffect(selected ? 1 : 1.12)
+                                        )
+                                        .shadow(color: Aura.lavender.opacity(selected ? 0.5 : 0), radius: 9)
                                     if active {
-                                        Circle()
-                                            .fill(Theme.accent)
-                                            .frame(width: 8, height: 8)
-                                            .padding(4)
+                                        Image(systemName: "sparkle")
+                                            .font(.system(size: 9, weight: .black))
+                                            .foregroundStyle(Aura.ink)
+                                            .frame(width: 16, height: 16)
+                                            .background(Circle().fill(Aura.diagonal))
+                                            .shadow(color: Aura.lavender.opacity(0.8), radius: 4)
+                                            .padding(3)
+                                            .transition(.scale.combined(with: .opacity))
                                     }
                                 }
+                                .animation(Aura.bouncy, value: selected)
+                                .animation(Aura.bouncy, value: active)
                                 Text(item.title)
-                                    .font(.system(size: 10, weight: effect == item ? .semibold : .regular))
+                                    .font(.system(size: 10, weight: selected ? .bold : .medium))
                                     .lineLimit(1)
-                                    .foregroundStyle(effect == item ? Theme.accent : Color.primary)
+                                    .foregroundStyle(selected ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary))
                             }
-                            .frame(width: 66)
+                            .frame(width: 68)
+                            .padding(.vertical, 4)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                     }
                 }
             }
@@ -58,7 +74,7 @@ struct StylesPanel: View {
                         .pickerStyle(.segmented)
                         Text(focusHint)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     SliderList(session: session, specs: specs)
@@ -88,8 +104,8 @@ struct StylesPanel: View {
                 .resizable()
                 .scaledToFill()
         } else {
-            Theme.panelRaised
-                .overlay(Image(systemName: item.symbol).foregroundStyle(.secondary))
+            Aura.surfaceRaised
+                .overlay(Image(systemName: item.symbol).foregroundStyle(Aura.textSecondary))
         }
     }
 

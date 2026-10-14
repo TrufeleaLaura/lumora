@@ -20,10 +20,9 @@ struct TextPanel: View {
                         .font(.footnote.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .foregroundStyle(.black)
-                        .background(Theme.accent, in: Capsule())
+                        .auraChip(true, shape: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AuraPressStyle())
                 Button {
                     showsStickers.toggle()
                 } label: {
@@ -31,10 +30,9 @@ struct TextPanel: View {
                         .font(.footnote.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .foregroundStyle(showsStickers ? Color.black : Color.primary)
-                        .background(showsStickers ? Theme.accent : Theme.panelRaised, in: Capsule())
+                        .auraChip(showsStickers, shape: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AuraPressStyle())
                 layerChips
             }
             ScrollView {
@@ -53,7 +51,7 @@ struct TextPanel: View {
                     } else if session.document.texts.isEmpty && !showsStickers {
                         Text("Add text or stickers, then drag them on the photo.")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                     }
                 }
                 .padding(.bottom, 8)
@@ -93,10 +91,9 @@ struct TextPanel: View {
                         .frame(maxWidth: 90)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
-                        .foregroundStyle(selected ? Color.black : Color.primary)
-                        .background(selected ? Theme.accentSecondary : Theme.panelRaised, in: Capsule())
+                        .auraChip(selected, shape: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -114,9 +111,9 @@ struct TextPanel: View {
                             .font(previewFont(for: preset))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Theme.panelRaised, in: Capsule())
+                            .auraTile(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -143,9 +140,9 @@ struct TextPanel: View {
                     Image(systemName: symbol)
                         .font(.system(size: 20))
                         .frame(maxWidth: .infinity, minHeight: 34)
-                        .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 8))
+                        .auraTile(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AuraPressStyle())
             }
         }
     }
@@ -199,10 +196,9 @@ private struct LayerEditor: View {
                                     .font(previewFont(font))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
-                                    .foregroundStyle(selected ? Color.black : Color.primary)
-                                    .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                                    .auraChip(selected, shape: Capsule())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(AuraPressStyle())
                         }
                     }
                 }
@@ -229,7 +225,7 @@ private struct LayerEditor: View {
                 if layer.background {
                     Text("Label color")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Aura.textSecondary)
                     ColorRow(selected: layer.backgroundColor) { color in
                         session.updateSelectedText("Label color") { $0.backgroundColor = color }
                     }
@@ -237,7 +233,7 @@ private struct LayerEditor: View {
                 if layer.outline {
                     Text("Outline color")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Aura.textSecondary)
                     ColorRow(selected: layer.outlineColor) { color in
                         session.updateSelectedText("Outline color") { $0.outlineColor = color }
                     }
@@ -272,10 +268,9 @@ private struct LayerEditor: View {
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
-                .foregroundStyle(on ? Color.black : Color.primary)
-                .background(on ? Theme.accent : Theme.panelRaised, in: RoundedRectangle(cornerRadius: 8))
+                .auraChip(on, shape: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
     }
 
     private func previewFont(_ font: TextFont) -> Font {
@@ -313,7 +308,7 @@ struct TextCanvasOverlay: View {
                     let height = CGFloat(layer.size) * photo.width * 1.3
                     let width = layer.isSticker ? height : max(height, height * CGFloat(max(layer.text.count, 1)) * 0.55)
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(selected ? Theme.accent : Color.white.opacity(0.0001), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                        .stroke(selected ? Aura.lavender : Color.white.opacity(0.0001), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                         .frame(width: width, height: height)
                         .contentShape(Rectangle())
                         .rotationEffect(.degrees(-layer.rotation))

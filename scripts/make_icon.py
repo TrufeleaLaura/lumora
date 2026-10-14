@@ -1,6 +1,7 @@
 """Generates the 1024x1024 Lumora app icon (opaque RGB PNG) with no third-party packages.
 
-Design: deep plum radial background, a glowing gold-to-rose "aura" ring and a soft inner light.
+Design ("Aura"): deep plum radial background, a glowing lavender-rose-peach ring, a soft inner light
+and a four-point sparkle on the ring.
 Usage: python scripts/make_icon.py <output.png>
 """
 import math
@@ -31,11 +32,13 @@ def png_bytes(width, height, rows):
 
 
 def main(out_path):
-    bg_center = (0.13, 0.045, 0.17)
-    bg_edge = (0.025, 0.018, 0.035)
-    gold = (0.965, 0.757, 0.467)
-    rose = (0.922, 0.435, 0.573)
+    bg_center = (0.135, 0.075, 0.185)
+    bg_edge = (0.035, 0.024, 0.045)
+    lavender = (0.60, 0.46, 1.0)
+    rose = (1.0, 0.40, 0.66)
+    peach = (1.0, 0.62, 0.45)
     ring_radius = 0.30
+    spark = (0.212, -0.212)  # upper right, on the ring
     rows = []
     for py in range(SIZE):
         row = bytearray()
@@ -43,16 +46,28 @@ def main(out_path):
         for px in range(SIZE):
             x = (px + 0.5) / SIZE - 0.5
             r = math.hypot(x, y)
-            # Background radial gradient.
-            col = mix(bg_center, bg_edge, min(1.0, r / 0.72))
-            # Ring color sweeps gold -> rose around the circle.
+            # Background radial gradient, slightly lifted toward the top-left.
+            col = mix(bg_center, bg_edge, min(1.0, math.hypot(x + 0.08, y + 0.08) / 0.75))
+            # Ring color sweeps lavender -> rose -> peach -> lavender around the circle.
             angle = (math.atan2(y, x) + math.pi) / (2 * math.pi)
-            ring_col = mix(gold, rose, 0.5 + 0.5 * math.sin(angle * 2 * math.pi - 0.9))
+            u = (angle * 3.0 + 0.4) % 3.0
+            if u < 1.0:
+                ring_col = mix(lavender, rose, u)
+            elif u < 2.0:
+                ring_col = mix(rose, peach, u - 1.0)
+            else:
+                ring_col = mix(peach, lavender, u - 2.0)
             d = (r - ring_radius)
-            ring = 0.95 * math.exp(-(d / 0.016) ** 2)
-            glow = 0.30 * math.exp(-(d / 0.075) ** 2)
-            core = 0.07 * math.exp(-(r / 0.14) ** 2)
-            col = tuple(c + rc * (ring + glow) + g * core for c, rc, g in zip(col, ring_col, gold))
+            ring = 0.75 * math.exp(-(d / 0.015) ** 2)
+            glow = 0.34 * math.exp(-(d / 0.08) ** 2)
+            core = 0.08 * math.exp(-(r / 0.15) ** 2)
+            col = tuple(c + rc * (ring + glow) + l * core for c, rc, l in zip(col, ring_col, lavender))
+            # Four-point sparkle.
+            dx, dy = abs(x - spark[0]), abs(y - spark[1])
+            rs = math.hypot(dx, dy)
+            star = math.exp(-math.sqrt(dx * dy) / 0.0065) * max(0.0, 1.0 - rs / 0.105) ** 1.5
+            star += 0.8 * math.exp(-(rs / 0.018) ** 2) + 0.25 * math.exp(-(rs / 0.06) ** 2)
+            col = tuple(c + star * w for c, w in zip(col, (1.0, 0.96, 0.98)))
             # Soft filmic clip that keeps the ring saturated.
             col = tuple(1.0 - math.exp(-1.5 * max(0.0, c)) for c in col)
             row.extend(int(max(0, min(255, round(255 * c)))) for c in col)

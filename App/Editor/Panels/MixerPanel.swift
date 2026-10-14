@@ -21,7 +21,7 @@ struct MixerPanel: View {
             if session.document.blackWhite.isEnabled {
                 Text("Black & white mix")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Aura.textSecondary)
                 SliderList(session: session, specs: AdjustmentCatalog.blackWhiteSliders, swatches: swatches)
             } else {
                 Picker("Channel", selection: $channel) {

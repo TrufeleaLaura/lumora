@@ -163,6 +163,8 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false
     @Published var toast: String?
+    /// Bumped when a one-tap look/preset lands (plays a sparkle burst on the canvas).
+    @Published private(set) var celebration = 0
 
     private let store: ProjectStore
     let pipeline = RenderPipeline()
@@ -518,14 +520,22 @@ final class EditorSession: ObservableObject, Identifiable {
             perform("No look") { $0.look = LookSettings() }
             return
         }
+        let isNew = document.look.lookID != look.id
         perform("Look \(look.name)") { document in
             let amount = document.look.lookID == look.id ? document.look.amount : 100
             document.look = LookSettings(look: look, amount: amount)
         }
+        if isNew { celebrate() }
+    }
+
+    /// Plays the sparkle burst.
+    func celebrate() {
+        celebration += 1
     }
 
     func applyPreset(_ preset: UserPreset) {
         perform("Preset \(preset.name)") { $0 = preset.document.adjustmentsOnly(keeping: $0.geometry) }
+        celebrate()
     }
 
     func saveCurrentAsPreset(name: String) {

@@ -43,7 +43,7 @@ struct LooksPanel: View {
             } else {
                 Text("Tap a look to apply it. Your own adjustments stay editable underneath.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Aura.textSecondary)
             }
 
             HStack {
@@ -94,10 +94,9 @@ struct LooksPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .foregroundStyle(pack == item ? Color.black : Color.primary)
-                            .background(pack == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                            .auraChip(pack == item, shape: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -108,7 +107,7 @@ struct LooksPanel: View {
         if presets.isEmpty && luts.isEmpty {
             Text("Saved presets and imported LUTs appear here.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Aura.textSecondary)
                 .frame(height: 90)
         }
         ForEach(presets) { preset in
@@ -150,30 +149,43 @@ struct LooksPanel: View {
 
     private func cell(title: String, key: String, document: EditDocument, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 5) {
+            VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Theme.panelRaised)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Aura.surfaceRaised)
                     if let image = thumbnails.image(for: key, document: document) {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
+                            .transition(.opacity)
                     }
                 }
-                .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .frame(width: 70, height: 70)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(isSelected ? Theme.accent : Color.clear, lineWidth: 2.5)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(isSelected ? 0 : 0.08), lineWidth: 0.7)
                 )
+                // Selected: a halo ring floating just outside the thumbnail.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 19, style: .continuous)
+                        .stroke(Aura.diagonal, lineWidth: 2)
+                        .padding(-3.5)
+                        .opacity(isSelected ? 1 : 0)
+                        .scaleEffect(isSelected ? 1 : 1.12)
+                )
+                .shadow(color: Aura.lavender.opacity(isSelected ? 0.55 : 0), radius: 10)
+                .scaleEffect(isSelected ? 1.03 : 1)
+                .animation(Aura.bouncy, value: isSelected)
                 Text(title)
-                    .font(.caption2.weight(isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? Theme.accent : Color.primary)
+                    .font(.caption2.weight(isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary))
                     .lineLimit(1)
                     .frame(width: 76)
             }
+            .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

@@ -13,10 +13,10 @@ struct FacePanel: View {
                     VStack(spacing: 8) {
                         Image(systemName: "face.dashed")
                             .font(.system(size: 30))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                         Text("No faces found in this photo.")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -29,13 +29,14 @@ struct FacePanel: View {
                                     Button {
                                         let target = session.faceTarget
                                         session.perform(look.title) { look.apply(to: &$0[keyPath: target]) }
+                                        if look.id != "none" { session.celebrate() }
                                     } label: {
                                         Text(look.title)
                                             .font(.caption.weight(.semibold))
                                             .frame(maxWidth: .infinity, minHeight: 38)
-                                            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                                            .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(AuraPressStyle())
                                 }
                             }
                             .padding(.bottom, 8)
@@ -45,7 +46,7 @@ struct FacePanel: View {
                             if section == .hair {
                                 Text("Ombré color")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Aura.textSecondary)
                                 paletteRow(MakeupPalette.hair, keyPath: \.hairOmbreColor)
                             }
                         }
@@ -96,7 +97,7 @@ struct FacePanel: View {
             } else {
                 Text("Face")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Aura.textSecondary)
                 Spacer()
             }
             Button {
@@ -106,10 +107,9 @@ struct FacePanel: View {
                     .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
-                    .foregroundStyle(.black)
-                    .background(Theme.gradient, in: Capsule())
+                    .auraChip(true, shape: Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AuraPressStyle())
             Button {
                 session.resetFace()
             } label: {
@@ -131,10 +131,9 @@ struct FacePanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .foregroundStyle(section == item ? Color.black : Color.primary)
-                            .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                            .auraChip(section == item, shape: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -154,15 +153,15 @@ struct FacePanel: View {
                             Circle()
                                 .fill(Color(red: color.red, green: color.green, blue: color.blue))
                                 .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(current == color ? Theme.accent : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
+                                .overlay(Circle().stroke(current == color ? Aura.lavender : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
                             Text(name)
                                 .font(.system(size: 9))
-                                .foregroundStyle(current == color ? Theme.accent : Color.secondary)
+                                .foregroundStyle(current == color ? Aura.lavender : Aura.textSecondary)
                                 .lineLimit(1)
                         }
                         .frame(width: 56)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                     .accessibilityLabel(name)
                 }
             }
@@ -176,10 +175,9 @@ struct FacePanel: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .foregroundStyle(selected ? Color.black : Color.primary)
-                .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                .auraChip(selected, shape: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
     }
 }
 
@@ -201,15 +199,15 @@ struct FaceMarkersOverlay: View {
                     )
                     let selected = session.selectedFaceIndex == index
                     Ellipse()
-                        .stroke(selected ? Theme.accent : Color.white.opacity(0.7), style: StrokeStyle(lineWidth: selected ? 2.5 : 1.5, dash: selected ? [] : [5, 4]))
+                        .stroke(selected ? Aura.lavender : Color.white.opacity(0.7), style: StrokeStyle(lineWidth: selected ? 2.5 : 1.5, dash: selected ? [] : [5, 4]))
                         .frame(width: rect.width * 1.1, height: rect.height * 1.25)
                         .overlay(alignment: .top) {
                             Text("\(index + 1)")
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(.black)
+                                .foregroundStyle(Aura.ink)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(selected ? Theme.accent : Color.white, in: Capsule())
+                                .background(selected ? Aura.lavender : Color.white, in: Capsule())
                                 .offset(y: -12)
                         }
                         .contentShape(Ellipse())

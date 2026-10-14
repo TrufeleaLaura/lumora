@@ -17,10 +17,9 @@ struct CropPanel: View {
                                 .font(.footnote.weight(.medium))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
-                                .foregroundStyle(session.document.geometry.aspect == preset ? Color.black : Color.primary)
-                                .background(session.document.geometry.aspect == preset ? Theme.accent : Theme.panelRaised, in: Capsule())
+                                .auraChip(session.document.geometry.aspect == preset, shape: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                     }
                 }
             }

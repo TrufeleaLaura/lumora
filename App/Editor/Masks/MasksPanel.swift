@@ -52,7 +52,7 @@ struct MasksPanel: View {
                 } else {
                     Text("Select a mask above, or add a new one with +")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Aura.textSecondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -82,9 +82,9 @@ struct MasksPanel: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                    .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AuraPressStyle())
             }
         }
     }
@@ -101,10 +101,9 @@ struct MasksPanel: View {
                                 .font(.footnote.weight(.medium))
                                 .padding(.horizontal, 11)
                                 .padding(.vertical, 6)
-                                .foregroundStyle(presetCategory == category ? Color.black : Color.primary)
-                                .background(presetCategory == category ? Theme.accent : Theme.panelRaised, in: Capsule())
+                                .auraChip(presetCategory == category, shape: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                     }
                 }
             }
@@ -120,9 +119,9 @@ struct MasksPanel: View {
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, minHeight: 40)
                             .padding(.horizontal, 4)
-                            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                            .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -147,9 +146,8 @@ struct MasksPanel: View {
         } label: {
             Image(systemName: "plus")
                 .font(.footnote.weight(.bold))
-                .foregroundStyle(.black)
                 .frame(width: 30, height: 30)
-                .background(Theme.accent, in: Circle())
+                .auraChip(true, shape: Circle())
         }
         .accessibilityLabel("New mask")
     }
@@ -173,11 +171,10 @@ struct MasksPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .foregroundStyle(selected ? Color.black : Color.primary)
-                            .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                            .auraChip(selected, shape: Capsule())
                             .opacity(mask.isVisible ? 1 : 0.5)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                     }
                 }
             }
@@ -260,7 +257,7 @@ struct MaskComponentEditor: View {
                         get: { component.inverted },
                         set: { value in session.updateComponent(value ? "Invert" : "Don't invert") { $0.inverted = value } }
                     ))
-                    .tint(Theme.accent)
+                    .tint(Aura.lavender)
                     .fixedSize()
                     Spacer()
                     Button(role: .destructive) {
@@ -294,10 +291,9 @@ struct MaskComponentEditor: View {
                             .font(.caption.weight(.medium))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .foregroundStyle(selected ? Color.black : Color.primary)
-                            .background(selected ? Theme.accentSecondary.opacity(0.9) : Theme.panelRaised, in: Capsule())
+                            .auraChip(selected, shape: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                     }
                 }
             }
@@ -370,7 +366,7 @@ struct MaskComponentEditor: View {
     private func hint(_ text: String) -> some View {
         Text(text)
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Aura.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -409,7 +405,7 @@ private struct PeopleControls: View {
             }
             Text("Or tap a person on the photo.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Aura.textSecondary)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(PersonPart.allCases) { part in
                     let on = component.parts.contains(part)
@@ -422,10 +418,9 @@ private struct PeopleControls: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 7)
-                            .foregroundStyle(on ? Color.black : Color.primary)
-                            .background(on ? Theme.accent : Theme.panelRaised, in: RoundedRectangle(cornerRadius: 8))
+                            .auraChip(on, shape: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -443,10 +438,9 @@ private struct PeopleControls: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .foregroundStyle(selected ? Color.black : Color.primary)
-                .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                .auraChip(selected, shape: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
     }
 }
 
@@ -485,10 +479,10 @@ private struct BrushControls: View {
                 get: { component.autoEdge },
                 set: { value in session.updateComponent(value ? "Auto edge on" : "Auto edge off") { $0.autoEdge = value } }
             ))
-            .tint(Theme.accent)
+            .tint(Aura.lavender)
             Text(session.brushPaints ? "One finger paints, two fingers move and zoom." : "Painting is paused: one finger moves the photo.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Aura.textSecondary)
         }
     }
 }
@@ -504,11 +498,12 @@ struct ToolSlider: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(title)
-                    .font(.subheadline)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Aura.textSecondary)
                 Spacer()
                 Text(format(value))
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .font(.footnote.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Aura.gradient)
             }
             LumoraSlider(value: $value, range: range, origin: range.lowerBound)
         }

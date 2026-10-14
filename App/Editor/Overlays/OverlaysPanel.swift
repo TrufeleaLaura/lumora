@@ -101,17 +101,16 @@ struct OverlaysPanel: View {
                             Text(item.title)
                             if active {
                                 Circle()
-                                    .fill(overlay == item ? Color.black : Theme.accent)
+                                    .fill(overlay == item ? Aura.ink : Aura.lavender)
                                     .frame(width: 5, height: 5)
                             }
                         }
                         .font(.footnote.weight(.medium))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .foregroundStyle(overlay == item ? Color.black : Color.primary)
-                        .background(overlay == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                        .auraChip(overlay == item, shape: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -141,10 +140,9 @@ struct OverlaysPanel: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .foregroundStyle(selected ? Color.black : Color.primary)
-                        .background(selected ? Theme.accent : Theme.panelRaised, in: RoundedRectangle(cornerRadius: 10))
+                        .auraChip(selected, shape: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
             if session.document.frame.style == .border || session.document.frame.style == .polaroid {
@@ -159,7 +157,7 @@ struct OverlaysPanel: View {
                 get: { session.document.frame.dateStamp },
                 set: { session.setDateStamp($0) }
             ))
-            .tint(Theme.accent)
+            .tint(Aura.lavender)
             if session.document.frame.dateStamp {
                 HStack {
                     Text("Date")
@@ -191,9 +189,9 @@ struct ColorRow: View {
                         Circle()
                             .fill(Color(red: color.red, green: color.green, blue: color.blue))
                             .frame(width: 28, height: 28)
-                            .overlay(Circle().stroke(color == selected ? Theme.accent : Color.white.opacity(0.25), lineWidth: color == selected ? 3 : 1))
+                            .overlay(Circle().stroke(color == selected ? Aura.lavender : Color.white.opacity(0.25), lineWidth: color == selected ? 3 : 1))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
             .padding(.vertical, 3)

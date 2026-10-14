@@ -50,9 +50,9 @@ struct CurvePanel: View {
                             Circle()
                                 .fill(color(for: item))
                                 .frame(width: 18, height: 18)
-                                .overlay(Circle().stroke(Theme.accent, lineWidth: channel == item ? 2 : 0).padding(-3))
+                                .overlay(Circle().stroke(Aura.lavender, lineWidth: channel == item ? 2 : 0).padding(-3))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AuraPressStyle())
                         .accessibilityLabel("\(item.rawValue) curve")
                     }
                     Button {
@@ -116,7 +116,7 @@ struct CurveEditor: View {
                     .stroke(color, lineWidth: 2)
                 ForEach(Array(points.enumerated()), id: \.offset) { index, point in
                     Circle()
-                        .fill(index == dragIndex ? Theme.accent : color)
+                        .fill(index == dragIndex ? Aura.lavender : color)
                         .frame(width: 14, height: 14)
                         .overlay(Circle().stroke(Color.black.opacity(0.5), lineWidth: 1))
                         .position(position(of: point, in: size))

@@ -25,6 +25,7 @@ extension EditorSession {
                     document.detail.colorNoiseReduction = max(document.detail.colorNoiseReduction, 60)
                 }
             }
+            celebrate()
         }
     }
 
@@ -103,10 +104,9 @@ struct EnhancePanel: View {
                                         .font(.footnote.weight(.medium))
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 7)
-                                        .foregroundStyle(selected ? Color.black : Color.primary)
-                                        .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                                        .auraChip(selected, shape: Capsule())
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(AuraPressStyle())
                             }
                         }
                     }
@@ -136,11 +136,11 @@ struct EnhancePanel: View {
                     } else if session.document.background.mode == .transparent {
                         Text("The background is cut out. Export as PNG to keep it transparent.")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                     }
                     Text("Tip: Export, then Enlarge 2×, makes a bigger file for prints.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Aura.textSecondary)
                 }
                 .padding(.bottom, 8)
             }
@@ -159,8 +159,8 @@ struct EnhancePanel: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Theme.panelRaised, in: RoundedRectangle(cornerRadius: 12))
+            .auraTile(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
     }
 }

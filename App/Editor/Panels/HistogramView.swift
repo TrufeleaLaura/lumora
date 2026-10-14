@@ -84,7 +84,7 @@ struct HistogramView: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(session.showsClipping ? Theme.accent : Color.clear, lineWidth: 1.5)
+                    .stroke(session.showsClipping ? AnyShapeStyle(Aura.diagonal) : AnyShapeStyle(Color.clear), lineWidth: 1.5)
             )
             .onTapGesture { session.showsClipping.toggle() }
             .accessibilityLabel(session.showsClipping ? "Histogram, clipping shown" : "Histogram")

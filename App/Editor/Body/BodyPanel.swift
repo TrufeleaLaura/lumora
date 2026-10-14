@@ -13,10 +13,10 @@ struct BodyPanel: View {
                     VStack(spacing: 8) {
                         Image(systemName: "figure.stand")
                             .font(.system(size: 30))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                         Text("No person found. Body tools work best on full or half-body photos.")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Aura.textSecondary)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -64,7 +64,7 @@ struct BodyPanel: View {
             } else {
                 Text("Body")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Aura.textSecondary)
                 Spacer()
             }
             Button {
@@ -88,10 +88,9 @@ struct BodyPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .foregroundStyle(section == item ? Color.black : Color.primary)
-                            .background(section == item ? Theme.accent : Theme.panelRaised, in: Capsule())
+                            .auraChip(section == item, shape: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AuraPressStyle())
                 }
             }
         }
@@ -103,10 +102,9 @@ struct BodyPanel: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .foregroundStyle(selected ? Color.black : Color.primary)
-                .background(selected ? Theme.accent : Theme.panelRaised, in: Capsule())
+                .auraChip(selected, shape: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AuraPressStyle())
     }
 }
 
@@ -124,9 +122,9 @@ struct BodyMarkersOverlay: View {
                         let selected = session.selectedBodyIndex == index
                         Text("\(index + 1)")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Aura.ink)
                             .frame(width: 26, height: 26)
-                            .background(selected ? Theme.accent : Color.white, in: Circle())
+                            .background(selected ? Aura.lavender : Color.white, in: Circle())
                             .shadow(radius: 2)
                             .onTapGesture { session.selectBody(selected ? nil : index) }
                             .position(
