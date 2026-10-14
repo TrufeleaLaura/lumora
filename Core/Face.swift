@@ -191,12 +191,12 @@ public enum FaceCatalog {
 
         public var symbol: String {
             switch self {
-            case .looks: return "sparkles"
+            case .looks: return "paintbrush.pointed"
             case .skin: return "drop"
             case .eyes: return "eye"
             case .shape: return "face.dashed"
             case .noseLips: return "mouth"
-            case .teeth: return "sparkle"
+            case .teeth: return "mouth"
             case .brows: return "eyebrow"
             case .lipstick: return "paintbrush.pointed"
             case .cheeks: return "circle.hexagongrid"

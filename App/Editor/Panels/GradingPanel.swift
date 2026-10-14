@@ -33,7 +33,7 @@ struct GradingPanel: View {
                     let wheel = session.document[keyPath: range.keyPath]
                     Text("\(Int(wheel.hue.rounded()))° · \(Int(wheel.saturation.rounded()))")
                         .font(.caption2.monospacedDigit())
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                     Button {
                         session.perform("Reset \(range.title.lowercased()) grading") {
                             $0[keyPath: range.keyPath] = GradingWheel()

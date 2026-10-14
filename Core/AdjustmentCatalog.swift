@@ -98,7 +98,7 @@ public enum AdjustmentCatalog {
         SliderSpec(id: "saturation", title: "Saturation", range: -100...100, keyPath: \.color.saturation),
     ])
 
-    public static let effects = ToolGroup(id: "effects", title: "Effects", symbol: "sparkles", sliders: [
+    public static let effects = ToolGroup(id: "effects", title: "Effects", symbol: "camera.filters", sliders: [
         SliderSpec(id: "texture", title: "Texture", range: -100...100, keyPath: \.effects.texture),
         SliderSpec(id: "clarity", title: "Clarity", range: -100...100, keyPath: \.effects.clarity),
         SliderSpec(id: "dehaze", title: "Dehaze", range: -100...100, keyPath: \.effects.dehaze),

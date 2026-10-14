@@ -23,18 +23,18 @@ struct RetouchPanel: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(hint)
                         .font(.footnote)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                         .fixedSize(horizontal: false, vertical: true)
                     if session.retouchTool == .remove {
                         Toggle("Tap objects or people", isOn: $session.removeByTapping)
-                            .tint(Aura.lavender)
+                            .tint(Darkroom.safelight)
                     }
                     if session.retouchTool == .clone {
                         HStack {
                             Label(session.cloneSource == nil ? "Step 1: tap what to copy" : "Step 2: paint where to copy it",
                                   systemImage: session.cloneSource == nil ? "scope" : "paintbrush.pointed")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Aura.lavender)
+                                .foregroundStyle(Darkroom.safelight)
                             Spacer()
                             if session.cloneSource != nil {
                                 Button("New source") { session.cloneSource = nil }
@@ -51,7 +51,7 @@ struct RetouchPanel: View {
                     HStack {
                         Text(countText)
                             .font(.footnote)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                         Spacer()
                         Button {
                             session.undoLastRetouch()

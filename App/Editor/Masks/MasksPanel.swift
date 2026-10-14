@@ -52,7 +52,7 @@ struct MasksPanel: View {
                 } else {
                     Text("Select a mask above, or add a new one with +")
                         .font(.footnote)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -82,16 +82,16 @@ struct MasksPanel: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                .buttonStyle(AuraPressStyle())
+                .buttonStyle(PressStyle())
             }
         }
     }
 
     private var presetsGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 6) {
                     ForEach(MaskPreset.Category.allCases) { category in
                         Button {
@@ -101,9 +101,9 @@ struct MasksPanel: View {
                                 .font(.footnote.weight(.medium))
                                 .padding(.horizontal, 11)
                                 .padding(.vertical, 6)
-                                .auraChip(presetCategory == category, shape: Capsule())
+                                .drChip(presetCategory == category, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -119,9 +119,9 @@ struct MasksPanel: View {
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, minHeight: 40)
                             .padding(.horizontal, 4)
-                            .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -133,7 +133,7 @@ struct MasksPanel: View {
                 session.selectMask(nil)
                 showsPresets = true
             } label: {
-                Label("One-tap presets", systemImage: "wand.and.stars")
+                Label("One-tap presets", systemImage: "hand.tap")
             }
             Divider()
             ForEach(Self.creatable) { kind in
@@ -147,7 +147,7 @@ struct MasksPanel: View {
             Image(systemName: "plus")
                 .font(.footnote.weight(.bold))
                 .frame(width: 30, height: 30)
-                .auraChip(true, shape: Circle())
+                .drChip(true, shape: Circle())
         }
         .accessibilityLabel("New mask")
     }
@@ -156,7 +156,7 @@ struct MasksPanel: View {
 
     private var maskStrip: some View {
         HStack(spacing: 8) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 6) {
                     ForEach(session.document.masks) { mask in
                         let selected = mask.id == session.selectedMaskID
@@ -171,10 +171,10 @@ struct MasksPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .auraChip(selected, shape: Capsule())
+                            .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                             .opacity(mask.isVisible ? 1 : 0.5)
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -257,7 +257,7 @@ struct MaskComponentEditor: View {
                         get: { component.inverted },
                         set: { value in session.updateComponent(value ? "Invert" : "Don't invert") { $0.inverted = value } }
                     ))
-                    .tint(Aura.lavender)
+                    .tint(Darkroom.safelight)
                     .fixedSize()
                     Spacer()
                     Button(role: .destructive) {
@@ -274,7 +274,7 @@ struct MaskComponentEditor: View {
 
     private var componentStrip: some View {
         HStack(spacing: 8) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 6) {
                     ForEach(mask.components) { component in
                         let selected = component.id == session.selectedComponentID
@@ -291,9 +291,9 @@ struct MaskComponentEditor: View {
                             .font(.caption.weight(.medium))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .auraChip(selected, shape: Capsule())
+                            .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -366,7 +366,7 @@ struct MaskComponentEditor: View {
     private func hint(_ text: String) -> some View {
         Text(text)
             .font(.footnote)
-            .foregroundStyle(Aura.textSecondary)
+            .foregroundStyle(Darkroom.stone)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -388,7 +388,7 @@ private struct PeopleControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 6) {
                     chip("Everyone", selected: component.person == nil) {
                         session.updateComponent("Everyone") { $0.person = nil }
@@ -405,7 +405,7 @@ private struct PeopleControls: View {
             }
             Text("Or tap a person on the photo.")
                 .font(.caption)
-                .foregroundStyle(Aura.textSecondary)
+                .foregroundStyle(Darkroom.stone)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(PersonPart.allCases) { part in
                     let on = component.parts.contains(part)
@@ -418,9 +418,9 @@ private struct PeopleControls: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 7)
-                            .auraChip(on, shape: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .drChip(on, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -438,9 +438,9 @@ private struct PeopleControls: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .auraChip(selected, shape: Capsule())
+                .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
     }
 }
 
@@ -479,10 +479,10 @@ private struct BrushControls: View {
                 get: { component.autoEdge },
                 set: { value in session.updateComponent(value ? "Auto edge on" : "Auto edge off") { $0.autoEdge = value } }
             ))
-            .tint(Aura.lavender)
+            .tint(Darkroom.safelight)
             Text(session.brushPaints ? "One finger paints, two fingers move and zoom." : "Painting is paused: one finger moves the photo.")
                 .font(.caption)
-                .foregroundStyle(Aura.textSecondary)
+                .foregroundStyle(Darkroom.stone)
         }
     }
 }
@@ -498,12 +498,12 @@ struct ToolSlider: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(title)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Aura.textSecondary)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(Darkroom.stone)
                 Spacer()
                 Text(format(value))
-                    .font(.footnote.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Aura.gradient)
+                    .filmCode(11)
+                    .foregroundStyle(Darkroom.safelight)
             }
             LumoraSlider(value: $value, range: range, origin: range.lowerBound)
         }

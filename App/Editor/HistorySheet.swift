@@ -18,7 +18,7 @@ struct HistorySheet: View {
                 }
             }
             .listStyle(.plain)
-            .auraFormStyle()
+            .drFormStyle()
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -34,25 +34,22 @@ struct HistorySheet: View {
             session.jumpToHistory(appliedCount: index)
         } label: {
             HStack(spacing: 12) {
-                // A timeline: a dot per step, the current one glowing.
-                Circle()
-                    .fill(isCurrent ? AnyShapeStyle(Aura.diagonal) : AnyShapeStyle(isUndone ? Aura.surfaceRaised : Aura.textSecondary.opacity(0.6)))
-                    .frame(width: isCurrent ? 12 : 8, height: isCurrent ? 12 : 8)
-                    .shadow(color: isCurrent ? Aura.lavender.opacity(0.8) : .clear, radius: 6)
-                    .frame(width: 14)
+                // Each step is a frame on the roll.
+                Text(Darkroom.frameCode(index * 2))
+                    .filmCode(10)
+                    .foregroundStyle(isCurrent ? Darkroom.safelight : Darkroom.muted)
+                    .frame(width: 34, alignment: .leading)
                 Text(title)
-                    .font(.subheadline.weight(isCurrent ? .semibold : .regular))
-                    .foregroundStyle(isUndone ? Aura.textSecondary.opacity(0.6) : Aura.textPrimary)
+                    .font(.system(size: 15, weight: isCurrent ? .medium : .regular))
+                    .foregroundStyle(isUndone ? Darkroom.muted : Darkroom.cream)
                 Spacer()
                 if isCurrent {
                     Text("Now")
-                        .font(.caption.weight(.bold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .auraChip(true, shape: Capsule())
+                        .caps(10)
+                        .foregroundStyle(Darkroom.safelight)
                 }
             }
         }
-        .listRowBackground(isCurrent ? Aura.lavender.opacity(0.08) : Color.clear)
+        .listRowBackground(isCurrent ? Darkroom.raised : Color.clear)
     }
 }

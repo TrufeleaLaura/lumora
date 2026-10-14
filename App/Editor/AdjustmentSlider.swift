@@ -21,12 +21,12 @@ struct AdjustmentSlider: View {
                         .frame(width: 10, height: 10)
                 }
                 Text(spec.title)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(isChanged ? Aura.textPrimary : Aura.textSecondary)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(isChanged ? Darkroom.cream : Darkroom.stone)
                 Spacer()
                 Text(spec.formatted(value))
-                    .font(.footnote.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(isChanged ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary.opacity(0.7)))
+                    .filmCode(11)
+                    .foregroundStyle(isChanged ? Darkroom.safelight : Darkroom.muted)
                     .contentTransition(.numericText(value: value))
             }
             .contentShape(Rectangle())
@@ -54,7 +54,7 @@ struct SliderList: View {
     var gradients: [String: Gradient] = [:]
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             ForEach(specs) { spec in
                 AdjustmentSlider(
                     spec: spec,

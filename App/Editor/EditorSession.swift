@@ -29,11 +29,11 @@ enum EditorTool: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .looks: return "camera.filters"
-        case .enhance: return "sparkles"
+        case .enhance: return "wand.and.rays"
         case .adjust: return "slider.horizontal.3"
         case .masks: return "circle.dashed"
         case .retouch: return "bandage"
-        case .styles: return "wand.and.stars"
+        case .styles: return "camera.filters"
         case .overlays: return "square.stack"
         case .text: return "textformat"
         case .face: return "face.smiling"
@@ -163,7 +163,7 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published private(set) var history = EditHistory()
     @Published private(set) var isExporting = false
     @Published var toast: String?
-    /// Bumped when a one-tap look/preset lands (plays a sparkle burst on the canvas).
+    /// Bumped when a one-tap look/preset lands (plays a shutter flash on the canvas).
     @Published private(set) var celebration = 0
 
     private let store: ProjectStore
@@ -528,7 +528,7 @@ final class EditorSession: ObservableObject, Identifiable {
         if isNew { celebrate() }
     }
 
-    /// Plays the sparkle burst.
+    /// Plays the shutter flash.
     func celebrate() {
         celebration += 1
     }

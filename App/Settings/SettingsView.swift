@@ -29,7 +29,7 @@ struct SettingsView: View {
                             Slider(value: $quality, in: 0.5...1)
                             Text("\(Int((quality * 100).rounded()))")
                                 .monospacedDigit()
-                                .foregroundStyle(Aura.textSecondary)
+                                .foregroundStyle(Darkroom.stone)
                         }
                     }
                     Picker("Size", selection: $size) {
@@ -39,7 +39,7 @@ struct SettingsView: View {
                         ForEach(MetadataPolicy.allCases) { Text($0.displayName).tag($0) }
                     }
                 }
-                .auraRow()
+                .drRow()
 
                 Section {
                     LabeledContent("Saved edits", value: storageText)
@@ -51,7 +51,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Edits keep a copy of each original so they can be changed later. Your Photos library is never changed.")
                 }
-                .auraRow()
+                .drRow()
 
                 Section {
                     LabeledContent("Version", value: Bundle.main.appVersion)
@@ -64,21 +64,21 @@ struct SettingsView: View {
                 } footer: {
                     Text("Everything in Lumora runs on your iPhone: no account, no uploads, no tracking. Sample photo by Tan Duong on Unsplash.")
                 }
-                .auraRow()
+                .drRow()
 
                 Section {
-                    VStack(spacing: 6) {
-                        LumoraWordmark(size: 28)
-                        Text("Your photos, in their best light.")
-                            .font(.footnote)
-                            .foregroundStyle(Aura.textSecondary)
+                    VStack(spacing: 8) {
+                        Wordmark(size: 16)
+                        Text("Processed on device")
+                            .filmCode(9)
+                            .foregroundStyle(Darkroom.muted)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                 }
                 .listRowBackground(Color.clear)
             }
-            .auraFormStyle()
+            .drFormStyle()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

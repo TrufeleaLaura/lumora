@@ -89,7 +89,7 @@ struct OverlaysPanel: View {
     }
 
     private var overlayChips: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(Overlay.allCases) { item in
                     let active = session.document.overlays[keyPath: item.amount] > 0
@@ -101,16 +101,16 @@ struct OverlaysPanel: View {
                             Text(item.title)
                             if active {
                                 Circle()
-                                    .fill(overlay == item ? Aura.ink : Aura.lavender)
+                                    .fill(overlay == item ? Darkroom.ink : Darkroom.safelight)
                                     .frame(width: 5, height: 5)
                             }
                         }
                         .font(.footnote.weight(.medium))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .auraChip(overlay == item, shape: Capsule())
+                        .drChip(overlay == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -140,9 +140,9 @@ struct OverlaysPanel: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .auraChip(selected, shape: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
             if session.document.frame.style == .border || session.document.frame.style == .polaroid {
@@ -157,7 +157,7 @@ struct OverlaysPanel: View {
                 get: { session.document.frame.dateStamp },
                 set: { session.setDateStamp($0) }
             ))
-            .tint(Aura.lavender)
+            .tint(Darkroom.safelight)
             if session.document.frame.dateStamp {
                 HStack {
                     Text("Date")
@@ -180,7 +180,7 @@ struct ColorRow: View {
     let action: (RGBColor) -> Void
 
     var body: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 10) {
                 ForEach(RGBColor.palette, id: \.self) { color in
                     Button {
@@ -189,9 +189,9 @@ struct ColorRow: View {
                         Circle()
                             .fill(Color(red: color.red, green: color.green, blue: color.blue))
                             .frame(width: 28, height: 28)
-                            .overlay(Circle().stroke(color == selected ? Aura.lavender : Color.white.opacity(0.25), lineWidth: color == selected ? 3 : 1))
+                            .overlay(Circle().stroke(color == selected ? Darkroom.safelight : Color.white.opacity(0.25), lineWidth: color == selected ? 3 : 1))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
             .padding(.vertical, 3)

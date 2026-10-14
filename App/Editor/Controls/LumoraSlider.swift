@@ -1,20 +1,25 @@
 import SwiftUI
 import UIKit
 
-/// Precision slider: dragging moves the value relative to where the finger started
-/// (taps don't jump), the fill grows from `origin`, and a light haptic ticks at the origin.
+/// Precision dial: a ruler of tick marks with a fine needle. Dragging moves the value relative to
+/// where the finger started (taps don't jump), ticks between `origin` and the value are lit, and
+/// a light haptic clicks at every major mark, like a camera dial.
 struct LumoraSlider: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
-    /// Where the fill starts (0 for ± sliders, the minimum otherwise).
+    /// Where the lit span starts (0 for ± sliders, the minimum otherwise).
     var origin: Double
-    /// Optional gradient drawn as the track (e.g. a hue rainbow).
+    /// Optional gradient drawn under the ruler (e.g. a hue rainbow).
     var trackGradient: Gradient?
     var onEditingChanged: (Bool) -> Void = { _ in }
 
     @State private var dragStartValue: Double?
     @State private var isDragging = false
+    @State private var lastDetent: Int?
     private let feedback = UISelectionFeedbackGenerator()
+
+    /// Major marks across the range (the origin of ± sliders falls on one).
+    private let detents = 10
 
     private var span: Double { range.upperBound - range.lowerBound }
 
@@ -24,62 +29,11 @@ struct LumoraSlider: View {
 
     var body: some View {
         GeometryReader { geometry in
-            // The track is inset by the thumb's radius so the thumb never sticks out (and gets
-            // clipped by a scroll view) at either end.
-            let inset: CGFloat = 11
+            let inset: CGFloat = 6
             let width = max(geometry.size.width - 2 * inset, 1)
-            let thumbX = inset + fraction(value) * width
-            let originX = inset + fraction(origin) * width
-            ZStack(alignment: .leading) {
-                if let trackGradient {
-                    Capsule()
-                        .fill(LinearGradient(gradient: trackGradient, startPoint: .leading, endPoint: .trailing))
-                        .frame(width: width, height: 6)
-                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
-                        .offset(x: inset)
-                } else {
-                    Capsule()
-                        .fill(Aura.surfaceRaised)
-                        .overlay(Capsule().strokeBorder(Aura.hairline, lineWidth: 0.5))
-                        .frame(width: width, height: 4)
-                        .offset(x: inset)
-                    // The origin: a small notch on ± sliders.
-                    if origin > range.lowerBound {
-                        Capsule()
-                            .fill(Aura.textSecondary.opacity(0.5))
-                            .frame(width: 2, height: 9)
-                            .offset(x: originX - 1)
-                    }
-                    // The fill: the aura gradient, revealed from the origin.
-                    Aura.gradient
-                        .frame(width: width, height: 4)
-                        .mask(alignment: .leading) {
-                            Capsule()
-                                .frame(width: max(abs(thumbX - originX), 0.01), height: 4)
-                                .offset(x: min(thumbX, originX) - inset)
-                        }
-                        .shadow(color: Aura.lavender.opacity(isDragging ? 0.8 : 0.45), radius: isDragging ? 6 : 3)
-                        .offset(x: inset)
-                }
-                // The orb.
-                ZStack {
-                    Circle()
-                        .fill(Aura.lavender.opacity(isDragging ? 0.35 : 0))
-                        .frame(width: 38, height: 38)
-                        .blur(radius: 6)
-                    Circle()
-                        .fill(Aura.orb)
-                        .frame(width: 20, height: 20)
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
-                        .shadow(color: Aura.lavender.opacity(0.75), radius: isDragging ? 10 : 5)
-                        .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
-                        .scaleEffect(isDragging ? 1.25 : 1)
-                }
-                .frame(width: 22, height: 22)
-                .offset(x: thumbX - 11)
-                .animation(Aura.bouncy, value: isDragging)
+            Canvas { context, size in
+                drawDial(in: &context, size: size, inset: inset, width: width)
             }
-            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 2)
@@ -87,25 +41,30 @@ struct LumoraSlider: View {
                         if dragStartValue == nil {
                             dragStartValue = value
                             isDragging = true
+                            lastDetent = detent(of: value)
                             feedback.prepare()
                             onEditingChanged(true)
                         }
                         let start = dragStartValue ?? value
                         let delta = Double(drag.translation.width / max(width, 1)) * span
                         let newValue = min(max(start + delta, range.lowerBound), range.upperBound)
-                        if (value - origin) * (newValue - origin) < 0 || (newValue == origin && value != origin) {
+                        let mark = detent(of: newValue)
+                        if mark != lastDetent {
                             feedback.selectionChanged()
+                            lastDetent = mark
                         }
                         value = newValue
                     }
                     .onEnded { _ in
                         dragStartValue = nil
                         isDragging = false
+                        lastDetent = nil
                         onEditingChanged(false)
                     }
             )
         }
         .frame(height: 30)
+        .animation(Darkroom.ease, value: isDragging)
         .accessibilityElement()
         .accessibilityAdjustableAction { direction in
             let step = span / 100
@@ -117,6 +76,59 @@ struct LumoraSlider: View {
             }
             onEditingChanged(false)
         }
+    }
+
+    /// The nearest major mark to a value.
+    private func detent(of v: Double) -> Int {
+        Int((fraction(v) * CGFloat(detents)).rounded())
+    }
+
+    private func drawDial(in context: inout GraphicsContext, size: CGSize, inset: CGFloat, width: CGFloat) {
+        let baseline: CGFloat = 17
+        let thumbX = inset + fraction(value) * width
+        let originX = inset + fraction(origin) * width
+        let lo = min(thumbX, originX) - 0.5
+        let hi = max(thumbX, originX) + 0.5
+        let changed = abs(thumbX - originX) > 0.5
+
+        if let trackGradient {
+            let strip = CGRect(x: inset, y: baseline + 4, width: width, height: 4)
+            context.fill(
+                Path(roundedRect: strip, cornerRadius: 1),
+                with: .linearGradient(trackGradient, startPoint: CGPoint(x: strip.minX, y: 0), endPoint: CGPoint(x: strip.maxX, y: 0))
+            )
+        }
+
+        // Ruler: minor ticks, majors every fifth, all aligned on the baseline.
+        let minorPerMajor = 5
+        let ticks = detents * minorPerMajor
+        for index in 0...ticks {
+            let x = inset + CGFloat(index) / CGFloat(ticks) * width
+            let isMajor = index % minorPerMajor == 0
+            let height: CGFloat = isMajor ? 9 : 5
+            let lit = trackGradient == nil && changed && x >= lo && x <= hi
+            let rect = CGRect(x: x - 0.5, y: baseline - height, width: 1, height: height)
+            context.fill(Path(rect), with: .color(lit ? Darkroom.cream : Darkroom.muted))
+        }
+
+        // Origin of ± sliders: a taller cream mark.
+        if origin > range.lowerBound, origin < range.upperBound {
+            let rect = CGRect(x: originX - 0.5, y: baseline - 13, width: 1, height: 13)
+            context.fill(Path(rect), with: .color(Darkroom.cream.opacity(0.8)))
+        }
+
+        // Needle and pointer.
+        let needleColor = trackGradient == nil ? Darkroom.safelight : Darkroom.cream
+        let needleWidth: CGFloat = isDragging ? 2 : 1.5
+        let needle = CGRect(x: thumbX - needleWidth / 2, y: 1, width: needleWidth, height: baseline - 1)
+        context.fill(Path(needle), with: .color(needleColor))
+        var pointer = Path()
+        let tip = baseline + (trackGradient == nil ? 3 : 8)
+        pointer.move(to: CGPoint(x: thumbX, y: tip))
+        pointer.addLine(to: CGPoint(x: thumbX - 4, y: tip + 6))
+        pointer.addLine(to: CGPoint(x: thumbX + 4, y: tip + 6))
+        pointer.closeSubpath()
+        context.fill(pointer, with: .color(needleColor))
     }
 }
 

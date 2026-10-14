@@ -103,7 +103,7 @@ public enum StyleCatalog {
             case .hdr: return "mountain.2"
             case .drama: return "theatermasks"
             case .tonal: return "circle.lefthalf.striped.horizontal"
-            case .glow: return "sparkles"
+            case .glow: return "sun.haze"
             case .halation: return "sun.haze"
             case .vintage: return "film"
             case .noir: return "moon"

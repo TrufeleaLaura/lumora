@@ -1,7 +1,7 @@
 """Generates the 1024x1024 Lumora app icon (opaque RGB PNG) with no third-party packages.
 
-Design ("Aura"): deep plum radial background, a glowing lavender-rose-peach ring, a soft inner light
-and a four-point sparkle on the ring.
+Design ("Darkroom"): warm black, a crisp cream lens ring with a fine inner ring, four lens-scale
+ticks and one safelight-orange dot set into the ring. Flat, no glow.
 Usage: python scripts/make_icon.py <output.png>
 """
 import math
@@ -31,14 +31,19 @@ def png_bytes(width, height, rows):
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
 
 
+def coverage(distance, half_width):
+    """Anti-aliased coverage of a band of half-width `half_width` (in unit coords)."""
+    return max(0.0, min(1.0, (half_width - abs(distance)) * SIZE + 0.5))
+
+
 def main(out_path):
-    bg_center = (0.135, 0.075, 0.185)
-    bg_edge = (0.035, 0.024, 0.045)
-    lavender = (0.60, 0.46, 1.0)
-    rose = (1.0, 0.40, 0.66)
-    peach = (1.0, 0.62, 0.45)
+    ink_center = (0.085, 0.077, 0.070)
+    ink_edge = (0.043, 0.039, 0.035)
+    cream = (0.929, 0.902, 0.855)
+    safelight = (0.878, 0.376, 0.227)
     ring_radius = 0.30
-    spark = (0.212, -0.212)  # upper right, on the ring
+    dot = (0.30 * math.cos(math.radians(45)), -0.30 * math.sin(math.radians(45)))
+    dot_radius = 0.036
     rows = []
     for py in range(SIZE):
         row = bytearray()
@@ -46,30 +51,21 @@ def main(out_path):
         for px in range(SIZE):
             x = (px + 0.5) / SIZE - 0.5
             r = math.hypot(x, y)
-            # Background radial gradient, slightly lifted toward the top-left.
-            col = mix(bg_center, bg_edge, min(1.0, math.hypot(x + 0.08, y + 0.08) / 0.75))
-            # Ring color sweeps lavender -> rose -> peach -> lavender around the circle.
-            angle = (math.atan2(y, x) + math.pi) / (2 * math.pi)
-            u = (angle * 3.0 + 0.4) % 3.0
-            if u < 1.0:
-                ring_col = mix(lavender, rose, u)
-            elif u < 2.0:
-                ring_col = mix(rose, peach, u - 1.0)
-            else:
-                ring_col = mix(peach, lavender, u - 2.0)
-            d = (r - ring_radius)
-            ring = 0.75 * math.exp(-(d / 0.015) ** 2)
-            glow = 0.34 * math.exp(-(d / 0.08) ** 2)
-            core = 0.08 * math.exp(-(r / 0.15) ** 2)
-            col = tuple(c + rc * (ring + glow) + l * core for c, rc, l in zip(col, ring_col, lavender))
-            # Four-point sparkle.
-            dx, dy = abs(x - spark[0]), abs(y - spark[1])
-            rs = math.hypot(dx, dy)
-            star = math.exp(-math.sqrt(dx * dy) / 0.0065) * max(0.0, 1.0 - rs / 0.105) ** 1.5
-            star += 0.8 * math.exp(-(rs / 0.018) ** 2) + 0.25 * math.exp(-(rs / 0.06) ** 2)
-            col = tuple(c + star * w for c, w in zip(col, (1.0, 0.96, 0.98)))
-            # Soft filmic clip that keeps the ring saturated.
-            col = tuple(1.0 - math.exp(-1.5 * max(0.0, c)) for c in col)
+            col = mix(ink_center, ink_edge, min(1.0, r / 0.72))
+            background = col
+            # Outer lens ring and a fine inner ring.
+            col = mix(col, cream, coverage(r - ring_radius, 0.0055))
+            col = mix(col, cream, 0.38 * coverage(r - 0.232, 0.0018))
+            # Lens-scale ticks at the four cardinal points, just outside the ring.
+            for tx, ty in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                along = x * tx + y * ty
+                across = abs(x * ty - y * tx)
+                if 0.33 <= along <= 0.362:
+                    col = mix(col, cream, 0.55 * coverage(across, 0.0022))
+            # Safelight dot set into the ring, with a thin gap of background around it.
+            dd = math.hypot(x - dot[0], y - dot[1])
+            col = mix(col, background, coverage(dd - (dot_radius + 0.007), 0.0075) if dd > dot_radius else 0.0)
+            col = mix(col, safelight, max(0.0, min(1.0, (dot_radius - dd) * SIZE + 0.5)))
             row.extend(int(max(0, min(255, round(255 * c)))) for c in col)
         rows.append(row)
     with open(out_path, "wb") as f:

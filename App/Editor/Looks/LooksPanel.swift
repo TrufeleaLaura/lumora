@@ -21,7 +21,7 @@ struct LooksPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             packChips
 
-            AuraHScroll {
+            HScroll {
                 HStack(alignment: .top, spacing: 10) {
                     if pack == .custom {
                         customCells
@@ -43,7 +43,7 @@ struct LooksPanel: View {
             } else {
                 Text("Tap a look to apply it. Your own adjustments stay editable underneath.")
                     .font(.caption)
-                    .foregroundStyle(Aura.textSecondary)
+                    .foregroundStyle(Darkroom.stone)
             }
 
             HStack {
@@ -84,7 +84,7 @@ struct LooksPanel: View {
     // MARK: - Pieces
 
     private var packChips: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(LookPack.allCases) { item in
                     Button {
@@ -94,9 +94,9 @@ struct LooksPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .auraChip(pack == item, shape: Capsule())
+                            .drChip(pack == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -107,7 +107,7 @@ struct LooksPanel: View {
         if presets.isEmpty && luts.isEmpty {
             Text("Saved presets and imported LUTs appear here.")
                 .font(.caption)
-                .foregroundStyle(Aura.textSecondary)
+                .foregroundStyle(Darkroom.stone)
                 .frame(height: 90)
         }
         ForEach(presets) { preset in
@@ -149,10 +149,9 @@ struct LooksPanel: View {
 
     private func cell(title: String, key: String, document: EditDocument, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Aura.surfaceRaised)
+                    Darkroom.raised
                     if let image = thumbnails.image(for: key, document: document) {
                         Image(uiImage: image)
                             .resizable()
@@ -160,32 +159,25 @@ struct LooksPanel: View {
                             .transition(.opacity)
                     }
                 }
-                .frame(width: 70, height: 70)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .frame(width: 64, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                // Selected: a cream frame line, like a frame marked on a contact sheet.
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.white.opacity(isSelected ? 0 : 0.08), lineWidth: 0.7)
-                )
-                // Selected: a halo ring floating just outside the thumbnail.
-                .overlay(
-                    RoundedRectangle(cornerRadius: 19, style: .continuous)
-                        .stroke(Aura.diagonal, lineWidth: 2)
-                        .padding(-3.5)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .stroke(Darkroom.cream, lineWidth: 1.5)
+                        .padding(-3)
                         .opacity(isSelected ? 1 : 0)
-                        .scaleEffect(isSelected ? 1 : 1.12)
                 )
-                .shadow(color: Aura.lavender.opacity(isSelected ? 0.55 : 0), radius: 10)
-                .scaleEffect(isSelected ? 1.03 : 1)
-                .animation(Aura.bouncy, value: isSelected)
+                .animation(Darkroom.ease, value: isSelected)
                 Text(title)
-                    .font(.caption2.weight(isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary))
+                    .caps(9, weight: isSelected ? .semibold : .medium)
+                    .foregroundStyle(isSelected ? Darkroom.cream : Darkroom.stone)
                     .lineLimit(1)
-                    .frame(width: 76)
+                    .frame(width: 66, alignment: .leading)
             }
             .padding(.vertical, 4)
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

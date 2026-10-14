@@ -26,103 +26,49 @@ struct LibraryView: View {
         var title: String { self == .edits ? "Edits" : "Feed plan" }
     }
 
-    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
-
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 0) {
                 header
                 newEditButton
-                HStack(spacing: 12) {
-                    collageButton
-                    sampleButton
+                    .padding(.top, 22)
+                VStack(spacing: 0) {
+                    row("Collage and story", detail: "Layouts, moodboards and 9:16 stories", symbol: "square.grid.2x2") {
+                        isMakingCollage = true
+                    }
+                    Hairline()
+                    row("Sample photo", detail: "Try every tool on a portrait", symbol: "photo") {
+                        Task { session = await library.openSample() }
+                    }
+                    Hairline()
                 }
+                .padding(.top, 14)
 
                 if !library.projects.isEmpty {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("Your edits")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundStyle(Aura.textPrimary)
-                            Text("\(library.projects.count)")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Aura.gradient)
-                            Spacer()
-                            if mode == .edits {
-                                Button(isSelecting ? "Done" : "Select") {
-                                    withAnimation(Aura.spring) {
-                                        isSelecting.toggle()
-                                        selection.removeAll()
-                                    }
+                    HStack(alignment: .center) {
+                        SegmentedTabs(selection: $mode, options: Mode.allCases) { $0.title }
+                            .frame(maxWidth: 230)
+                        Spacer()
+                        if mode == .edits {
+                            Button(isSelecting ? "Done" : "Select") {
+                                withAnimation(Darkroom.spring) {
+                                    isSelecting.toggle()
+                                    selection.removeAll()
                                 }
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Aura.textPrimary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .auraGlass(Capsule(), tint: 0.5, rim: 0.5)
-                                .buttonStyle(AuraPressStyle())
                             }
+                            .caps(11)
+                            .foregroundStyle(isSelecting ? Darkroom.safelight : Darkroom.cream)
+                            .buttonStyle(PressStyle())
                         }
-                        AuraSegmented(selection: $mode, options: Mode.allCases) { $0.title }
-                            .frame(maxWidth: 260)
                     }
-                    .padding(.top, 6)
+                    .padding(.top, 30)
+                    .padding(.bottom, 14)
                     if mode == .feed {
                         feedGrid
-                            .transition(.opacity.combined(with: .offset(y: 12)))
+                            .transition(.opacity)
                     } else {
-                    LazyVGrid(columns: columns, spacing: 8) {
-                        ForEach(Array(library.projects.enumerated()), id: \.element.id) { index, project in
-                            ProjectTile(image: library.thumbnail(for: project))
-                                .overlay(alignment: .topTrailing) {
-                                    if isSelecting {
-                                        let chosen = selection.contains(project.id)
-                                        Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 22, weight: .semibold))
-                                            .foregroundStyle(chosen ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Color.white))
-                                            .shadow(color: chosen ? Aura.lavender.opacity(0.8) : .black.opacity(0.4), radius: 4)
-                                            .padding(7)
-                                            .transition(.scale.combined(with: .opacity))
-                                    }
-                                }
-                                .overlay {
-                                    if isSelecting && selection.contains(project.id) {
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .strokeBorder(Aura.diagonal, lineWidth: 2.5)
-                                    }
-                                }
-                                .scaleEffect(isSelecting && selection.contains(project.id) ? 0.94 : 1)
-                                .animation(Aura.bouncy, value: selection)
-                                .opacity(tilesAppeared ? 1 : 0)
-                                .offset(y: tilesAppeared ? 0 : 18)
-                                .animation(Aura.spring.delay(Double(min(index, 14)) * 0.035), value: tilesAppeared)
-                                .onTapGesture {
-                                    if isSelecting {
-                                        if selection.contains(project.id) {
-                                            selection.remove(project.id)
-                                        } else {
-                                            selection.insert(project.id)
-                                        }
-                                    } else {
-                                        open(project)
-                                    }
-                                }
-                                .contextMenu {
-                                    Button {
-                                        library.duplicate(project)
-                                    } label: {
-                                        Label("Duplicate", systemImage: "plus.square.on.square")
-                                    }
-                                    Button(role: .destructive) {
-                                        projectToDelete = project
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                        }
-                    }
-                    .transition(.opacity.combined(with: .offset(y: 12)))
-                    .onAppear { tilesAppeared = true }
+                        contactSheet
+                            .transition(.opacity)
                     }
                 } else {
                     emptyState
@@ -131,26 +77,22 @@ struct LibraryView: View {
                 if let message = library.errorMessage {
                     Text(message)
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Darkroom.safelight)
+                        .padding(.top, 12)
                 }
 
-                VStack(spacing: 4) {
-                    Image(systemName: "sparkle")
-                        .font(.caption2)
-                        .foregroundStyle(Aura.gradient)
-                    Text("Lumora \(Bundle.main.appVersion) · made on your iPhone, for you")
-                        .font(.caption2)
-                        .foregroundStyle(Aura.textSecondary.opacity(0.6))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 16)
+                Text("Lumora \(Bundle.main.appVersion) · processed on device")
+                    .filmCode(9)
+                    .foregroundStyle(Darkroom.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 36)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 20)
             .padding(.bottom, 24)
-            .animation(Aura.spring, value: mode)
+            .animation(Darkroom.ease, value: mode)
         }
         .scrollIndicators(.hidden)
-        .background(AuraBackground(paused: isCovered))
+        .background(Darkroom.ink.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
             if isSelecting {
                 selectionBar
@@ -172,11 +114,11 @@ struct LibraryView: View {
         .overlay {
             if library.isBusy {
                 ZStack {
-                    Aura.plum.opacity(0.55).ignoresSafeArea()
-                    AuraLoader(caption: "Opening…")
+                    Darkroom.ink.opacity(0.55).ignoresSafeArea()
+                    DevelopingIndicator(caption: "Opening…")
                         .padding(.horizontal, 30)
                         .padding(.vertical, 24)
-                        .auraGlass(cornerRadius: 24)
+                        .drSurface(cornerRadius: 4)
                 }
                 .transition(.opacity)
             }
@@ -195,13 +137,12 @@ struct LibraryView: View {
             guard let item else { return }
             importPhoto(item)
         }
-        .animation(Aura.soft, value: library.isBusy)
+        .animation(Darkroom.ease, value: library.isBusy)
         .sheet(isPresented: $isShowingSettings, onDismiss: { library.reload() }) {
             SettingsView(store: library.store) {
                 library.delete(library.projects.map(\.id))
             }
-            .presentationBackground(Aura.plum)
-            .presentationCornerRadius(30)
+            .presentationBackground(Darkroom.ink)
         }
         .fullScreenCover(isPresented: Binding(get: { !hasSeenOnboarding }, set: { if !$0 { hasSeenOnboarding = true } })) {
             OnboardingView { hasSeenOnboarding = true }
@@ -234,9 +175,9 @@ struct LibraryView: View {
 
     private var selectionBar: some View {
         HStack(spacing: 18) {
-            Text(selection.isEmpty ? "Select photos" : "\(selection.count) selected")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Aura.textPrimary)
+            Text(selection.isEmpty ? "Select frames" : "\(selection.count) selected")
+                .caps(11)
+                .foregroundStyle(Darkroom.cream)
                 .contentTransition(.numericText())
             Spacer()
             Button {
@@ -259,93 +200,192 @@ struct LibraryView: View {
             .disabled(selection.isEmpty)
             .accessibilityLabel("Delete selected")
         }
-        .padding(.horizontal, 22)
+        .font(.system(size: 15, weight: .light))
+        .foregroundStyle(Darkroom.cream)
+        .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .auraGlass(Capsule(), tint: 0.6)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 6)
+        .background(Darkroom.surface)
+        .overlay(alignment: .top) { Hairline() }
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    /// Another screen covers the library: its ambient motion pauses (the editor needs the GPU).
-    private var isCovered: Bool {
-        session != nil || isMakingCollage || !hasSeenOnboarding
-    }
-
-    private var greeting: String {
-        switch Calendar.current.component(.hour, from: Date()) {
-        case 5..<12: return "Good morning"
-        case 12..<18: return "Good afternoon"
-        default: return "Good evening"
-        }
-    }
-
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting.uppercased())
-                    .font(.caption.weight(.semibold))
-                    .tracking(2.2)
-                    .foregroundStyle(Aura.textSecondary)
-                LumoraWordmark()
-                Text("Your photos, in their best light.")
-                    .font(.subheadline)
-                    .foregroundStyle(Aura.textSecondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                Wordmark(size: 20)
+                Spacer()
+                IconButton(symbol: "gearshape") {
+                    isShowingSettings = true
+                }
+                .padding(.trailing, -10)
+                .accessibilityLabel("Settings")
             }
-            Spacer()
-            AuraIconButton(symbol: "gearshape", size: 42) {
-                isShowingSettings = true
+            // A film-edge code line.
+            HStack(spacing: 8) {
+                Text("\u{25B8}")
+                    .foregroundStyle(Darkroom.safelight)
+                Text("LUMORA 400")
+                Spacer()
+                Text(frameCount)
             }
-            .accessibilityLabel("Settings")
+            .filmCode(10)
+            .foregroundStyle(Darkroom.stone)
+            Hairline()
         }
-        .padding(.top, 14)
+        .padding(.top, 8)
+    }
+
+    private var frameCount: String {
+        let count = library.projects.count
+        if count == 0 { return "NO FRAMES" }
+        return "\(count) FRAME" + (count == 1 ? "" : "S")
     }
 
     private var newEditButton: some View {
         PhotosPicker(selection: $pickerItem, matching: .images, preferredItemEncoding: .current) {
-            AuraHeroCard(
-                eyebrow: "New edit",
-                title: "Make it glow",
-                subtitle: "Choose a photo from your library",
-                symbol: "plus",
-                paused: isCovered
-            )
+            HStack(spacing: 16) {
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .ultraLight))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("New edit")
+                        .caps(13)
+                    Text("Choose a photo from your library")
+                        .font(.footnote)
+                        .foregroundStyle(Darkroom.stone)
+                }
+                Spacer()
+                Circle()
+                    .fill(Darkroom.safelight)
+                    .frame(width: 6, height: 6)
+            }
+            .foregroundStyle(Darkroom.cream)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 26)
+            .frame(maxWidth: .infinity)
+            .background(Darkroom.surface)
+            .overlay(ViewfinderFrame(length: 12).stroke(Darkroom.cream, lineWidth: 1))
+            .contentShape(Rectangle())
         }
-        .buttonStyle(AuraPressStyle(scale: 0.97))
+        .buttonStyle(PressStyle(scale: 0.985))
         .disabled(library.isBusy)
         .accessibilityLabel("New edit")
     }
 
-    private var collageButton: some View {
-        Button {
-            isMakingCollage = true
-        } label: {
-            AuraFeatureCard(symbol: "square.grid.2x2", title: "Collage & story", subtitle: "Layouts, moodboards, 9:16")
+    private func row(_ title: String, detail: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .light))
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Darkroom.cream)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(Darkroom.stone)
+                }
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundStyle(Darkroom.stone)
+            }
+            .foregroundStyle(Darkroom.cream)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(AuraPressStyle(scale: 0.96))
+        .buttonStyle(PressStyle(scale: 0.99))
         .disabled(library.isBusy)
     }
 
-    private var sampleButton: some View {
-        Button {
-            Task { session = await library.openSample() }
-        } label: {
-            AuraFeatureCard(symbol: "wand.and.stars", title: "Try a sample", subtitle: "Explore every tool")
+    /// Edits laid out like a contact sheet: strips of three frames between sprocket holes.
+    private var contactSheet: some View {
+        let projects = library.projects
+        let rows = stride(from: 0, to: projects.count, by: 3).map { Array(projects[$0..<min($0 + 3, projects.count)]) }
+        return LazyVStack(spacing: 10) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                VStack(spacing: 7) {
+                    Sprockets()
+                    HStack(alignment: .top, spacing: 6) {
+                        ForEach(Array(row.enumerated()), id: \.element.id) { column, project in
+                            frame(project, index: rowIndex * 3 + column)
+                        }
+                        ForEach(0..<(3 - row.count), id: \.self) { _ in
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                    }
+                    Sprockets()
+                }
+                .padding(7)
+                .background(Darkroom.film)
+                .opacity(tilesAppeared ? 1 : 0)
+                .offset(y: tilesAppeared ? 0 : 8)
+                .animation(Darkroom.ease.delay(Double(min(rowIndex, 8)) * 0.05), value: tilesAppeared)
+            }
         }
-        .buttonStyle(AuraPressStyle(scale: 0.96))
-        .disabled(library.isBusy)
+        .onAppear { tilesAppeared = true }
+    }
+
+    private func frame(_ project: ProjectMetadata, index: Int) -> some View {
+        let chosen = isSelecting && selection.contains(project.id)
+        return VStack(alignment: .leading, spacing: 5) {
+            ProjectTile(image: library.thumbnail(for: project))
+                .overlay {
+                    if chosen {
+                        Rectangle().strokeBorder(Darkroom.cream, lineWidth: 2)
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if isSelecting {
+                        Image(systemName: chosen ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 17, weight: .regular))
+                            .foregroundStyle(chosen ? Darkroom.safelight : Color.white.opacity(0.85))
+                            .padding(6)
+                            .transition(.opacity)
+                    }
+                }
+            Text(Darkroom.frameCode(index))
+                .filmCode(9)
+                .foregroundStyle(Darkroom.safelight)
+        }
+        .frame(maxWidth: .infinity)
+        .animation(Darkroom.ease, value: chosen)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isSelecting {
+                if selection.contains(project.id) {
+                    selection.remove(project.id)
+                } else {
+                    selection.insert(project.id)
+                }
+            } else {
+                open(project)
+            }
+        }
+        .contextMenu {
+            Button {
+                library.duplicate(project)
+            } label: {
+                Label("Duplicate", systemImage: "plus.square.on.square")
+            }
+            Button(role: .destructive) {
+                projectToDelete = project
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     /// Instagram-style 3-column preview of the planned feed; drag tiles to reorder.
     private var feedGrid: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Drag photos to plan how your grid will look. Top-left is the newest post.")
                 .font(.caption)
-                .foregroundStyle(Aura.textSecondary)
+                .foregroundStyle(Darkroom.stone)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                 ForEach(library.feed) { project in
-                    Aura.surfaceRaised
-                        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+                    Darkroom.raised
+                        .aspectRatio(4.0 / 5.0, contentMode: .fit)
                         .overlay {
                             if let image = library.thumbnail(for: project) {
                                 Image(uiImage: image)
@@ -364,36 +404,37 @@ struct LibraryView: View {
                         .onDrop(of: [.text], delegate: FeedDropDelegate(target: project.id, dragged: $dragged, library: library))
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Aura.rim, lineWidth: 0.8))
+            .overlay(Rectangle().strokeBorder(Darkroom.line, lineWidth: 0.5))
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Aura.diagonal)
-                    .frame(width: 96, height: 96)
-                    .blur(radius: 28)
-                    .opacity(0.55)
-                Image(systemName: "photo.stack")
-                    .font(.system(size: 30, weight: .medium))
-                    .foregroundStyle(Aura.gradient)
-                    .frame(width: 76, height: 76)
-                    .auraGlass(Circle(), tint: 0.4)
+        VStack(spacing: 16) {
+            ZStack(alignment: .bottomLeading) {
+                ViewfinderFrame(length: 16)
+                    .stroke(Darkroom.cream.opacity(0.55), lineWidth: 1)
+                Image(systemName: "camera.aperture")
+                    .font(.system(size: 28, weight: .ultraLight))
+                    .foregroundStyle(Darkroom.stone)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text("00")
+                    .filmCode(9)
+                    .foregroundStyle(Darkroom.safelight)
+                    .padding(8)
             }
-            Text("Your edits will live here")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundStyle(Aura.textPrimary)
-            Text("Every photo keeps its original, so you can change your mind anytime.")
+            .frame(width: 116, height: 145)
+            Text("No frames yet")
+                .caps(12)
+                .foregroundStyle(Darkroom.cream)
+            Text("Your edits appear here as a contact sheet. Originals are always kept, so you can change your mind anytime.")
                 .font(.footnote)
-                .foregroundStyle(Aura.textSecondary)
+                .foregroundStyle(Darkroom.stone)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
+                .lineSpacing(2)
+                .padding(.horizontal, 28)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.top, 44)
     }
 
     private func importPhoto(_ item: PhotosPickerItem) {
@@ -422,9 +463,8 @@ struct ProjectTile: View {
     let image: UIImage?
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        Aura.surfaceRaised
-            .aspectRatio(1, contentMode: .fit)
+        Darkroom.raised
+            .aspectRatio(4.0 / 5.0, contentMode: .fit)
             .overlay {
                 if let image {
                     Image(uiImage: image)
@@ -433,13 +473,10 @@ struct ProjectTile: View {
                         .transition(.opacity)
                 }
             }
-            .clipShape(shape)
-            .overlay(shape.strokeBorder(Color.white.opacity(0.10), lineWidth: 0.7))
-            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
-            .contentShape(shape)
+            .clipShape(Rectangle())
+            .contentShape(Rectangle())
     }
 }
-
 
 /// Reorders the feed plan while a tile is dragged over another.
 struct FeedDropDelegate: DropDelegate {

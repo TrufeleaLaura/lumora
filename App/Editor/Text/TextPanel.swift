@@ -20,9 +20,9 @@ struct TextPanel: View {
                         .font(.footnote.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .auraChip(true, shape: Capsule())
+                        .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                .buttonStyle(AuraPressStyle())
+                .buttonStyle(PressStyle())
                 Button {
                     showsStickers.toggle()
                 } label: {
@@ -30,9 +30,9 @@ struct TextPanel: View {
                         .font(.footnote.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .auraChip(showsStickers, shape: Capsule())
+                        .drChip(showsStickers, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                .buttonStyle(AuraPressStyle())
+                .buttonStyle(PressStyle())
                 layerChips
             }
             ScrollView {
@@ -51,7 +51,7 @@ struct TextPanel: View {
                     } else if session.document.texts.isEmpty && !showsStickers {
                         Text("Add text or stickers, then drag them on the photo.")
                             .font(.footnote)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                     }
                 }
                 .padding(.bottom, 8)
@@ -73,7 +73,7 @@ struct TextPanel: View {
     }
 
     private var layerChips: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(session.document.texts) { layer in
                     let selected = layer.id == session.selectedTextID
@@ -91,9 +91,9 @@ struct TextPanel: View {
                         .frame(maxWidth: 90)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
-                        .auraChip(selected, shape: Capsule())
+                        .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -101,7 +101,7 @@ struct TextPanel: View {
 
     /// One-tap text styles, shown in their own font.
     private func styleChips(_ index: Int) -> some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(TextStylePreset.all) { preset in
                     Button {
@@ -111,9 +111,9 @@ struct TextPanel: View {
                             .font(previewFont(for: preset))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .auraTile(Capsule())
+                            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -140,9 +140,9 @@ struct TextPanel: View {
                     Image(systemName: symbol)
                         .font(.system(size: 20))
                         .frame(maxWidth: .infinity, minHeight: 34)
-                        .auraTile(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                .buttonStyle(AuraPressStyle())
+                .buttonStyle(PressStyle())
             }
         }
     }
@@ -185,7 +185,7 @@ private struct LayerEditor: View {
             .font(.footnote)
 
             if !layer.isSticker {
-                AuraHScroll {
+                HScroll {
                     HStack(spacing: 6) {
                         ForEach(TextFont.allCases) { font in
                             let selected = layer.font == font
@@ -196,9 +196,9 @@ private struct LayerEditor: View {
                                     .font(previewFont(font))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
-                                    .auraChip(selected, shape: Capsule())
+                                    .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                             }
-                            .buttonStyle(AuraPressStyle())
+                            .buttonStyle(PressStyle())
                         }
                     }
                 }
@@ -225,7 +225,7 @@ private struct LayerEditor: View {
                 if layer.background {
                     Text("Label color")
                         .font(.caption)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                     ColorRow(selected: layer.backgroundColor) { color in
                         session.updateSelectedText("Label color") { $0.backgroundColor = color }
                     }
@@ -233,7 +233,7 @@ private struct LayerEditor: View {
                 if layer.outline {
                     Text("Outline color")
                         .font(.caption)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                     ColorRow(selected: layer.outlineColor) { color in
                         session.updateSelectedText("Outline color") { $0.outlineColor = color }
                     }
@@ -268,9 +268,9 @@ private struct LayerEditor: View {
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
-                .auraChip(on, shape: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .drChip(on, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
     }
 
     private func previewFont(_ font: TextFont) -> Font {
@@ -308,7 +308,7 @@ struct TextCanvasOverlay: View {
                     let height = CGFloat(layer.size) * photo.width * 1.3
                     let width = layer.isSticker ? height : max(height, height * CGFloat(max(layer.text.count, 1)) * 0.55)
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(selected ? Aura.lavender : Color.white.opacity(0.0001), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                        .stroke(selected ? Darkroom.safelight : Color.white.opacity(0.0001), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                         .frame(width: width, height: height)
                         .contentShape(Rectangle())
                         .rotationEffect(.degrees(-layer.rotation))

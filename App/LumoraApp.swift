@@ -4,35 +4,36 @@ import UIKit
 @main
 struct LumoraApp: App {
     init() {
-        Self.applyAuraAppearance()
+        Self.applyDarkroomAppearance()
     }
 
     var body: some Scene {
         WindowGroup {
             LibraryView()
                 .preferredColorScheme(.dark)
-                .tint(Aura.lavender)
-                .fontDesign(.rounded)
+                .tint(Darkroom.safelight)
         }
     }
 
-    /// UIKit controls SwiftUI still uses (segmented pickers, navigation titles) in the Aura style.
-    private static func applyAuraAppearance() {
-        func rounded(_ size: CGFloat, _ weight: UIFont.Weight) -> UIFont {
-            let base = UIFont.systemFont(ofSize: size, weight: weight)
-            guard let descriptor = base.fontDescriptor.withDesign(.rounded) else { return base }
-            return UIFont(descriptor: descriptor, size: size)
-        }
-
+    /// UIKit controls SwiftUI still uses (segmented pickers, navigation titles) in the Darkroom style.
+    private static func applyDarkroomAppearance() {
         let segmented = UISegmentedControl.appearance()
-        segmented.selectedSegmentTintColor = UIColor(Aura.lavender)
-        segmented.backgroundColor = UIColor(Aura.surfaceRaised).withAlphaComponent(0.7)
-        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Aura.ink), .font: rounded(13, .semibold)], for: .selected)
-        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Aura.textSecondary), .font: rounded(13, .medium)], for: .normal)
+        segmented.selectedSegmentTintColor = UIColor(Darkroom.cream)
+        segmented.backgroundColor = UIColor(Darkroom.raised).withAlphaComponent(0.6)
+        let segmentFont = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.ink), .font: segmentFont, .kern: 0.6], for: .selected)
+        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.stone), .font: segmentFont, .kern: 0.6], for: .normal)
 
         let navigation = UINavigationBar.appearance()
-        navigation.titleTextAttributes = [.foregroundColor: UIColor(Aura.textPrimary), .font: rounded(17, .semibold)]
-        navigation.largeTitleTextAttributes = [.foregroundColor: UIColor(Aura.textPrimary), .font: rounded(32, .bold)]
+        navigation.titleTextAttributes = [
+            .foregroundColor: UIColor(Darkroom.cream),
+            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+            .kern: 2.2,
+        ]
+        navigation.largeTitleTextAttributes = [
+            .foregroundColor: UIColor(Darkroom.cream),
+            .font: UIFont.systemFont(ofSize: 30, weight: .light),
+        ]
     }
 }
 

@@ -13,10 +13,10 @@ struct BodyPanel: View {
                     VStack(spacing: 8) {
                         Image(systemName: "figure.stand")
                             .font(.system(size: 30))
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                         Text("No person found. Body tools work best on full or half-body photos.")
                             .font(.subheadline)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -53,7 +53,7 @@ struct BodyPanel: View {
     private func header(count: Int) -> some View {
         HStack(spacing: 8) {
             if count > 1 {
-                AuraHScroll {
+                HScroll {
                     HStack(spacing: 6) {
                         chip("Everyone", selected: session.selectedBodyIndex == nil) { session.selectBody(nil) }
                         ForEach(0..<count, id: \.self) { index in
@@ -64,7 +64,7 @@ struct BodyPanel: View {
             } else {
                 Text("Body")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Aura.textSecondary)
+                    .foregroundStyle(Darkroom.stone)
                 Spacer()
             }
             Button {
@@ -78,7 +78,7 @@ struct BodyPanel: View {
     }
 
     private var sectionChips: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(BodyCatalog.Section.allCases) { item in
                     Button {
@@ -88,9 +88,9 @@ struct BodyPanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .auraChip(section == item, shape: Capsule())
+                            .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -102,9 +102,9 @@ struct BodyPanel: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .auraChip(selected, shape: Capsule())
+                .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
     }
 }
 
@@ -122,9 +122,9 @@ struct BodyMarkersOverlay: View {
                         let selected = session.selectedBodyIndex == index
                         Text("\(index + 1)")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(Aura.ink)
+                            .foregroundStyle(Darkroom.ink)
                             .frame(width: 26, height: 26)
-                            .background(selected ? Aura.lavender : Color.white, in: Circle())
+                            .background(selected ? Darkroom.safelight : Color.white, in: Circle())
                             .shadow(radius: 2)
                             .onTapGesture { session.selectBody(selected ? nil : index) }
                             .position(

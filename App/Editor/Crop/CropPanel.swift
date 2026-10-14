@@ -7,7 +7,7 @@ struct CropPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 6) {
                     ForEach(AspectRatioPreset.allCases) { preset in
                         Button {
@@ -17,9 +17,9 @@ struct CropPanel: View {
                                 .font(.footnote.weight(.medium))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
-                                .auraChip(session.document.geometry.aspect == preset, shape: Capsule())
+                                .drChip(session.document.geometry.aspect == preset, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                     }
                 }
             }

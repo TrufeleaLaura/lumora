@@ -29,30 +29,29 @@ struct CollageView: View {
                 .frame(maxHeight: .infinity)
             controls
         }
-        .background(AuraBackground(intensity: 0.55))
+        .background(Darkroom.ink.ignoresSafeArea())
         .overlay(alignment: .top) {
             if let toast = model.toast {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkle")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Aura.gradient)
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(Darkroom.safelight)
+                        .frame(width: 5, height: 5)
                     Text(toast)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Aura.textPrimary)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Darkroom.cream)
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .auraGlass(Capsule(), tint: 0.5)
+                .drSurface(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .padding(.top, 64)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(Aura.bouncy, value: model.toast)
+        .animation(Darkroom.spring, value: model.toast)
         .sheet(isPresented: Binding(get: { pickingCell != nil }, set: { if !$0 { pickingCell = nil } })) {
             photoPicker
                 .presentationDetents([.medium, .large])
-                .presentationBackground(Aura.plum)
-                .presentationCornerRadius(30)
+                .presentationBackground(Darkroom.ink)
         }
         .onChange(of: pickerItem) { _, item in
             guard let item, let index = pickingCell else { return }
@@ -70,12 +69,12 @@ struct CollageView: View {
 
     private var topBar: some View {
         HStack {
-            AuraIconButton(symbol: "xmark", action: onClose)
+            IconButton(symbol: "xmark", action: onClose)
                 .accessibilityLabel("Close")
             Spacer()
             Text("Collage")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(Aura.textPrimary)
+                .caps(12)
+                .foregroundStyle(Darkroom.cream)
             Spacer()
             Button {
                 model.save()
@@ -85,11 +84,11 @@ struct CollageView: View {
                     if model.isExporting {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(Aura.ink)
+                            .tint(Darkroom.ink)
                     }
                 }
             }
-            .buttonStyle(AuraPrimaryButtonStyle(compact: true))
+            .buttonStyle(PrimaryButtonStyle(compact: true))
             .disabled(model.isExporting || model.cells.allSatisfy { $0.image == nil })
             .opacity(model.cells.allSatisfy { $0.image == nil } ? 0.45 : 1)
             .accessibilityLabel("Save")
@@ -152,7 +151,7 @@ struct CollageView: View {
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .stroke(selected ? AnyShapeStyle(Aura.diagonal) : AnyShapeStyle(Color.clear), lineWidth: 2.5)
+                .stroke(selected ? AnyShapeStyle(Darkroom.cream) : AnyShapeStyle(Color.clear), lineWidth: 2.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -192,7 +191,7 @@ struct CollageView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 8) {
                     ForEach(CollageLayout.allCases) { layout in
                         Button {
@@ -200,7 +199,7 @@ struct CollageView: View {
                         } label: {
                             LayoutIcon(layout: layout, selected: model.settings.layout == layout)
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                         .accessibilityLabel(layout.title)
                     }
                 }
@@ -215,7 +214,7 @@ struct CollageView: View {
                 HStack {
                     Text("Drag and pinch to frame the photo")
                         .font(.caption)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                     Spacer()
                     Button("Replace") { pickingCell = index }
                         .font(.footnote.weight(.semibold))
@@ -237,15 +236,8 @@ struct CollageView: View {
         .padding(.horizontal, 18)
         .padding(.top, 16)
         .padding(.bottom, 12)
-        .background {
-            let shape = UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
-            ZStack {
-                shape.fill(Aura.surface.opacity(0.92))
-                shape.stroke(Aura.rim, lineWidth: 0.8)
-                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.15)))
-            }
-            .ignoresSafeArea(edges: .bottom)
-        }
+        .background(Darkroom.surface.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Hairline() }
     }
 
     // MARK: - Picking photos
@@ -259,7 +251,7 @@ struct CollageView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .auraChip(true, shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                     if !projects.isEmpty {
                         Text("Your edits")
@@ -306,6 +298,6 @@ private struct LayoutIcon: View {
         }
         .frame(width: 34, height: 42)
         .padding(7)
-        .auraChipBackground(selected, shape: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .drChipBackground(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
     }
 }

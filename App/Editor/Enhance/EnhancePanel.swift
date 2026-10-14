@@ -81,7 +81,7 @@ struct EnhancePanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 10) {
-                        bigButton("Auto enhance", symbol: "sparkles") { session.autoEnhance(lowLight: false) }
+                        bigButton("Auto enhance", symbol: "wand.and.rays") { session.autoEnhance(lowLight: false) }
                         bigButton("Low light", symbol: "moon.stars") { session.autoEnhance(lowLight: true) }
                         bigButton("Blur background", symbol: "camera.aperture") {
                             session.perform("Blur background") { document in
@@ -93,7 +93,7 @@ struct EnhancePanel: View {
 
                     Text("Sky")
                         .font(.subheadline.weight(.semibold))
-                    AuraHScroll {
+                    HScroll {
                         HStack(spacing: 6) {
                             ForEach(SkyStyle.allCases) { style in
                                 let selected = session.document.sky.style == style
@@ -104,9 +104,9 @@ struct EnhancePanel: View {
                                         .font(.footnote.weight(.medium))
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 7)
-                                        .auraChip(selected, shape: Capsule())
+                                        .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                                 }
-                                .buttonStyle(AuraPressStyle())
+                                .buttonStyle(PressStyle())
                             }
                         }
                     }
@@ -136,11 +136,11 @@ struct EnhancePanel: View {
                     } else if session.document.background.mode == .transparent {
                         Text("The background is cut out. Export as PNG to keep it transparent.")
                             .font(.caption)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                     }
                     Text("Tip: Export, then Enlarge 2×, makes a bigger file for prints.")
                         .font(.caption)
-                        .foregroundStyle(Aura.textSecondary)
+                        .foregroundStyle(Darkroom.stone)
                 }
                 .padding(.bottom, 8)
             }
@@ -159,8 +159,8 @@ struct EnhancePanel: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .auraTile(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
     }
 }

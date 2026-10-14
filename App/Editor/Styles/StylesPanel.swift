@@ -9,7 +9,7 @@ struct StylesPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AuraHScroll {
+            HScroll {
                 HStack(spacing: 8) {
                     ForEach(StyleCatalog.Effect.allCases) { item in
                         let active = item.isActive(session.document.styles)
@@ -18,45 +18,37 @@ struct StylesPanel: View {
                             session.focusEditing = item == .lensBlur
                         } label: {
                             let selected = effect == item
-                            VStack(spacing: 5) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 ZStack(alignment: .topTrailing) {
                                     thumbnail(item)
                                         .frame(width: 62, height: 62)
-                                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                                        .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                                .strokeBorder(Color.white.opacity(selected ? 0 : 0.08), lineWidth: 0.7)
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                .stroke(Aura.diagonal, lineWidth: 2)
-                                                .padding(-3.5)
+                                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                                .stroke(Darkroom.cream, lineWidth: 1.5)
+                                                .padding(-3)
                                                 .opacity(selected ? 1 : 0)
-                                                .scaleEffect(selected ? 1 : 1.12)
                                         )
-                                        .shadow(color: Aura.lavender.opacity(selected ? 0.5 : 0), radius: 9)
+                                    // In use: a small safelight mark in the corner.
                                     if active {
-                                        Image(systemName: "sparkle")
-                                            .font(.system(size: 9, weight: .black))
-                                            .foregroundStyle(Aura.ink)
-                                            .frame(width: 16, height: 16)
-                                            .background(Circle().fill(Aura.diagonal))
-                                            .shadow(color: Aura.lavender.opacity(0.8), radius: 4)
-                                            .padding(3)
-                                            .transition(.scale.combined(with: .opacity))
+                                        Rectangle()
+                                            .fill(Darkroom.safelight)
+                                            .frame(width: 6, height: 6)
+                                            .padding(4)
+                                            .transition(.opacity)
                                     }
                                 }
-                                .animation(Aura.bouncy, value: selected)
-                                .animation(Aura.bouncy, value: active)
+                                .animation(Darkroom.ease, value: selected)
+                                .animation(Darkroom.ease, value: active)
                                 Text(item.title)
-                                    .font(.system(size: 10, weight: selected ? .bold : .medium))
+                                    .caps(9, weight: selected ? .semibold : .medium)
                                     .lineLimit(1)
-                                    .foregroundStyle(selected ? AnyShapeStyle(Aura.gradient) : AnyShapeStyle(Aura.textSecondary))
+                                    .foregroundStyle(selected ? Darkroom.cream : Darkroom.stone)
                             }
                             .frame(width: 68)
                             .padding(.vertical, 4)
                         }
-                        .buttonStyle(AuraPressStyle())
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -74,7 +66,7 @@ struct StylesPanel: View {
                         .pickerStyle(.segmented)
                         Text(focusHint)
                             .font(.footnote)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     SliderList(session: session, specs: specs)
@@ -104,8 +96,8 @@ struct StylesPanel: View {
                 .resizable()
                 .scaledToFill()
         } else {
-            Aura.surfaceRaised
-                .overlay(Image(systemName: item.symbol).foregroundStyle(Aura.textSecondary))
+            Darkroom.raised
+                .overlay(Image(systemName: item.symbol).foregroundStyle(Darkroom.stone))
         }
     }
 

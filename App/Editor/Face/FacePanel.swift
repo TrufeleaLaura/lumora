@@ -13,10 +13,10 @@ struct FacePanel: View {
                     VStack(spacing: 8) {
                         Image(systemName: "face.dashed")
                             .font(.system(size: 30))
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                         Text("No faces found in this photo.")
                             .font(.subheadline)
-                            .foregroundStyle(Aura.textSecondary)
+                            .foregroundStyle(Darkroom.stone)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -34,9 +34,9 @@ struct FacePanel: View {
                                         Text(look.title)
                                             .font(.caption.weight(.semibold))
                                             .frame(maxWidth: .infinity, minHeight: 38)
-                                            .auraTile(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                                     }
-                                    .buttonStyle(AuraPressStyle())
+                                    .buttonStyle(PressStyle())
                                 }
                             }
                             .padding(.bottom, 8)
@@ -46,7 +46,7 @@ struct FacePanel: View {
                             if section == .hair {
                                 Text("Ombré color")
                                     .font(.caption)
-                                    .foregroundStyle(Aura.textSecondary)
+                                    .foregroundStyle(Darkroom.stone)
                                 paletteRow(MakeupPalette.hair, keyPath: \.hairOmbreColor)
                             }
                         }
@@ -86,7 +86,7 @@ struct FacePanel: View {
     private func header(faceCount: Int) -> some View {
         HStack(spacing: 8) {
             if faceCount > 1 {
-                AuraHScroll {
+                HScroll {
                     HStack(spacing: 6) {
                         chip("All faces", selected: session.selectedFaceIndex == nil) { session.selectFace(nil) }
                         ForEach(0..<faceCount, id: \.self) { index in
@@ -97,19 +97,19 @@ struct FacePanel: View {
             } else {
                 Text("Face")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Aura.textSecondary)
+                    .foregroundStyle(Darkroom.stone)
                 Spacer()
             }
             Button {
                 session.autoBeauty()
             } label: {
-                Label("Auto", systemImage: "wand.and.stars")
+                Label("Auto", systemImage: "wand.and.rays")
                     .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
-                    .auraChip(true, shape: Capsule())
+                    .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
             }
-            .buttonStyle(AuraPressStyle())
+            .buttonStyle(PressStyle())
             Button {
                 session.resetFace()
             } label: {
@@ -121,7 +121,7 @@ struct FacePanel: View {
     }
 
     private var sectionChips: some View {
-        AuraHScroll {
+        HScroll {
             HStack(spacing: 6) {
                 ForEach(FaceCatalog.Section.allCases) { item in
                     Button {
@@ -131,9 +131,9 @@ struct FacePanel: View {
                             .font(.footnote.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .auraChip(section == item, shape: Capsule())
+                            .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                 }
             }
         }
@@ -141,7 +141,7 @@ struct FacePanel: View {
 
     private func paletteRow(_ colors: [(String, MakeupColor)], keyPath: WritableKeyPath<MakeupSettings, MakeupColor>) -> some View {
         let current = session.document[keyPath: session.faceTarget].makeup[keyPath: keyPath]
-        return AuraHScroll {
+        return HScroll {
             HStack(spacing: 10) {
                 ForEach(Array(colors.enumerated()), id: \.offset) { _, item in
                     let name = item.0
@@ -153,15 +153,15 @@ struct FacePanel: View {
                             Circle()
                                 .fill(Color(red: color.red, green: color.green, blue: color.blue))
                                 .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(current == color ? Aura.lavender : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
+                                .overlay(Circle().stroke(current == color ? Darkroom.safelight : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
                             Text(name)
                                 .font(.system(size: 9))
-                                .foregroundStyle(current == color ? Aura.lavender : Aura.textSecondary)
+                                .foregroundStyle(current == color ? Darkroom.safelight : Darkroom.stone)
                                 .lineLimit(1)
                         }
                         .frame(width: 56)
                     }
-                    .buttonStyle(AuraPressStyle())
+                    .buttonStyle(PressStyle())
                     .accessibilityLabel(name)
                 }
             }
@@ -175,9 +175,9 @@ struct FacePanel: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .auraChip(selected, shape: Capsule())
+                .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .buttonStyle(AuraPressStyle())
+        .buttonStyle(PressStyle())
     }
 }
 
@@ -199,15 +199,15 @@ struct FaceMarkersOverlay: View {
                     )
                     let selected = session.selectedFaceIndex == index
                     Ellipse()
-                        .stroke(selected ? Aura.lavender : Color.white.opacity(0.7), style: StrokeStyle(lineWidth: selected ? 2.5 : 1.5, dash: selected ? [] : [5, 4]))
+                        .stroke(selected ? Darkroom.safelight : Color.white.opacity(0.7), style: StrokeStyle(lineWidth: selected ? 2.5 : 1.5, dash: selected ? [] : [5, 4]))
                         .frame(width: rect.width * 1.1, height: rect.height * 1.25)
                         .overlay(alignment: .top) {
                             Text("\(index + 1)")
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(Aura.ink)
+                                .foregroundStyle(Darkroom.ink)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(selected ? Aura.lavender : Color.white, in: Capsule())
+                                .background(selected ? Darkroom.safelight : Color.white, in: Capsule())
                                 .offset(y: -12)
                         }
                         .contentShape(Ellipse())
