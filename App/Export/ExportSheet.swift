@@ -108,8 +108,11 @@ struct ExportSheet: View {
                     .disabled(session.isExporting)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 10)
+                .padding(.top, 14)
                 .padding(.bottom, 8)
+                // Opaque, so the options never show through the buttons.
+                .background(Darkroom.ink.ignoresSafeArea(edges: .bottom))
+                .overlay(alignment: .top) { Hairline() }
             }
             .navigationTitle("EXPORT")
             .navigationBarTitleDisplayMode(.inline)
