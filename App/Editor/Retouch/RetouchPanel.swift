@@ -4,19 +4,27 @@ import SwiftUI
 /// Heal, clone and remove, plus red-eye.
 struct RetouchPanel: View {
     @ObservedObject var session: EditorSession
+    /// Off when a Remove, Heal or Clone tool already chose the mode.
+    var showsToolPicker = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Picker("Tool", selection: $session.retouchTool) {
-                    ForEach(RetouchTool.allCases) { tool in
-                        Label(tool.title, systemImage: tool.symbol).tag(tool)
+            if showsToolPicker || session.isRetouching {
+                HStack {
+                    if showsToolPicker {
+                        Picker("Tool", selection: $session.retouchTool) {
+                            ForEach(RetouchTool.allCases) { tool in
+                                Label(tool.title, systemImage: tool.symbol).tag(tool)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    } else {
+                        Spacer()
                     }
-                }
-                .pickerStyle(.segmented)
-                if session.isRetouching {
-                    ProgressView()
-                        .padding(.leading, 6)
+                    if session.isRetouching {
+                        ProgressView()
+                            .padding(.leading, 6)
+                    }
                 }
             }
             ScrollView {

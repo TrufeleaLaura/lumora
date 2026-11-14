@@ -8,36 +8,46 @@ struct TextPanel: View {
     @State private var isEditingText = false
     @State private var draft = ""
     @State private var showsStickers = false
+    /// Set when the Text or Stickers tool opened the panel.
+    var mode: Mode?
+
+    enum Mode { case text, stickers }
+
+    private var stickersShown: Bool { mode == .stickers || (mode == nil && showsStickers) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Button {
-                    draft = ""
-                    isAddingText = true
-                } label: {
-                    Label("Text", systemImage: "plus")
-                        .font(Typeface.jost(13, weight: 560))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                if mode != .stickers {
+                    Button {
+                        draft = ""
+                        isAddingText = true
+                    } label: {
+                        Label("Text", systemImage: "plus")
+                            .font(Typeface.jost(13, weight: 560))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+                    .buttonStyle(PressStyle())
                 }
-                .buttonStyle(PressStyle())
-                Button {
-                    showsStickers.toggle()
-                } label: {
-                    Label("Sticker", systemImage: "heart")
-                        .font(Typeface.jost(13, weight: 560))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .drChip(showsStickers, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                if mode == nil {
+                    Button {
+                        showsStickers.toggle()
+                    } label: {
+                        Label("Sticker", systemImage: "heart")
+                            .font(Typeface.jost(13, weight: 560))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .drChip(showsStickers, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+                    .buttonStyle(PressStyle())
                 }
-                .buttonStyle(PressStyle())
                 layerChips
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if showsStickers {
+                    if stickersShown {
                         stickerGrid
                     }
                     if let index = session.selectedTextIndex, !session.document.texts[index].isSticker {
@@ -48,7 +58,7 @@ struct TextPanel: View {
                             draft = session.document.texts[index].text
                             isEditingText = true
                         })
-                    } else if session.document.texts.isEmpty && !showsStickers {
+                    } else if session.document.texts.isEmpty && !stickersShown {
                         Text("Add text or stickers, then drag them on the photo.")
                             .font(Typeface.jost(13))
                             .foregroundStyle(Darkroom.stone)

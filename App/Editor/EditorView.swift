@@ -6,9 +6,13 @@ struct EditorView: View {
     @ObservedObject var session: EditorSession
     var onClose: () -> Void
 
-    @State private var section: AdjustSection = .light
     @State private var isShowingExport = false
     @State private var isShowingHistory = false
+    @State private var isShowingFinder = false
+    /// The last tool used in each category, so switching back returns to it.
+    @State private var lastTool: [StudioCategory: StudioTool] = [:]
+    /// Categories whose first-time tip was dismissed ("looks,adjust,").
+    @AppStorage("tips.seen") private var seenTips = ""
     @Namespace private var toolNamespace
 
     var body: some View {
@@ -50,6 +54,10 @@ struct EditorView: View {
                 .presentationDetents([.medium, .large])
                 .presentationBackground(Darkroom.ink)
         }
+        .sheet(isPresented: $isShowingFinder) {
+            ToolFinderView(session: session)
+                .presentationBackground(Darkroom.ink)
+        }
     }
 
     // MARK: - Top bar
@@ -74,6 +82,8 @@ struct EditorView: View {
                 }
             }
             .accessibilityLabel("Before and after split view")
+            barButton("magnifyingglass") { isShowingFinder = true }
+                .accessibilityLabel("Find a tool")
 
             Menu {
                 Button {
@@ -208,125 +218,278 @@ struct EditorView: View {
             .allowsHitTesting(false)
     }
 
-    // MARK: - Dock (tool panel + tool bar)
+    // MARK: - Dock: recipe bar, tool tabs, the panel and the five categories
 
     private var dock: some View {
         VStack(spacing: 0) {
+            if let guide = session.guide {
+                guideBar(guide)
+            }
+            toolTabs
+            Hairline()
+            toolSummary
             toolPanel
             Hairline()
-            toolBar
+            categoryBar
         }
         .background(Darkroom.surface.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) { Hairline() }
-    }
-
-    private var toolPanel: some View {
-        // Panels cross-fade in place (a ZStack, so old and new never stack up).
-        ZStack(alignment: .top) {
-            Group {
-                switch session.activeTool {
-                case .looks:
-                    LooksPanel(session: session, thumbnails: session.lookThumbnails)
-                        .panelPadding()
-                case .adjust:
-                    VStack(spacing: 0) {
-                        SectionTabs(items: AdjustSection.allCases, selection: $section, title: { $0.title })
-                            .padding(.horizontal, 18)
-                            .padding(.top, 6)
-                        Hairline()
-                        if section.scrolls {
-                            ScrollView {
-                                panelContent
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
-                            }
-                        } else {
-                            panelContent
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .frame(maxHeight: .infinity, alignment: .top)
-                        }
-                    }
-                    .frame(maxHeight: .infinity, alignment: .top)
-                case .masks:
-                    MasksPanel(session: session).panelPadding()
-                case .retouch:
-                    RetouchPanel(session: session).panelPadding()
-                case .styles:
-                    StylesPanel(session: session, thumbnails: session.lookThumbnails).panelPadding()
-                case .enhance:
-                    EnhancePanel(session: session).panelPadding()
-                case .overlays:
-                    OverlaysPanel(session: session).panelPadding()
-                case .text:
-                    TextPanel(session: session).panelPadding()
-                case .face:
-                    FacePanel(session: session).panelPadding()
-                case .body:
-                    BodyPanel(session: session).panelPadding()
-                case .reshape:
-                    ReshapePanel(session: session).panelPadding()
-                case .crop:
-                    CropPanel(session: session).panelPadding(horizontal: 20)
-                }
-            }
-            .id(session.activeTool)
-            .transition(.opacity.combined(with: .offset(y: 8)))
+        .animation(Darkroom.spring, value: session.guide)
+        .onChange(of: session.studioTool) { _, tool in
+            lastTool[tool.category] = tool
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .frame(height: 262)
-        .clipped()
     }
 
-    private var toolBar: some View {
+    /// A recipe in progress: the step, what to do, and Next.
+    private func guideBar(_ guide: GuideProgress) -> some View {
+        HStack(spacing: 10) {
+            Text("STEP \(guide.step + 1)/\(guide.recipe.steps.count)")
+                .filmCode(10)
+                .foregroundStyle(Darkroom.safelight)
+            Text(guide.current.title)
+                .font(Typeface.jost(13.5, weight: 500))
+                .foregroundStyle(Darkroom.cream)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Button(guide.isLast ? "Done" : "Next") {
+                withAnimation(Darkroom.spring) { session.advanceGuide() }
+            }
+            .caps(10.5)
+            .foregroundStyle(Darkroom.cream)
+            .buttonStyle(PressStyle())
+            Button {
+                withAnimation(Darkroom.spring) { session.endGuide() }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .light))
+                    .foregroundStyle(Darkroom.stone)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Leave the recipe")
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 8)
+        .padding(.vertical, 5)
+        .background(Darkroom.raised)
+        .overlay(alignment: .bottom) { Hairline() }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    /// The tools of the current category, in italic Cormorant; a safelight rule marks the open one.
+    private var toolTabs: some View {
         ScrollViewReader { proxy in
             HScroll {
-                HStack(spacing: 0) {
-                    ForEach(EditorTool.allCases) { tool in
-                        let active = session.activeTool == tool
+                HStack(spacing: 22) {
+                    ForEach(session.studioTool.category.tools) { tool in
+                        let selected = session.studioTool == tool
                         Button {
-                            withAnimation(Darkroom.spring) {
-                                session.activeTool = tool
-                                proxy.scrollTo(tool.id, anchor: .center)
-                            }
+                            withAnimation(Darkroom.spring) { session.studioTool = tool }
                         } label: {
-                            VStack(spacing: 5) {
-                                // The active tool is marked by a short safelight rule above it.
-                                ZStack {
-                                    if active {
+                            Text(tool.title)
+                                .font(Typeface.cormorant(19, weight: 500, italic: true))
+                                .foregroundStyle(selected ? Darkroom.cream : Darkroom.stone)
+                                .padding(.top, 10)
+                                .padding(.bottom, 8)
+                                .overlay(alignment: .bottom) {
+                                    if selected {
                                         Rectangle()
                                             .fill(Darkroom.safelight)
-                                            .frame(width: 18, height: 1.5)
-                                            .matchedGeometryEffect(id: "activeTool", in: toolNamespace)
+                                            .frame(height: 1.5)
+                                            .matchedGeometryEffect(id: "toolTab", in: toolNamespace)
                                     }
                                 }
-                                .frame(height: 1.5)
-                                Image(systemName: tool.symbol)
-                                    .font(.system(size: 18, weight: .light))
-                                    .frame(height: 24)
-                                Text(tool.title)
-                                    .caps(9, weight: active ? .semibold : .medium)
-                                    .lineLimit(1)
-                            }
-                            .foregroundStyle(active ? Darkroom.cream : Darkroom.stone)
-                            .frame(width: 62)
-                            .contentShape(Rectangle())
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(PressStyle(scale: 0.92))
+                        .buttonStyle(.plain)
                         .id(tool.id)
                         .accessibilityLabel(tool.title)
                         .accessibilityIdentifier("tool.\(tool.rawValue)")
                     }
                 }
-                .padding(.horizontal, 6)
+                .padding(.horizontal, 20)
+            }
+            .onChange(of: session.studioTool) { _, tool in
+                withAnimation(Darkroom.spring) { proxy.scrollTo(tool.id, anchor: .center) }
             }
         }
-        .padding(.top, 0)
-        .padding(.bottom, 4)
+    }
+
+    /// One line saying what the open tool does (plus Auto for face tools).
+    private var toolSummary: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(session.studioTool.summary)
+                .font(Typeface.jost(13))
+                .foregroundStyle(Darkroom.stone)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if !session.studioTool.faceSections.isEmpty {
+                Button("Auto") { session.autoBeauty() }
+                    .caps(10.5)
+                    .foregroundStyle(Darkroom.safelight)
+                    .buttonStyle(PressStyle())
+                    .accessibilityLabel("Auto retouch")
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 2)
+    }
+
+    private var toolPanel: some View {
+        let category = session.studioTool.category
+        return VStack(spacing: 0) {
+            if session.guide == nil && !seenTips.contains(category.rawValue) {
+                tipCard(category)
+            }
+            // Panels cross-fade in place (a ZStack, so old and new never stack up).
+            ZStack(alignment: .top) {
+                panel(for: session.studioTool)
+                    .id(session.studioTool)
+                    .transition(.opacity.combined(with: .offset(y: 8)))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .frame(height: 232)
+        .clipped()
+    }
+
+    /// A short tip, shown the first time a category opens.
+    private func tipCard(_ category: StudioCategory) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(Darkroom.safelight)
+                .frame(width: 5, height: 5)
+                .padding(.top, 6)
+            Text(category.tip)
+                .font(Typeface.jost(13))
+                .foregroundStyle(Darkroom.cream)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Button("Got it") {
+                withAnimation(Darkroom.ease) { seenTips += category.rawValue + "," }
+            }
+            .caps(9.5)
+            .foregroundStyle(Darkroom.stone)
+            .buttonStyle(PressStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Darkroom.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .transition(.opacity)
     }
 
     @ViewBuilder
-    private var panelContent: some View {
+    private func panel(for tool: StudioTool) -> some View {
+        switch tool {
+        case .presets:
+            LooksPanel(session: session, thumbnails: session.lookThumbnails).panelPadding()
+        case .auto:
+            EnhancePanel(session: session, part: .auto).panelPadding()
+        case .sky:
+            EnhancePanel(session: session, part: .sky).panelPadding()
+        case .background:
+            EnhancePanel(session: session, part: .background).panelPadding()
+        case .light, .color, .curve, .grading, .detail:
+            adjustPanel(tool.adjustSections)
+        case .masks:
+            MasksPanel(session: session).panelPadding()
+        case .crop:
+            CropPanel(session: session).panelPadding(horizontal: 20)
+        case .skin, .features, .makeup, .hair:
+            FacePanel(session: session, sections: tool.faceSections).panelPadding()
+        case .body:
+            BodyPanel(session: session).panelPadding()
+        case .reshape:
+            ReshapePanel(session: session).panelPadding()
+        case .remove, .heal, .clone:
+            RetouchPanel(session: session, showsToolPicker: false).panelPadding()
+        case .effects:
+            StylesPanel(session: session, thumbnails: session.lookThumbnails).panelPadding()
+        case .lightAndDust:
+            OverlaysPanel(session: session, fixedPage: .overlays).panelPadding()
+        case .frames:
+            OverlaysPanel(session: session, fixedPage: .frame).panelPadding()
+        case .text:
+            TextPanel(session: session, mode: .text).panelPadding()
+        case .stickers:
+            TextPanel(session: session, mode: .stickers).panelPadding()
+        }
+    }
+
+    /// Adjust tools show one or more parts of the Adjust panel (Detail: detail, effects and optics).
+    @ViewBuilder
+    private func adjustPanel(_ sections: [AdjustSection]) -> some View {
+        if sections.contains(where: { !$0.scrolls }) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(sections) { section in
+                    panelContent(section)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+            .frame(maxHeight: .infinity, alignment: .top)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(sections) { section in
+                        if sections.count > 1 {
+                            Text(section.title)
+                                .caps(10)
+                                .foregroundStyle(Darkroom.stone)
+                        }
+                        panelContent(section)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
+    /// The five categories. The active one is marked by a short safelight rule.
+    private var categoryBar: some View {
+        HStack(spacing: 0) {
+            ForEach(StudioCategory.allCases) { category in
+                let active = session.studioTool.category == category
+                Button {
+                    withAnimation(Darkroom.spring) {
+                        session.studioTool = lastTool[category] ?? category.tools[0]
+                    }
+                } label: {
+                    VStack(spacing: 0) {
+                        ZStack {
+                            if active {
+                                Rectangle()
+                                    .fill(Darkroom.safelight)
+                                    .frame(width: 18, height: 1.5)
+                                    .matchedGeometryEffect(id: "category", in: toolNamespace)
+                            }
+                        }
+                        .frame(height: 1.5)
+                        Text(category.title)
+                            .caps(10)
+                            .foregroundStyle(active ? Darkroom.cream : Darkroom.stone)
+                            .frame(maxHeight: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle(scale: 0.95))
+                .accessibilityLabel(category.title)
+                .accessibilityIdentifier("cat.\(category.rawValue)")
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    @ViewBuilder
+    private func panelContent(_ section: AdjustSection) -> some View {
         switch section {
         case .light:
             SliderList(session: session, specs: AdjustmentCatalog.light.sliders)
@@ -443,7 +606,7 @@ private extension View {
     /// Standard inset for a tool's panel.
     func panelPadding(horizontal: CGFloat = 18) -> some View {
         padding(.horizontal, horizontal)
-            .padding(.top, 14)
+            .padding(.top, 10)
             .padding(.bottom, 10)
             .frame(maxHeight: .infinity, alignment: .top)
     }

@@ -4,7 +4,11 @@ import SwiftUI
 /// Texture overlays, frames and the date stamp.
 struct OverlaysPanel: View {
     @ObservedObject var session: EditorSession
-    @State private var page: Page = .overlays
+    /// Set when a Create tool opens one page directly (no page picker).
+    var fixedPage: Page?
+    @State private var chosenPage: Page = .overlays
+
+    private var page: Page { fixedPage ?? chosenPage }
     @State private var overlay: Overlay = .lightLeak
 
     enum Page: String, CaseIterable, Identifiable {
@@ -67,12 +71,14 @@ struct OverlaysPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Page", selection: $page) {
-                ForEach(Page.allCases) { item in
-                    Text(item.title).tag(item)
+            if fixedPage == nil {
+                Picker("Page", selection: $chosenPage) {
+                    ForEach(Page.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
             if page == .overlays {
                 overlayChips
                 ScrollView {

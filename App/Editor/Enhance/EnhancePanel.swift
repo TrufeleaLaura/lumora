@@ -69,98 +69,111 @@ extension EditorSession {
     }
 }
 
-/// One-tap enhance, sky replacement and background tools.
+/// One-tap enhance, sky replacement and background tools. The Auto, Sky and Background tools
+/// each open one part.
 struct EnhancePanel: View {
     @ObservedObject var session: EditorSession
+    var part: Part = .all
+
+    enum Part { case all, auto, sky, background }
 
     var body: some View {
         if let busy = session.preparingMask {
-            ProgressView(busy)
+            DevelopingIndicator(caption: busy)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 10) {
-                        bigButton("Auto enhance", symbol: "wand.and.rays") { session.autoEnhance(lowLight: false) }
-                        bigButton("Low light", symbol: "moon.stars") { session.autoEnhance(lowLight: true) }
-                        bigButton("Blur background", symbol: "camera.aperture") {
-                            session.perform("Blur background") { document in
-                                document.styles.lensBlur.mode = .subject
-                                document.styles.lensBlur.amount = max(document.styles.lensBlur.amount, 60)
+                    if part == .all || part == .auto {
+                        ActionGroup {
+                            ActionRow(title: "Auto enhance", detail: "Balances light and color", action: "Apply") {
+                                session.autoEnhance(lowLight: false)
+                            }
+                            ActionRow(title: "Low light", detail: "Brightens and removes noise", action: "Apply") {
+                                session.autoEnhance(lowLight: true)
                             }
                         }
-                    }
-
-                    Text("Sky")
-                        .font(Typeface.jost(15, weight: 560))
-                    HScroll {
-                        HStack(spacing: 6) {
-                            ForEach(SkyStyle.allCases) { style in
-                                let selected = session.document.sky.style == style
-                                Button {
-                                    session.setSkyStyle(style)
-                                } label: {
-                                    Text(style.title)
-                                        .font(Typeface.jost(13, weight: 500))
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                }
-                                .buttonStyle(PressStyle())
-                            }
-                        }
-                    }
-                    if session.document.sky.style != .none {
-                        SliderList(session: session, specs: [
-                            SliderSpec(id: "sky.amount", title: "Amount", range: 0...100, defaultValue: 100, style: .integer, keyPath: \EditDocument.sky.amount),
-                            SliderSpec(id: "sky.relight", title: "Relight", range: 0...100, defaultValue: 50, style: .integer, keyPath: \EditDocument.sky.relight),
-                            SliderSpec(id: "sky.seed", title: "Clouds", range: 0...9, style: .integer, keyPath: \EditDocument.sky.seed),
-                        ])
-                    }
-
-                    Text("Background")
-                        .font(Typeface.jost(15, weight: 560))
-                    Picker("Background", selection: Binding(
-                        get: { session.document.background.mode },
-                        set: { session.setBackgroundMode($0) }
-                    )) {
-                        ForEach(BackgroundMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    if session.document.background.mode == .color {
-                        ColorRow(selected: session.document.background.color) { color in
-                            session.perform("Background color") { $0.background.color = color }
-                        }
-                    } else if session.document.background.mode == .transparent {
-                        Text("The background is cut out. Export as PNG to keep it transparent.")
+                        Text("Tip: Export, then Enlarge 2\u{00D7}, makes a bigger file for prints.")
                             .font(Typeface.jost(12))
                             .foregroundStyle(Darkroom.stone)
                     }
-                    Text("Tip: Export, then Enlarge 2×, makes a bigger file for prints.")
-                        .font(Typeface.jost(12))
-                        .foregroundStyle(Darkroom.stone)
+                    if part == .all || part == .sky {
+                        if part == .all { heading("Sky") }
+                        sky
+                    }
+                    if part == .all || part == .background {
+                        if part == .all { heading("Background") }
+                        background
+                    }
                 }
                 .padding(.bottom, 8)
             }
         }
     }
 
-    private func bigButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 20))
-                Text(title)
-                    .font(Typeface.jost(12, weight: 500))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+    private func heading(_ title: String) -> some View {
+        Text(title)
+            .caps(10)
+            .foregroundStyle(Darkroom.stone)
+    }
+
+    private var sky: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HScroll {
+                HStack(spacing: 6) {
+                    ForEach(SkyStyle.allCases) { style in
+                        let selected = session.document.sky.style == style
+                        Button {
+                            session.setSkyStyle(style)
+                        } label: {
+                            Text(style.title)
+                                .font(Typeface.jost(13, weight: 500))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        }
+                        .buttonStyle(PressStyle())
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            if session.document.sky.style != .none {
+                SliderList(session: session, specs: [
+                    SliderSpec(id: "sky.amount", title: "Amount", range: 0...100, defaultValue: 100, style: .integer, keyPath: \EditDocument.sky.amount),
+                    SliderSpec(id: "sky.relight", title: "Relight", range: 0...100, defaultValue: 50, style: .integer, keyPath: \EditDocument.sky.relight),
+                    SliderSpec(id: "sky.seed", title: "Clouds", range: 0...9, style: .integer, keyPath: \EditDocument.sky.seed),
+                ])
+            }
         }
-        .buttonStyle(PressStyle())
+    }
+
+    private var background: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ActionGroup {
+                ActionRow(title: "Blur the background", detail: "Like a portrait lens", action: "Apply") {
+                    session.perform("Blur background") { document in
+                        document.styles.lensBlur.mode = .subject
+                        document.styles.lensBlur.amount = max(document.styles.lensBlur.amount, 60)
+                    }
+                }
+            }
+            Picker("Background", selection: Binding(
+                get: { session.document.background.mode },
+                set: { session.setBackgroundMode($0) }
+            )) {
+                ForEach(BackgroundMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            if session.document.background.mode == .color {
+                ColorRow(selected: session.document.background.color) { color in
+                    session.perform("Background color") { $0.background.color = color }
+                }
+            } else if session.document.background.mode == .transparent {
+                Text("The background is cut out. Export as PNG to keep it transparent.")
+                    .font(Typeface.jost(12))
+                    .foregroundStyle(Darkroom.stone)
+            }
+        }
     }
 }

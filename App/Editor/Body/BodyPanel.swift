@@ -22,7 +22,6 @@ struct BodyPanel: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     header(count: bodies.count)
-                    sectionChips
                     ScrollView {
                         if section == .muscles {
                             Picker("Abs style", selection: Binding(
@@ -51,7 +50,7 @@ struct BodyPanel: View {
     }
 
     private func header(count: Int) -> some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             if count > 1 {
                 HScroll {
                     HStack(spacing: 6) {
@@ -61,37 +60,18 @@ struct BodyPanel: View {
                         }
                     }
                 }
-            } else {
-                Text("Body")
-                    .font(Typeface.jost(13, weight: 560))
-                    .foregroundStyle(Darkroom.stone)
-                Spacer()
             }
-            Button {
-                session.resetBody()
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(Typeface.jost(13))
-            }
-            .accessibilityLabel("Reset body")
-        }
-    }
-
-    private var sectionChips: some View {
-        HScroll {
-            HStack(spacing: 6) {
-                ForEach(BodyCatalog.Section.allCases) { item in
-                    Button {
-                        section = item
-                    } label: {
-                        Label(item.title, systemImage: item.symbol)
-                            .font(Typeface.jost(13, weight: 500))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                    }
-                    .buttonStyle(PressStyle())
+            HStack(alignment: .center, spacing: 8) {
+                SectionTabs(items: BodyCatalog.Section.allCases, selection: $section, title: { $0.title })
+                Button {
+                    session.resetBody()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 14, weight: .light))
+                        .foregroundStyle(Darkroom.stone)
+                        .frame(width: 32, height: 32)
                 }
+                .accessibilityLabel("Reset body")
             }
         }
     }

@@ -71,7 +71,16 @@ final class EditorSession: ObservableObject, Identifiable {
     @Published var splitPosition: CGFloat = 0.5 {
         didSet { renderer.splitPosition = splitPosition }
     }
-    @Published var activeTool: EditorTool = .adjust {
+    /// The tool chosen in the editor's categories; it decides which panel shows.
+    @Published var studioTool: StudioTool = .presets {
+        didSet {
+            activeTool = studioTool.editorTool
+            if let tool = studioTool.retouchTool { retouchTool = tool }
+        }
+    }
+    /// A recipe in progress, step by step.
+    @Published var guide: GuideProgress?
+    @Published var activeTool: EditorTool = .looks {
         didSet {
             guard activeTool != oldValue else { return }
             renderer.allowsZoom = activeTool != .crop
@@ -635,6 +644,31 @@ final class EditorSession: ObservableObject, Identifiable {
     }
 
     // MARK: - Toast
+
+    // MARK: - Recipes
+
+    /// Starts a recipe on its first step.
+    func startGuide(_ recipe: Recipe) {
+        guide = GuideProgress(recipe: recipe, step: 0)
+        studioTool = recipe.steps[0].tool
+    }
+
+    /// Moves to the next step, or finishes the recipe.
+    func advanceGuide() {
+        guard var progress = guide else { return }
+        if progress.isLast {
+            guide = nil
+            showToast("\(progress.recipe.title) finished")
+        } else {
+            progress.step += 1
+            guide = progress
+            studioTool = progress.current.tool
+        }
+    }
+
+    func endGuide() {
+        guide = nil
+    }
 
     func showToast(_ message: String) {
         toast = message

@@ -1,10 +1,15 @@
 import LumoraCore
 import SwiftUI
 
-/// Face retouch & reshape: pick all faces or one face, then Skin / Eyes / Shape / Nose & lips / Teeth.
+/// Face retouch, makeup and hair. A Portrait tool opens it on a few of its sections
+/// (Features shows eyes, teeth, brows, nose and lips, and shape).
 struct FacePanel: View {
     @ObservedObject var session: EditorSession
-    @State private var section: FaceCatalog.Section = .looks
+    var sections: [FaceCatalog.Section] = FaceCatalog.Section.allCases
+    @State private var chosen: FaceCatalog.Section?
+    @State private var lastLook: String?
+
+    private var section: FaceCatalog.Section { chosen ?? sections.first ?? .skin }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -20,26 +25,13 @@ struct FacePanel: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    header(faceCount: faces.count)
-                    sectionChips
+                    if faces.count > 1 || sections.count > 1 {
+                        header(faceCount: faces.count)
+                    }
                     ScrollView {
                         if section == .looks {
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                                ForEach(MakeupLook.all) { look in
-                                    Button {
-                                        let target = session.faceTarget
-                                        session.perform(look.title) { look.apply(to: &$0[keyPath: target]) }
-                                        if look.id != "none" { session.celebrate() }
-                                    } label: {
-                                        Text(look.title)
-                                            .font(Typeface.jost(12, weight: 560))
-                                            .frame(maxWidth: .infinity, minHeight: 38)
-                                            .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                    }
-                                    .buttonStyle(PressStyle())
-                                }
-                            }
-                            .padding(.bottom, 8)
+                            makeupLooks
+                                .padding(.bottom, 8)
                         }
                         if let palette = section.palette {
                             paletteRow(palette.colors, keyPath: palette.keyPath)
@@ -84,7 +76,7 @@ struct FacePanel: View {
     }
 
     private func header(faceCount: Int) -> some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             if faceCount > 1 {
                 HScroll {
                     HStack(spacing: 6) {
@@ -94,49 +86,94 @@ struct FacePanel: View {
                         }
                     }
                 }
-            } else {
-                Text("Face")
-                    .font(Typeface.jost(13, weight: 560))
-                    .foregroundStyle(Darkroom.stone)
-                Spacer()
             }
-            Button {
-                session.autoBeauty()
-            } label: {
-                Label("Auto", systemImage: "wand.and.rays")
-                    .font(Typeface.jost(13, weight: 560))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+            HStack(alignment: .center, spacing: 8) {
+                if sections.count > 1 {
+                    SectionTabs(items: sections, selection: Binding(get: { section }, set: { chosen = $0 }), title: { $0.title })
+                } else {
+                    Spacer()
+                }
+                Button {
+                    session.resetFace()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 14, weight: .light))
+                        .foregroundStyle(Darkroom.stone)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("Reset face")
             }
-            .buttonStyle(PressStyle())
-            Button {
-                session.resetFace()
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(Typeface.jost(13))
-            }
-            .accessibilityLabel("Reset face")
         }
     }
 
-    private var sectionChips: some View {
+    /// Complete makeup looks as palette cards: the lip, cheek and eye colors each look uses.
+    private var makeupLooks: some View {
         HScroll {
-            HStack(spacing: 6) {
-                ForEach(FaceCatalog.Section.allCases) { item in
+            HStack(spacing: 10) {
+                ForEach(MakeupLook.all) { look in
+                    let colors = Self.swatches(for: look)
+                    let selected = lastLook == look.id
                     Button {
-                        section = item
+                        let target = session.faceTarget
+                        session.perform(look.title) { look.apply(to: &$0[keyPath: target]) }
+                        lastLook = look.id
+                        if look.id != "none" { session.celebrate() }
                     } label: {
-                        Label(item.title, systemImage: item.symbol)
-                            .font(Typeface.jost(13, weight: 500))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: -5) {
+                                if colors.isEmpty {
+                                    Circle()
+                                        .strokeBorder(Darkroom.stone, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                                        .frame(width: 22, height: 22)
+                                } else {
+                                    ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
+                                        Circle()
+                                            .fill(color)
+                                            .frame(width: 22, height: 22)
+                                            .overlay(Circle().stroke(Darkroom.raised, lineWidth: 2))
+                                    }
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(look.title)
+                                    .font(Typeface.cormorant(17, weight: 500, italic: true))
+                                    .foregroundStyle(Darkroom.cream)
+                                    .lineLimit(1)
+                                Text(colors.isEmpty ? "BARE" : "LIP \u{00B7} CHEEK \u{00B7} EYE")
+                                    .filmCode(8.5)
+                                    .foregroundStyle(Darkroom.stone)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(12)
+                        .frame(width: 104, alignment: .leading)
+                        .background(Darkroom.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay {
+                            if selected {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(Darkroom.cream, lineWidth: 1.25)
+                            }
+                        }
                     }
                     .buttonStyle(PressStyle())
+                    .accessibilityLabel(look.title)
                 }
             }
+            .padding(.vertical, 2)
         }
+    }
+
+    /// The colors a look puts on lips, cheeks and eyes (only the ones it uses).
+    private static func swatches(for look: MakeupLook) -> [Color] {
+        var settings = FaceRetouchSettings()
+        look.apply(to: &settings)
+        let makeup = settings.makeup
+        var colors: [Color] = []
+        let swatch = { (c: MakeupColor) in Color(red: c.red, green: c.green, blue: c.blue) }
+        if makeup.lipstickAmount > 0 { colors.append(swatch(makeup.lipstickColor)) }
+        if makeup.blushAmount > 0 { colors.append(swatch(makeup.blushColor)) }
+        if makeup.eyeshadowAmount > 0 { colors.append(swatch(makeup.eyeshadowColor)) }
+        return colors
     }
 
     private func paletteRow(_ colors: [(String, MakeupColor)], keyPath: WritableKeyPath<MakeupSettings, MakeupColor>) -> some View {

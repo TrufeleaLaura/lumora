@@ -119,6 +119,57 @@ struct IconButton: View {
     }
 }
 
+// MARK: - Action rows
+
+/// A grouped list of rows, like Settings.
+struct ActionGroup<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+        }
+        .background(Darkroom.raised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+/// One row: a title, a line of explanation and a small action button.
+struct ActionRow: View {
+    let title: String
+    let detail: String
+    let action: String
+    let perform: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typeface.jost(15))
+                    .foregroundStyle(Darkroom.cream)
+                Text(detail)
+                    .font(Typeface.jost(12.5))
+                    .foregroundStyle(Darkroom.stone)
+            }
+            Spacer(minLength: 8)
+            Button(action: perform) {
+                Text(action)
+                    .caps(10)
+                    .foregroundStyle(Darkroom.cream)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).strokeBorder(Darkroom.cream.opacity(0.35), lineWidth: 0.75))
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityLabel("\(action) \(title)")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Darkroom.line).frame(height: 0.5).padding(.leading, 16)
+        }
+    }
+}
+
 // MARK: - Progress
 
 /// A softly pulsing safelight with a caption: "developing".

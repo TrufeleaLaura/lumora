@@ -21,17 +21,20 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    private func open(_ app: XCUIApplication, tool: String) {
+    /// Opens a category, then one of its tools (swiping the tool tabs until it is on screen).
+    private func open(_ app: XCUIApplication, category: String, tool: String) {
+        let categoryButton = app.buttons["cat.\(category)"]
+        guard categoryButton.waitForExistence(timeout: 5) else { return }
+        categoryButton.tap()
         let button = app.buttons["tool.\(tool)"]
         guard button.waitForExistence(timeout: 5) else { return }
-        // Tools live in a scrolling bar: swipe until the button is on screen.
         let screen = app.windows.firstMatch.frame
-        let bar = app.scrollViews.containing(.button, identifier: "tool.looks").firstMatch
+        let tabs = app.scrollViews.containing(.button, identifier: "tool.\(tool)").firstMatch
         var attempts = 0
         while attempts < 6 {
             let frame = button.frame
             if frame.minX >= screen.minX && frame.maxX <= screen.maxX && !frame.isEmpty { break }
-            if frame.maxX > screen.maxX { bar.swipeLeft() } else { bar.swipeRight() }
+            if frame.maxX > screen.maxX { tabs.swipeLeft() } else { tabs.swipeRight() }
             attempts += 1
         }
         button.tap()
@@ -50,26 +53,39 @@ final class ScreenshotTests: XCTestCase {
         sleep(3)
         save("00-editor")
 
-        let tools = ["looks", "enhance", "adjust", "masks", "retouch", "styles", "overlays", "text", "face", "body", "reshape", "crop"]
-        for (index, tool) in tools.enumerated() {
-            open(app, tool: tool)
-            save(String(format: "%02d-%@", index + 1, tool))
+        let map: [(String, [String])] = [
+            ("looks", ["presets", "auto"]),
+            ("adjust", ["light", "color", "curve", "grading", "detail", "masks", "crop"]),
+            ("portrait", ["skin", "features", "makeup", "hair", "body", "reshape"]),
+            ("retouch", ["remove", "heal", "clone", "sky", "background"]),
+            ("create", ["effects", "lightAndDust", "frames", "text", "stickers"]),
+        ]
+        var index = 1
+        for (category, tools) in map {
+            for (position, tool) in tools.enumerated() {
+                open(app, category: category, tool: tool)
+                save(String(format: "%02d-%@-%@", index, category, tool))
+                index += 1
+                // Each category's first-time tip shows once; dismiss it after its first screenshot.
+                if position == 0, app.buttons["Got it"].exists {
+                    app.buttons["Got it"].tap()
+                    sleep(1)
+                }
+            }
         }
 
         // A few deeper screens.
-        open(app, tool: "masks")
+        open(app, category: "adjust", tool: "masks")
         if button(app, containing: "Subject").waitForExistence(timeout: 3) {
             button(app, containing: "Subject").tap()
             sleep(6)
-            save("20-masks-subject")
+            save("40-masks-subject")
         }
-        open(app, tool: "overlays")
-        if app.buttons["Frame"].waitForExistence(timeout: 3) {
-            app.buttons["Frame"].tap()
-            sleep(1)
-            if button(app, containing: "Instant").exists { button(app, containing: "Instant").tap() }
+        open(app, category: "create", tool: "frames")
+        if button(app, containing: "Instant").waitForExistence(timeout: 3) {
+            button(app, containing: "Instant").tap()
             sleep(3)
-            save("21-overlays-frame")
+            save("41-frames-instant")
             let canvas = app.descendants(matching: .any)["canvas"]
             let info = "canvas: \(canvas.value as? String ?? "?") frame: \(canvas.frame)"
             print(info)
@@ -77,13 +93,42 @@ final class ScreenshotTests: XCTestCase {
                 try? info.write(to: directory.appendingPathComponent("canvas-info.txt"), atomically: true, encoding: .utf8)
             }
         }
-        open(app, tool: "styles")
-        sleep(1)
-        save("22-styles")
 
-        app.buttons["Export"].tap()
-        sleep(2)
-        save("23-export")
+        // Find a tool, a goal's recipe, and the guided steps.
+        if app.buttons["Find a tool"].waitForExistence(timeout: 3) {
+            app.buttons["Find a tool"].tap()
+            sleep(2)
+            save("42-find-a-tool")
+            if button(app, containing: "Natural portrait").waitForExistence(timeout: 3) {
+                button(app, containing: "Natural portrait").tap()
+                sleep(2)
+                save("43-recipe")
+                if app.buttons["Start"].waitForExistence(timeout: 3) {
+                    app.buttons["Start"].tap()
+                    sleep(3)
+                    save("44-guided")
+                }
+            }
+        }
+        if app.buttons["Find a tool"].waitForExistence(timeout: 3) {
+            app.buttons["Find a tool"].tap()
+            sleep(2)
+            let search = app.searchFields.firstMatch
+            if search.waitForExistence(timeout: 3) {
+                search.tap()
+                search.typeText("teeth")
+                sleep(2)
+                save("45-search")
+            }
+            if app.buttons["Close"].exists { app.buttons["Close"].tap() }
+            sleep(1)
+        }
+
+        if app.buttons["Export"].waitForExistence(timeout: 3) {
+            app.buttons["Export"].tap()
+            sleep(2)
+            save("46-export")
+        }
     }
 
     func testLibraryAndSettings() throws {
@@ -92,14 +137,22 @@ final class ScreenshotTests: XCTestCase {
         app.launch()
         sleep(3)
         save("30-library")
+        let goal = app.buttons["goal.portrait"]
+        if goal.waitForExistence(timeout: 5) {
+            goal.tap()
+            sleep(2)
+            save("31-home-recipe")
+            app.swipeDown(velocity: .fast)
+            sleep(2)
+        }
         if app.buttons["Settings"].waitForExistence(timeout: 5) {
             app.buttons["Settings"].tap()
             sleep(2)
-            save("31-settings")
+            save("32-settings")
             if button(app, containing: "welcome tour").waitForExistence(timeout: 3) {
                 button(app, containing: "welcome tour").tap()
                 sleep(3)
-                save("32-onboarding")
+                save("33-onboarding")
             }
         }
     }

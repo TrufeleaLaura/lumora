@@ -16,6 +16,10 @@ struct LibraryView: View {
     @State private var isMakingCollage = false
     @State private var dragged: UUID?
     @State private var isShowingSettings = false
+    /// A goal opened from the home screen, and the photo picked for it.
+    @State private var recipeToShow: Recipe?
+    @State private var recipePick: PhotosPickerItem?
+    @State private var pendingRecipe: Recipe?
     /// Tiles rise in one after another the first time the grid shows.
     @State private var tilesAppeared = false
     @AppStorage("onboarding.seen") private var hasSeenOnboarding = false
@@ -30,8 +34,10 @@ struct LibraryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                newEditButton
-                    .padding(.top, 22)
+                intro
+                    .padding(.top, 28)
+                goals
+                    .padding(.top, 32)
                 VStack(spacing: 0) {
                     row("Collage and story", detail: "Layouts, moodboards and 9:16 stories", symbol: "square.grid.2x2") {
                         isMakingCollage = true
@@ -132,6 +138,31 @@ struct LibraryView: View {
             if arguments.contains("-demo"), session == nil {
                 Task { session = await library.openSample() }
             }
+        }
+        .onChange(of: recipePick) { _, item in
+            guard let item else { return }
+            pendingRecipe = recipeToShow
+            recipeToShow = nil
+            recipePick = nil
+            importPhoto(item)
+        }
+        .sheet(item: $recipeToShow) { recipe in
+            RecipeView(recipe: recipe) {
+                PhotosPicker(selection: $recipePick, matching: .images, preferredItemEncoding: .current) {
+                    Text("Choose a photo")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                Button {
+                    startOnSample(recipe)
+                } label: {
+                    Text("Try it on the sample")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
+            .presentationDetents([.large])
+            .presentationBackground(Darkroom.ink)
         }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
@@ -241,34 +272,67 @@ struct LibraryView: View {
         return "\(count) FRAME" + (count == 1 ? "" : "S")
     }
 
-    private var newEditButton: some View {
-        PhotosPicker(selection: $pickerItem, matching: .images, preferredItemEncoding: .current) {
-            HStack(spacing: 16) {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .ultraLight))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("New edit")
-                        .caps(13)
-                    Text("Choose a photo from your library")
-                        .font(Typeface.jost(13))
-                        .foregroundStyle(Darkroom.stone)
-                }
-                Spacer()
-                Circle()
-                    .fill(Darkroom.safelight)
-                    .frame(width: 6, height: 6)
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Edit a photo")
+                .font(Typeface.cormorant(42, weight: 500))
+                .foregroundStyle(Darkroom.cream)
+            Text("Choose a photo, or start from what you want it to look like.")
+                .font(Typeface.jost(15))
+                .foregroundStyle(Darkroom.stone)
+                .lineSpacing(3)
+                .padding(.top, 8)
+            PhotosPicker(selection: $pickerItem, matching: .images, preferredItemEncoding: .current) {
+                Text("Choose a photo")
+                    .frame(maxWidth: .infinity)
             }
-            .foregroundStyle(Darkroom.cream)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 26)
-            .frame(maxWidth: .infinity)
-            .background(Darkroom.surface)
-            .overlay(ViewfinderFrame(length: 12).stroke(Darkroom.cream, lineWidth: 1))
-            .contentShape(Rectangle())
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(library.isBusy)
+            .accessibilityLabel("New edit")
+            .padding(.top, 22)
         }
-        .buttonStyle(PressStyle(scale: 0.985))
+    }
+
+    /// Goals people come with; each opens a short guided recipe.
+    private var goals: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Start with a goal")
+                .font(Typeface.jost(15, weight: 560))
+                .foregroundStyle(Darkroom.stone)
+                .padding(.leading, 4)
+            VStack(spacing: 0) {
+                ForEach(Array(Recipe.all.enumerated()), id: \.element.id) { index, recipe in
+                    Button {
+                        recipeToShow = recipe
+                    } label: {
+                        FinderRow(title: recipe.title, detail: recipe.subtitle)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(PressStyle(scale: 0.99))
+                    .overlay(alignment: .top) {
+                        if index > 0 {
+                            Rectangle().fill(Darkroom.line).frame(height: 0.5).padding(.leading, 16)
+                        }
+                    }
+                    .accessibilityIdentifier("goal.\(recipe.id)")
+                }
+            }
+            .background(Darkroom.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
         .disabled(library.isBusy)
-        .accessibilityLabel("New edit")
+    }
+
+    /// Runs a recipe on the bundled sample photo.
+    private func startOnSample(_ recipe: Recipe) {
+        recipeToShow = nil
+        Task {
+            // Let the recipe sheet finish closing before the editor covers the screen.
+            try? await Task.sleep(for: .milliseconds(450))
+            let opened = await library.openSample()
+            opened?.startGuide(recipe)
+            session = opened
+        }
     }
 
     private func row(_ title: String, detail: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -445,7 +509,12 @@ struct LibraryView: View {
                     library.errorMessage = LibraryError.unreadablePhoto.localizedDescription
                     return
                 }
-                session = await library.importPhoto(data: data)
+                let opened = await library.importPhoto(data: data)
+                if let recipe = pendingRecipe {
+                    opened?.startGuide(recipe)
+                    pendingRecipe = nil
+                }
+                session = opened
             } catch {
                 library.errorMessage = error.localizedDescription
             }
