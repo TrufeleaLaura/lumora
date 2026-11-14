@@ -17,17 +17,6 @@ enum StudioCategory: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Shown once, the first time the category opens.
-    var tip: String {
-        switch self {
-        case .looks: return "Start here. A look sets the mood, and everything after it stays adjustable."
-        case .adjust: return "Work from top to bottom: light first, then color, then detail."
-        case .portrait: return "Less is more. Small amounts look the most natural."
-        case .retouch: return "Paint loosely. Lumora finds the edges for you."
-        case .create: return "Finishing touches for your feed and your stories."
-        }
-    }
-
     var tools: [StudioTool] { StudioTool.allCases.filter { $0.category == self } }
 }
 

@@ -62,12 +62,12 @@ final class ScreenshotTests: XCTestCase {
         ]
         var index = 1
         for (category, tools) in map {
-            for (position, tool) in tools.enumerated() {
+            for tool in tools {
                 open(app, category: category, tool: tool)
                 save(String(format: "%02d-%@-%@", index, category, tool))
                 index += 1
-                // Each category's first-time tip shows once; dismiss it after its first screenshot.
-                if position == 0, app.buttons["tip.dismiss"].exists {
+                // Harder tools show a tip the first time; dismiss it after the screenshot.
+                if app.buttons["tip.dismiss"].exists {
                     app.buttons["tip.dismiss"].tap()
                     sleep(1)
                 }
@@ -80,6 +80,19 @@ final class ScreenshotTests: XCTestCase {
             button(app, containing: "Subject").tap()
             sleep(6)
             save("40-masks-subject")
+        }
+        // A tool's guide, from its info button.
+        if app.buttons["tool.guide"].waitForExistence(timeout: 3) {
+            app.buttons["tool.guide"].tap()
+            sleep(2)
+            save("40b-guide-masks")
+            app.swipeUp()
+            sleep(1)
+            save("40c-guide-masks-tips")
+            if app.buttons["guide.close"].waitForExistence(timeout: 3) {
+                app.buttons["guide.close"].tap()
+            }
+            sleep(2)
         }
         open(app, category: "create", tool: "frames")
         if button(app, containing: "Instant").waitForExistence(timeout: 3) {

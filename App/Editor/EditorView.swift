@@ -11,8 +11,10 @@ struct EditorView: View {
     @State private var isShowingFinder = false
     /// The last tool used in each category, so switching back returns to it.
     @State private var lastTool: [StudioCategory: StudioTool] = [:]
-    /// Categories whose first-time tip was dismissed ("looks,adjust,").
-    @AppStorage("tips.seen") private var seenTips = ""
+    /// Tools whose first-time tip was dismissed ("masks,curve,").
+    @AppStorage("tips.tools.seen") private var seenTips = ""
+    /// The tool whose guide is open.
+    @State private var guideTool: StudioTool?
     @Namespace private var toolNamespace
 
     var body: some View {
@@ -56,6 +58,11 @@ struct EditorView: View {
         }
         .sheet(isPresented: $isShowingFinder) {
             ToolFinderView(session: session)
+                .presentationBackground(Darkroom.ink)
+        }
+        .sheet(item: $guideTool) { tool in
+            ToolGuideView(tool: tool)
+                .presentationDetents([.medium, .large])
                 .presentationBackground(Darkroom.ink)
         }
     }
@@ -315,7 +322,7 @@ struct EditorView: View {
         }
     }
 
-    /// One line saying what the open tool does (plus Auto for face tools).
+    /// One line saying what the open tool does, its guide, and Auto for face tools.
     private var toolSummary: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(session.studioTool.summary)
@@ -324,6 +331,18 @@ struct EditorView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
+            Button {
+                guideTool = session.studioTool
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundStyle(Darkroom.stone)
+                    .frame(width: 28, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle(scale: 0.9))
+            .accessibilityLabel("How to use \(session.studioTool.title)")
+            .accessibilityIdentifier("tool.guide")
             if !session.studioTool.faceSections.isEmpty {
                 Button("Auto") { session.autoBeauty() }
                     .caps(10.5)
@@ -338,10 +357,11 @@ struct EditorView: View {
     }
 
     private var toolPanel: some View {
-        let category = session.studioTool.category
+        let tool = session.studioTool
+        let firstTip = ToolGuide.of(tool).firstTip
         return VStack(spacing: 0) {
-            if session.guide == nil && !seenTips.contains(category.rawValue) {
-                tipCard(category)
+            if session.guide == nil, let firstTip, !hasSeenTip(for: tool) {
+                tipCard(tool, text: firstTip)
             }
             // Panels cross-fade in place (a ZStack, so old and new never stack up).
             ZStack(alignment: .top) {
@@ -356,25 +376,39 @@ struct EditorView: View {
         .clipped()
     }
 
-    /// A short tip, shown the first time a category opens.
-    private func tipCard(_ category: StudioCategory) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(Darkroom.safelight)
-                .frame(width: 5, height: 5)
-                .padding(.top, 6)
-            Text(category.tip)
-                .font(Typeface.jost(13))
-                .foregroundStyle(Darkroom.cream)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 4)
-            Button("Got it") {
-                withAnimation(Darkroom.ease) { seenTips += category.rawValue + "," }
+    private func hasSeenTip(for tool: StudioTool) -> Bool {
+        seenTips.split(separator: ",").contains(Substring(tool.rawValue))
+    }
+
+    /// The tool's own tip, shown the first time a harder tool opens.
+    private func tipCard(_ tool: StudioTool, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(Darkroom.safelight)
+                    .frame(width: 5, height: 5)
+                    .padding(.top, 6)
+                Text(text)
+                    .font(Typeface.jost(13))
+                    .foregroundStyle(Darkroom.cream)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
             }
-            .caps(9.5)
-            .foregroundStyle(Darkroom.stone)
-            .buttonStyle(PressStyle())
-            .accessibilityIdentifier("tip.dismiss")
+            HStack(spacing: 18) {
+                Spacer()
+                Button("How to use") { guideTool = tool }
+                    .caps(9.5)
+                    .foregroundStyle(Darkroom.safelight)
+                    .buttonStyle(PressStyle())
+                    .accessibilityIdentifier("tip.guide")
+                Button("Got it") {
+                    withAnimation(Darkroom.ease) { seenTips += tool.rawValue + "," }
+                }
+                .caps(9.5)
+                .foregroundStyle(Darkroom.stone)
+                .buttonStyle(PressStyle())
+                .accessibilityIdentifier("tip.dismiss")
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
