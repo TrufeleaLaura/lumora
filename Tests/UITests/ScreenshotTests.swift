@@ -67,8 +67,8 @@ final class ScreenshotTests: XCTestCase {
                 save(String(format: "%02d-%@-%@", index, category, tool))
                 index += 1
                 // Each category's first-time tip shows once; dismiss it after its first screenshot.
-                if position == 0, app.buttons["Got it"].exists {
-                    app.buttons["Got it"].tap()
+                if position == 0, app.buttons["tip.dismiss"].exists {
+                    app.buttons["tip.dismiss"].tap()
                     sleep(1)
                 }
             }
@@ -99,8 +99,8 @@ final class ScreenshotTests: XCTestCase {
             app.buttons["Find a tool"].tap()
             sleep(2)
             save("42-find-a-tool")
-            if button(app, containing: "Natural portrait").waitForExistence(timeout: 3) {
-                button(app, containing: "Natural portrait").tap()
+            if app.buttons["findgoal.portrait"].waitForExistence(timeout: 3) {
+                app.buttons["findgoal.portrait"].tap()
                 sleep(2)
                 save("43-recipe")
                 if app.buttons["Start"].waitForExistence(timeout: 3) {

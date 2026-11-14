@@ -351,7 +351,8 @@ struct EditorView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(height: 232)
+        // Anything taller than the panel runs off the bottom, never the top.
+        .frame(height: 232, alignment: .top)
         .clipped()
     }
 
@@ -373,6 +374,7 @@ struct EditorView: View {
             .caps(9.5)
             .foregroundStyle(Darkroom.stone)
             .buttonStyle(PressStyle())
+            .accessibilityIdentifier("tip.dismiss")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

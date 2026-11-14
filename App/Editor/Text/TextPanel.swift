@@ -59,7 +59,7 @@ struct TextPanel: View {
                             isEditingText = true
                         })
                     } else if session.document.texts.isEmpty && !stickersShown {
-                        Text("Add text or stickers, then drag them on the photo.")
+                        Text(mode == .text ? "Add text, then drag it on the photo." : "Add text or stickers, then drag them on the photo.")
                             .font(Typeface.jost(13))
                             .foregroundStyle(Darkroom.stone)
                     }

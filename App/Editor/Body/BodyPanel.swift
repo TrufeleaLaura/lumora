@@ -63,6 +63,7 @@ struct BodyPanel: View {
             }
             HStack(alignment: .center, spacing: 8) {
                 SectionTabs(items: BodyCatalog.Section.allCases, selection: $section, title: { $0.title })
+                    .clipped()
                 Button {
                     session.resetBody()
                 } label: {

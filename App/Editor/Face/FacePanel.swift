@@ -90,6 +90,7 @@ struct FacePanel: View {
             HStack(alignment: .center, spacing: 8) {
                 if sections.count > 1 {
                     SectionTabs(items: sections, selection: Binding(get: { section }, set: { chosen = $0 }), title: { $0.title })
+                        .clipped()
                 } else {
                     Spacer()
                 }
@@ -143,6 +144,7 @@ struct FacePanel: View {
                                     .filmCode(8.5)
                                     .foregroundStyle(Darkroom.stone)
                                     .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                             }
                         }
                         .padding(12)

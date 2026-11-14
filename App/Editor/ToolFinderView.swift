@@ -89,6 +89,7 @@ struct ToolFinderView: View {
         } label: {
             FinderRow(title: recipe.title, detail: recipe.subtitle, showsChevron: false)
         }
+        .accessibilityIdentifier("findgoal.\(recipe.id)")
     }
 
     private func open(_ tool: StudioTool) {
