@@ -29,7 +29,7 @@ struct EditorView: View {
                         .fill(Darkroom.safelight)
                         .frame(width: 5, height: 5)
                     Text(toast)
-                        .font(.footnote.weight(.medium))
+                        .font(Typeface.jost(13, weight: 500))
                         .foregroundStyle(Darkroom.cream)
                 }
                 .padding(.horizontal, 16)
@@ -339,12 +339,12 @@ struct EditorView: View {
                     }
                 ))
                 .tint(Darkroom.safelight)
-                .font(.footnote.weight(.medium))
+                .font(Typeface.jost(13, weight: 500))
                 Button {
                     session.pickingWhiteBalance.toggle()
                 } label: {
                     Label(session.pickingWhiteBalance ? "Tap something white or grey on the photo" : "White balance picker", systemImage: "eyedropper")
-                        .font(.footnote.weight(.medium))
+                        .font(Typeface.jost(13, weight: 500))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .tint(session.pickingWhiteBalance ? Darkroom.safelight : Darkroom.cream)

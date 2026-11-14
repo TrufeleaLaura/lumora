@@ -42,7 +42,7 @@ struct LooksPanel: View {
                 SliderList(session: session, specs: [AdjustmentCatalog.lookStrength])
             } else {
                 Text("Tap a look to apply it. Your own adjustments stay editable underneath.")
-                    .font(.caption)
+                    .font(Typeface.jost(12))
                     .foregroundStyle(Darkroom.stone)
             }
 
@@ -62,7 +62,7 @@ struct LooksPanel: View {
                     }
                 }
             }
-            .font(.footnote.weight(.semibold))
+            .font(Typeface.jost(13, weight: 560))
         }
         .onAppear(perform: reloadCustom)
         .alert("Save preset", isPresented: $isNamingPreset) {
@@ -91,7 +91,7 @@ struct LooksPanel: View {
                         pack = item
                     } label: {
                         Text(item.title)
-                            .font(.footnote.weight(.medium))
+                            .font(Typeface.jost(13, weight: 500))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .drChip(pack == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -106,7 +106,7 @@ struct LooksPanel: View {
     private var customCells: some View {
         if presets.isEmpty && luts.isEmpty {
             Text("Saved presets and imported LUTs appear here.")
-                .font(.caption)
+                .font(Typeface.jost(12))
                 .foregroundStyle(Darkroom.stone)
                 .frame(height: 90)
         }

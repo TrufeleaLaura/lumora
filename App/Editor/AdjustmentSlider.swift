@@ -21,7 +21,7 @@ struct AdjustmentSlider: View {
                         .frame(width: 10, height: 10)
                 }
                 Text(spec.title)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(Typeface.jost(14))
                     .foregroundStyle(isChanged ? Darkroom.cream : Darkroom.stone)
                 Spacer()
                 Text(spec.formatted(value))

@@ -61,7 +61,7 @@ struct CurvePanel: View {
                         }
                     } label: {
                         Image(systemName: "arrow.counterclockwise")
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                     }
                     .accessibilityLabel("Reset curve")
                 }

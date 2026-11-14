@@ -40,7 +40,7 @@ struct HistorySheet: View {
                     .foregroundStyle(isCurrent ? Darkroom.safelight : Darkroom.muted)
                     .frame(width: 34, alignment: .leading)
                 Text(title)
-                    .font(.system(size: 15, weight: isCurrent ? .medium : .regular))
+                    .font(Typeface.jost(15, weight: isCurrent ? 500 : 400))
                     .foregroundStyle(isUndone ? Darkroom.muted : Darkroom.cream)
                 Spacer()
                 if isCurrent {

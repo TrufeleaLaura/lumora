@@ -65,7 +65,7 @@ struct StylesPanel: View {
                         }
                         .pickerStyle(.segmented)
                         Text(focusHint)
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                             .foregroundStyle(Darkroom.stone)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -75,7 +75,7 @@ struct StylesPanel: View {
                             session.resetStyle(effect)
                         } label: {
                             Label("Reset \(effect.title)", systemImage: "arrow.counterclockwise")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                     }
                 }

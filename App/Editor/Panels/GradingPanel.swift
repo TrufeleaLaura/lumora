@@ -32,7 +32,7 @@ struct GradingPanel: View {
 
                     let wheel = session.document[keyPath: range.keyPath]
                     Text("\(Int(wheel.hue.rounded()))° · \(Int(wheel.saturation.rounded()))")
-                        .font(.caption2.monospacedDigit())
+                        .font(Typeface.mono(10))
                         .foregroundStyle(Darkroom.stone)
                     Button {
                         session.perform("Reset \(range.title.lowercased()) grading") {
@@ -40,7 +40,7 @@ struct GradingPanel: View {
                         }
                     } label: {
                         Image(systemName: "arrow.counterclockwise")
-                            .font(.caption)
+                            .font(Typeface.jost(12))
                     }
                     .accessibilityLabel("Reset \(range.title.lowercased())")
                 }

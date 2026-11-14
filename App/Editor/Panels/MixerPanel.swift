@@ -20,7 +20,7 @@ struct MixerPanel: View {
         VStack(alignment: .leading, spacing: 14) {
             if session.document.blackWhite.isEnabled {
                 Text("Black & white mix")
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
                     .foregroundStyle(Darkroom.stone)
                 SliderList(session: session, specs: AdjustmentCatalog.blackWhiteSliders, swatches: swatches)
             } else {

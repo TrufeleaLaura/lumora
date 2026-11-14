@@ -15,7 +15,7 @@ struct BodyPanel: View {
                             .font(.system(size: 30))
                             .foregroundStyle(Darkroom.stone)
                         Text("No person found. Body tools work best on full or half-body photos.")
-                            .font(.subheadline)
+                            .font(Typeface.jost(15))
                             .foregroundStyle(Darkroom.stone)
                             .multilineTextAlignment(.center)
                     }
@@ -63,7 +63,7 @@ struct BodyPanel: View {
                 }
             } else {
                 Text("Body")
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
                     .foregroundStyle(Darkroom.stone)
                 Spacer()
             }
@@ -71,7 +71,7 @@ struct BodyPanel: View {
                 session.resetBody()
             } label: {
                 Image(systemName: "arrow.counterclockwise")
-                    .font(.footnote)
+                    .font(Typeface.jost(13))
             }
             .accessibilityLabel("Reset body")
         }
@@ -85,7 +85,7 @@ struct BodyPanel: View {
                         section = item
                     } label: {
                         Label(item.title, systemImage: item.symbol)
-                            .font(.footnote.weight(.medium))
+                            .font(Typeface.jost(13, weight: 500))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -99,7 +99,7 @@ struct BodyPanel: View {
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.footnote.weight(.medium))
+                .font(Typeface.jost(13, weight: 500))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -121,7 +121,7 @@ struct BodyMarkersOverlay: View {
                     if let hips = shape.pose.hipCenter {
                         let selected = session.selectedBodyIndex == index
                         Text("\(index + 1)")
-                            .font(.caption.weight(.bold))
+                            .font(Typeface.jost(12, weight: 640))
                             .foregroundStyle(Darkroom.ink)
                             .frame(width: 26, height: 26)
                             .background(selected ? Darkroom.safelight : Color.white, in: Circle())

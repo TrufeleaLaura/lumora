@@ -14,7 +14,7 @@ struct CropPanel: View {
                             session.setAspect(preset)
                         } label: {
                             Text(preset.title)
-                                .font(.footnote.weight(.medium))
+                                .font(Typeface.jost(13, weight: 500))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
                                 .drChip(session.document.geometry.aspect == preset, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -31,7 +31,7 @@ struct CropPanel: View {
                 iconButton("level", label: "Auto straighten") { session.autoStraighten() }
                 Spacer()
                 Button("Reset") { session.resetGeometry() }
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
                     .disabled(session.document.geometry.isIdentity && session.document.geometry.aspect == .free)
             }
             .font(.system(size: 18))

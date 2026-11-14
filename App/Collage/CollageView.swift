@@ -37,7 +37,7 @@ struct CollageView: View {
                         .fill(Darkroom.safelight)
                         .frame(width: 5, height: 5)
                     Text(toast)
-                        .font(.footnote.weight(.medium))
+                        .font(Typeface.jost(13, weight: 500))
                         .foregroundStyle(Darkroom.cream)
                 }
                 .padding(.horizontal, 16)
@@ -214,18 +214,18 @@ struct CollageView: View {
             if let index = model.selected, index < model.cells.count, model.cells[index].image != nil {
                 HStack {
                     Text("Drag and pinch to frame the photo")
-                        .font(.caption)
+                        .font(Typeface.jost(12))
                         .foregroundStyle(Darkroom.stone)
                     Spacer()
                     Button("Replace") { pickingCell = index }
-                        .font(.footnote.weight(.semibold))
+                        .font(Typeface.jost(13, weight: 560))
                     Button(role: .destructive) {
                         model.clearCell(index)
                         model.selected = nil
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .font(.footnote)
+                    .font(Typeface.jost(13))
                 }
             } else {
                 ToolSlider(title: "Spacing", value: $model.settings.spacing, range: 0...100, format: { "\(Int($0.rounded()))" })
@@ -249,14 +249,14 @@ struct CollageView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     PhotosPicker(selection: $pickerItem, matching: .images, preferredItemEncoding: .current) {
                         Label("Choose from Photos", systemImage: "photo.on.rectangle")
-                            .font(.headline)
+                            .font(Typeface.jost(17, weight: 500))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                     if !projects.isEmpty {
                         Text("Your edits")
-                            .font(.headline)
+                            .font(Typeface.jost(17, weight: 500))
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 4)], spacing: 4) {
                             ForEach(projects) { project in
                                 ProjectTile(image: thumbnail(project))

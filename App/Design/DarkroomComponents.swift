@@ -276,14 +276,14 @@ struct SectionTabs<Item: Hashable & Identifiable>: View {
 
 // MARK: - Film details
 
-/// The wordmark: light, widely tracked capitals.
+/// The wordmark: Jost capitals, widely tracked.
 struct Wordmark: View {
     var size: CGFloat = 20
 
     var body: some View {
         Text("LUMORA")
-            .font(.system(size: size, weight: .light))
-            .tracking(size * 0.42)
+            .font(Typeface.jost(size, weight: 400))
+            .tracking(size * 0.46)
             .foregroundStyle(Darkroom.cream)
             .accessibilityLabel("Lumora")
     }

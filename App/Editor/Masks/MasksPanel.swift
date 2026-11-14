@@ -25,7 +25,7 @@ struct MasksPanel: View {
                     .pickerStyle(.segmented)
                     if !session.document.masks.isEmpty {
                         Button("Masks") { showsPresets = false; session.selectMask(session.document.masks.last?.id) }
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                     }
                 }
                 ScrollView {
@@ -51,7 +51,7 @@ struct MasksPanel: View {
                     }
                 } else {
                     Text("Select a mask above, or add a new one with +")
-                        .font(.footnote)
+                        .font(Typeface.jost(13))
                         .foregroundStyle(Darkroom.stone)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -76,7 +76,7 @@ struct MasksPanel: View {
                         Image(systemName: kind.symbol)
                             .font(.system(size: 18))
                         Text(kind.title)
-                            .font(.caption2.weight(.medium))
+                            .font(Typeface.jost(11, weight: 500))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
@@ -98,7 +98,7 @@ struct MasksPanel: View {
                             presetCategory = category
                         } label: {
                             Label(category.title, systemImage: category.symbol)
-                                .font(.footnote.weight(.medium))
+                                .font(Typeface.jost(13, weight: 500))
                                 .padding(.horizontal, 11)
                                 .padding(.vertical, 6)
                                 .drChip(presetCategory == category, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -114,7 +114,7 @@ struct MasksPanel: View {
                         showsPresets = false
                     } label: {
                         Text(preset.title)
-                            .font(.caption.weight(.semibold))
+                            .font(Typeface.jost(12, weight: 560))
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, minHeight: 40)
@@ -145,7 +145,7 @@ struct MasksPanel: View {
             }
         } label: {
             Image(systemName: "plus")
-                .font(.footnote.weight(.bold))
+                .font(Typeface.jost(13, weight: 640))
                 .frame(width: 30, height: 30)
                 .drChip(true, shape: Circle())
         }
@@ -168,7 +168,7 @@ struct MasksPanel: View {
                                 Text(mask.name)
                                     .lineLimit(1)
                             }
-                            .font(.footnote.weight(.medium))
+                            .font(Typeface.jost(13, weight: 500))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -264,7 +264,7 @@ struct MaskComponentEditor: View {
                         session.deleteSelectedComponent()
                     } label: {
                         Label("Remove", systemImage: "trash")
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                     }
                 }
                 controls(component, path: path)
@@ -283,12 +283,12 @@ struct MaskComponentEditor: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: component.mode.symbol)
-                                    .font(.caption2)
+                                    .font(Typeface.jost(11))
                                 Image(systemName: component.kind.symbol)
                                 Text(component.kind.title)
                                     .lineLimit(1)
                             }
-                            .font(.caption.weight(.medium))
+                            .font(Typeface.jost(12, weight: 500))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -313,7 +313,7 @@ struct MaskComponentEditor: View {
                 }
             } label: {
                 Label("Add", systemImage: "plus.circle")
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
             }
         }
     }
@@ -365,7 +365,7 @@ struct MaskComponentEditor: View {
 
     private func hint(_ text: String) -> some View {
         Text(text)
-            .font(.footnote)
+            .font(Typeface.jost(13))
             .foregroundStyle(Darkroom.stone)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -375,7 +375,7 @@ struct MaskComponentEditor: View {
             session.clearSelectedComponent()
         } label: {
             Label("Clear", systemImage: "xmark.circle")
-                .font(.footnote)
+                .font(Typeface.jost(13))
         }
         .disabled(disabled)
     }
@@ -404,7 +404,7 @@ private struct PeopleControls: View {
                 }
             }
             Text("Or tap a person on the photo.")
-                .font(.caption)
+                .font(Typeface.jost(12))
                 .foregroundStyle(Darkroom.stone)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(PersonPart.allCases) { part in
@@ -413,7 +413,7 @@ private struct PeopleControls: View {
                         session.togglePart(part)
                     } label: {
                         Text(part.title)
-                            .font(.caption.weight(.medium))
+                            .font(Typeface.jost(12, weight: 500))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
@@ -435,7 +435,7 @@ private struct PeopleControls: View {
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.footnote.weight(.medium))
+                .font(Typeface.jost(13, weight: 500))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -481,7 +481,7 @@ private struct BrushControls: View {
             ))
             .tint(Darkroom.safelight)
             Text(session.brushPaints ? "One finger paints, two fingers move and zoom." : "Painting is paused: one finger moves the photo.")
-                .font(.caption)
+                .font(Typeface.jost(12))
                 .foregroundStyle(Darkroom.stone)
         }
     }
@@ -498,7 +498,7 @@ struct ToolSlider: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(title)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(Typeface.jost(14))
                     .foregroundStyle(Darkroom.stone)
                 Spacer()
                 Text(format(value))

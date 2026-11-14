@@ -51,7 +51,7 @@ struct ReshapePanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(hint)
-                        .font(.footnote)
+                        .font(Typeface.jost(13))
                         .foregroundStyle(Darkroom.stone)
                         .fixedSize(horizontal: false, vertical: true)
                     ToolSlider(title: "Size", value: $session.liquifySize, range: 0.02...0.3, format: { "\(Int(($0 * 100).rounded()))%" })
@@ -59,7 +59,7 @@ struct ReshapePanel: View {
                     HStack {
                         Toggle(isOn: $session.liquifyPaints) {
                             Label(session.liquifyPaints ? "Brush" : "Move", systemImage: session.liquifyPaints ? "hand.draw" : "hand.raised")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                         .toggleStyle(.button)
                         Spacer()
@@ -67,14 +67,14 @@ struct ReshapePanel: View {
                             session.undoLastLiquify()
                         } label: {
                             Label("Last", systemImage: "arrow.uturn.backward")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                         .disabled(session.document.liquify.isEmpty)
                         Button(role: .destructive) {
                             session.clearLiquify()
                         } label: {
                             Label("Reset", systemImage: "arrow.counterclockwise")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                         .disabled(session.document.liquify.isEmpty)
                     }

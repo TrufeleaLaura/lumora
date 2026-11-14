@@ -74,6 +74,12 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSPhotoLibraryUsageDescription: Lumora shows your photos so you can choose one to edit.
         NSPhotoLibraryAddUsageDescription: Lumora saves your edited photos to your photo library.
+        UIAppFonts:
+          - CormorantGaramond.ttf
+          - CormorantGaramond-Italic.ttf
+          - Jost.ttf
+          - DMMono-Regular.ttf
+          - DMMono-Medium.ttf
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lumora.editor

@@ -105,7 +105,7 @@ struct OverlaysPanel: View {
                                     .frame(width: 5, height: 5)
                             }
                         }
-                        .font(.footnote.weight(.medium))
+                        .font(Typeface.jost(13, weight: 500))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .drChip(overlay == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -136,7 +136,7 @@ struct OverlaysPanel: View {
                             Image(systemName: style.symbol)
                                 .font(.system(size: 18))
                             Text(style.title)
-                                .font(.caption2.weight(.medium))
+                                .font(Typeface.jost(11, weight: 500))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -161,7 +161,7 @@ struct OverlaysPanel: View {
             if session.document.frame.dateStamp {
                 HStack {
                     Text("Date")
-                        .font(.subheadline)
+                        .font(Typeface.jost(15))
                     TextField("'26 10 13", text: Binding(
                         get: { session.document.frame.dateText },
                         set: { value in session.perform("Date text") { $0.frame.dateText = value } }

@@ -12,6 +12,7 @@ struct LumoraApp: App {
             LibraryView()
                 .preferredColorScheme(.dark)
                 .tint(Darkroom.cream)
+                .font(Typeface.jost(15))
         }
     }
 
@@ -20,19 +21,19 @@ struct LumoraApp: App {
         let segmented = UISegmentedControl.appearance()
         segmented.selectedSegmentTintColor = UIColor(Darkroom.cream)
         segmented.backgroundColor = UIColor(Darkroom.raised).withAlphaComponent(0.6)
-        let segmentFont = UIFont.systemFont(ofSize: 12, weight: .semibold)
-        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.ink), .font: segmentFont, .kern: 0.6], for: .selected)
-        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.stone), .font: segmentFont, .kern: 0.6], for: .normal)
+        let segmentFont = Typeface.uiJost(13, weight: 500)
+        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.ink), .font: segmentFont, .kern: 0.4], for: .selected)
+        segmented.setTitleTextAttributes([.foregroundColor: UIColor(Darkroom.stone), .font: segmentFont, .kern: 0.4], for: .normal)
 
         let navigation = UINavigationBar.appearance()
         navigation.titleTextAttributes = [
             .foregroundColor: UIColor(Darkroom.cream),
-            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
-            .kern: 2.2,
+            .font: Typeface.uiJost(13, weight: 500),
+            .kern: 2.6,
         ]
         navigation.largeTitleTextAttributes = [
             .foregroundColor: UIColor(Darkroom.cream),
-            .font: UIFont.systemFont(ofSize: 30, weight: .light),
+            .font: Typeface.uiCormorant(34, weight: 500),
         ]
     }
 }

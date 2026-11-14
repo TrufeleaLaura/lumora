@@ -17,7 +17,7 @@ struct TextPanel: View {
                     isAddingText = true
                 } label: {
                     Label("Text", systemImage: "plus")
-                        .font(.footnote.weight(.semibold))
+                        .font(Typeface.jost(13, weight: 560))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -27,7 +27,7 @@ struct TextPanel: View {
                     showsStickers.toggle()
                 } label: {
                     Label("Sticker", systemImage: "heart")
-                        .font(.footnote.weight(.semibold))
+                        .font(Typeface.jost(13, weight: 560))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                         .drChip(showsStickers, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -50,7 +50,7 @@ struct TextPanel: View {
                         })
                     } else if session.document.texts.isEmpty && !showsStickers {
                         Text("Add text or stickers, then drag them on the photo.")
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                             .foregroundStyle(Darkroom.stone)
                     }
                 }
@@ -87,7 +87,7 @@ struct TextPanel: View {
                                 Text(layer.text).lineLimit(1)
                             }
                         }
-                        .font(.footnote.weight(.medium))
+                        .font(Typeface.jost(13, weight: 500))
                         .frame(maxWidth: 90)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
@@ -182,7 +182,7 @@ private struct LayerEditor: View {
                 }
                 .accessibilityLabel("Delete")
             }
-            .font(.footnote)
+            .font(Typeface.jost(13))
 
             if !layer.isSticker {
                 HScroll {
@@ -224,7 +224,7 @@ private struct LayerEditor: View {
                 }
                 if layer.background {
                     Text("Label color")
-                        .font(.caption)
+                        .font(Typeface.jost(12))
                         .foregroundStyle(Darkroom.stone)
                     ColorRow(selected: layer.backgroundColor) { color in
                         session.updateSelectedText("Label color") { $0.backgroundColor = color }
@@ -232,7 +232,7 @@ private struct LayerEditor: View {
                 }
                 if layer.outline {
                     Text("Outline color")
-                        .font(.caption)
+                        .font(Typeface.jost(12))
                         .foregroundStyle(Darkroom.stone)
                     ColorRow(selected: layer.outlineColor) { color in
                         session.updateSelectedText("Outline color") { $0.outlineColor = color }
@@ -265,7 +265,7 @@ private struct LayerEditor: View {
             session.updateSelectedText(title) { change(&$0) }
         } label: {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(Typeface.jost(12, weight: 560))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
                 .drChip(on, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))

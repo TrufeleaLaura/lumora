@@ -15,7 +15,7 @@ struct FacePanel: View {
                             .font(.system(size: 30))
                             .foregroundStyle(Darkroom.stone)
                         Text("No faces found in this photo.")
-                            .font(.subheadline)
+                            .font(Typeface.jost(15))
                             .foregroundStyle(Darkroom.stone)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -32,7 +32,7 @@ struct FacePanel: View {
                                         if look.id != "none" { session.celebrate() }
                                     } label: {
                                         Text(look.title)
-                                            .font(.caption.weight(.semibold))
+                                            .font(Typeface.jost(12, weight: 560))
                                             .frame(maxWidth: .infinity, minHeight: 38)
                                             .drTile(RoundedRectangle(cornerRadius: 4, style: .continuous))
                                     }
@@ -45,7 +45,7 @@ struct FacePanel: View {
                             paletteRow(palette.colors, keyPath: palette.keyPath)
                             if section == .hair {
                                 Text("Ombré color")
-                                    .font(.caption)
+                                    .font(Typeface.jost(12))
                                     .foregroundStyle(Darkroom.stone)
                                 paletteRow(MakeupPalette.hair, keyPath: \.hairOmbreColor)
                             }
@@ -64,7 +64,7 @@ struct FacePanel: View {
                         }
                         if section == .hair {
                             Text("Works best on portraits where the hair is clearly visible.")
-                                .font(.caption2)
+                                .font(Typeface.jost(11))
                                 .foregroundStyle(.tertiary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -96,7 +96,7 @@ struct FacePanel: View {
                 }
             } else {
                 Text("Face")
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
                     .foregroundStyle(Darkroom.stone)
                 Spacer()
             }
@@ -104,7 +104,7 @@ struct FacePanel: View {
                 session.autoBeauty()
             } label: {
                 Label("Auto", systemImage: "wand.and.rays")
-                    .font(.footnote.weight(.semibold))
+                    .font(Typeface.jost(13, weight: 560))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
                     .drChip(true, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -114,7 +114,7 @@ struct FacePanel: View {
                 session.resetFace()
             } label: {
                 Image(systemName: "arrow.counterclockwise")
-                    .font(.footnote)
+                    .font(Typeface.jost(13))
             }
             .accessibilityLabel("Reset face")
         }
@@ -128,7 +128,7 @@ struct FacePanel: View {
                         section = item
                     } label: {
                         Label(item.title, systemImage: item.symbol)
-                            .font(.footnote.weight(.medium))
+                            .font(Typeface.jost(13, weight: 500))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .drChip(section == item, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -155,7 +155,7 @@ struct FacePanel: View {
                                 .frame(width: 30, height: 30)
                                 .overlay(Circle().stroke(current == color ? Darkroom.safelight : Color.white.opacity(0.2), lineWidth: current == color ? 2.5 : 1))
                             Text(name)
-                                .font(.system(size: 9))
+                                .font(Typeface.jost(10))
                                 .foregroundStyle(current == color ? Darkroom.safelight : Darkroom.stone)
                                 .lineLimit(1)
                         }
@@ -172,7 +172,7 @@ struct FacePanel: View {
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.footnote.weight(.medium))
+                .font(Typeface.jost(13, weight: 500))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -203,7 +203,7 @@ struct FaceMarkersOverlay: View {
                         .frame(width: rect.width * 1.1, height: rect.height * 1.25)
                         .overlay(alignment: .top) {
                             Text("\(index + 1)")
-                                .font(.caption2.weight(.bold))
+                                .font(Typeface.jost(11, weight: 640))
                                 .foregroundStyle(Darkroom.ink)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)

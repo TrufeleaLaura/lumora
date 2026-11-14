@@ -92,7 +92,7 @@ struct EnhancePanel: View {
                     }
 
                     Text("Sky")
-                        .font(.subheadline.weight(.semibold))
+                        .font(Typeface.jost(15, weight: 560))
                     HScroll {
                         HStack(spacing: 6) {
                             ForEach(SkyStyle.allCases) { style in
@@ -101,7 +101,7 @@ struct EnhancePanel: View {
                                     session.setSkyStyle(style)
                                 } label: {
                                     Text(style.title)
-                                        .font(.footnote.weight(.medium))
+                                        .font(Typeface.jost(13, weight: 500))
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 7)
                                         .drChip(selected, shape: RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -119,7 +119,7 @@ struct EnhancePanel: View {
                     }
 
                     Text("Background")
-                        .font(.subheadline.weight(.semibold))
+                        .font(Typeface.jost(15, weight: 560))
                     Picker("Background", selection: Binding(
                         get: { session.document.background.mode },
                         set: { session.setBackgroundMode($0) }
@@ -135,11 +135,11 @@ struct EnhancePanel: View {
                         }
                     } else if session.document.background.mode == .transparent {
                         Text("The background is cut out. Export as PNG to keep it transparent.")
-                            .font(.caption)
+                            .font(Typeface.jost(12))
                             .foregroundStyle(Darkroom.stone)
                     }
                     Text("Tip: Export, then Enlarge 2×, makes a bigger file for prints.")
-                        .font(.caption)
+                        .font(Typeface.jost(12))
                         .foregroundStyle(Darkroom.stone)
                 }
                 .padding(.bottom, 8)
@@ -153,7 +153,7 @@ struct EnhancePanel: View {
                 Image(systemName: symbol)
                     .font(.system(size: 20))
                 Text(title)
-                    .font(.caption.weight(.medium))
+                    .font(Typeface.jost(12, weight: 500))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }

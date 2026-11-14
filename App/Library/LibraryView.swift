@@ -76,7 +76,7 @@ struct LibraryView: View {
 
                 if let message = library.errorMessage {
                     Text(message)
-                        .font(.footnote)
+                        .font(Typeface.jost(13))
                         .foregroundStyle(Darkroom.safelight)
                         .padding(.top, 12)
                 }
@@ -250,7 +250,7 @@ struct LibraryView: View {
                     Text("New edit")
                         .caps(13)
                     Text("Choose a photo from your library")
-                        .font(.footnote)
+                        .font(Typeface.jost(13))
                         .foregroundStyle(Darkroom.stone)
                 }
                 Spacer()
@@ -279,10 +279,10 @@ struct LibraryView: View {
                     .frame(width: 22)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15))
+                        .font(Typeface.jost(16))
                         .foregroundStyle(Darkroom.cream)
                     Text(detail)
-                        .font(.caption)
+                        .font(Typeface.jost(12))
                         .foregroundStyle(Darkroom.stone)
                 }
                 Spacer()
@@ -380,7 +380,7 @@ struct LibraryView: View {
     private var feedGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Drag photos to plan how your grid will look. Top-left is the newest post.")
-                .font(.caption)
+                .font(Typeface.jost(12))
                 .foregroundStyle(Darkroom.stone)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                 ForEach(library.feed) { project in
@@ -427,7 +427,7 @@ struct LibraryView: View {
                 .caps(12)
                 .foregroundStyle(Darkroom.cream)
             Text("Your edits appear here as a contact sheet. Originals are always kept, so you can change your mind anytime.")
-                .font(.footnote)
+                .font(Typeface.jost(13))
                 .foregroundStyle(Darkroom.stone)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)

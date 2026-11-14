@@ -22,7 +22,7 @@ struct RetouchPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(hint)
-                        .font(.footnote)
+                        .font(Typeface.jost(13))
                         .foregroundStyle(Darkroom.stone)
                         .fixedSize(horizontal: false, vertical: true)
                     if session.retouchTool == .remove {
@@ -33,12 +33,12 @@ struct RetouchPanel: View {
                         HStack {
                             Label(session.cloneSource == nil ? "Step 1: tap what to copy" : "Step 2: paint where to copy it",
                                   systemImage: session.cloneSource == nil ? "scope" : "paintbrush.pointed")
-                                .font(.footnote.weight(.semibold))
+                                .font(Typeface.jost(13, weight: 560))
                                 .foregroundStyle(Darkroom.safelight)
                             Spacer()
                             if session.cloneSource != nil {
                                 Button("New source") { session.cloneSource = nil }
-                                    .font(.footnote)
+                                    .font(Typeface.jost(13))
                             }
                         }
                     }
@@ -50,21 +50,21 @@ struct RetouchPanel: View {
                     ])
                     HStack {
                         Text(countText)
-                            .font(.footnote)
+                            .font(Typeface.jost(13))
                             .foregroundStyle(Darkroom.stone)
                         Spacer()
                         Button {
                             session.undoLastRetouch()
                         } label: {
                             Label("Last", systemImage: "arrow.uturn.backward")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                         .disabled(session.document.retouch.operations.isEmpty)
                         Button(role: .destructive) {
                             session.clearRetouching()
                         } label: {
                             Label("Clear", systemImage: "trash")
-                                .font(.footnote)
+                                .font(Typeface.jost(13))
                         }
                         .disabled(session.document.retouch.operations.isEmpty)
                     }
@@ -179,7 +179,7 @@ struct RetouchCanvasOverlay: View {
                 .stroke(Color.white, lineWidth: 2)
                 .background(Circle().fill(Color.white.opacity(0.12)))
                 .frame(width: max(radius * 2, 30), height: max(radius * 2, 30))
-                .overlay(Image(systemName: "arrow.up.and.down.and.arrow.left.and.right").font(.caption).foregroundStyle(.white))
+                .overlay(Image(systemName: "arrow.up.and.down.and.arrow.left.and.right").font(Typeface.jost(12)).foregroundStyle(.white))
                 .shadow(color: .black.opacity(0.4), radius: 2)
                 .contentShape(Circle())
                 .position(source)
